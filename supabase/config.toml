@@ -1,0 +1,15 @@
+# Supabase local config — TikTally Creator
+# project_id vira o nome do stack local; troque pelo ref real ao linkar (`supabase link`).
+project_id = "tiktally-creator"
+
+[functions.creator-api]
+verify_jwt = false  # dispatcher de todos os endpoints; JWT validado em creatorAuth.ts
+
+[functions.creator-get-profile]
+verify_jwt = false  # validamos o JWT manualmente em creatorAuth.ts
+
+[functions.creator-search-orders]
+verify_jwt = false
+
+[functions.creator-token-exchange]
+verify_jwt = false

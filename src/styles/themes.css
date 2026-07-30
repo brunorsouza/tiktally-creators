@@ -1,0 +1,77 @@
+/*
+  Tema BLACK (OLED) — TikTally Creator.
+  next-themes aplica `class="black"` no <html> (classe ÚNICA — não pode ter
+  espaço, senão `classList.add` quebra). Por isso este bloco é AUTO-CONTIDO:
+  traz a base escura + superfícies em preto puro. Mantém a primária rosa e os
+  tokens de marca. Carregado após o index.css (via main.tsx).
+  O app é 100% token-based (nenhum `dark:` do Tailwind), então não depender da
+  classe `.dark` do Tailwind é seguro.
+*/
+.black {
+  --background: 0 0% 0%;
+  --foreground: 0 0% 96%;
+
+  --card: 0 0% 4%;
+  --card-foreground: 0 0% 96%;
+
+  --popover: 0 0% 5%;
+  --popover-foreground: 0 0% 96%;
+
+  --primary: 344 90% 58%;
+  --primary-foreground: 0 0% 100%;
+  --primary-glow: 344 96% 66%;
+
+  --secondary: 0 0% 9%;
+  --secondary-foreground: 0 0% 96%;
+
+  --muted: 0 0% 9%;
+  --muted-foreground: 0 0% 58%;
+
+  --accent: 0 0% 12%;
+  --accent-foreground: 344 90% 70%;
+
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --success: 142 71% 45%;
+  --success-foreground: 0 0% 100%;
+  --warning: 38 92% 50%;
+  --warning-foreground: 0 0% 100%;
+  --info: 199 89% 48%;
+  --info-foreground: 0 0% 100%;
+
+  --brand-pink: 344 90% 58%;
+  --brand-cyan: 184 85% 50%;
+
+  --border: 0 0% 14%;
+  --input: 0 0% 14%;
+  --ring: 344 90% 58%;
+
+  --radius: 0.75rem;
+
+  --gradient-primary: linear-gradient(135deg, hsl(344 90% 50%) 0%, hsl(344 92% 60%) 100%);
+  --gradient-secondary: linear-gradient(135deg, hsl(184 85% 42%) 0%, hsl(344 90% 52%) 100%);
+  --gradient-success: linear-gradient(135deg, hsl(142 71% 38%) 0%, hsl(142 71% 48%) 100%);
+  --gradient-premium: linear-gradient(135deg, hsl(344 90% 52%) 0%, hsl(320 85% 54%) 50%, hsl(184 85% 44%) 100%);
+  --gradient-card: linear-gradient(145deg, hsl(0 0% 5%) 0%, hsl(0 0% 2%) 100%);
+  --gradient-dark: linear-gradient(145deg, hsl(0 0% 3%) 0%, hsl(0 0% 0%) 100%);
+
+  --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.5);
+  --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.5), 0 2px 4px -2px hsl(0 0% 0% / 0.4);
+  --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.5), 0 4px 6px -4px hsl(0 0% 0% / 0.4);
+  --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.5), 0 8px 10px -6px hsl(0 0% 0% / 0.4);
+  --shadow-premium: 0 20px 40px -12px hsl(344 90% 58% / 0.45);
+  --shadow-glow: 0 0 40px hsl(344 90% 58% / 0.4);
+  --shadow-elegant: 0 20px 50px -10px hsl(0 0% 0% / 0.8);
+
+  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --sidebar-background: 0 0% 2%;
+  --sidebar-foreground: 0 0% 86%;
+  --sidebar-primary: 344 90% 58%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 0 0% 10%;
+  --sidebar-accent-foreground: 344 90% 70%;
+  --sidebar-border: 0 0% 12%;
+  --sidebar-ring: 344 90% 58%;
+}
