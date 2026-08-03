@@ -68,6 +68,16 @@ Deno.serve(async (req) => {
 
     const d = result.data;
 
+    // Garante que é um token de CREATOR (user_type=1). Se vier 0 (seller) ou 3
+    // (partner), o usuário autorizou pelo link errado — rejeita em vez de gravar
+    // um token de vendedor como se fosse de creator.
+    if (d.user_type != null && d.user_type !== 1) {
+      throw new Error(
+        `Token não é de creator (user_type=${d.user_type}). Autorize pelo link de creator ` +
+          `(shop.tiktok.com/alliance/creator/auth), não pelo do vendedor.`
+      );
+    }
+
     // 4) upsert em creator_tokens (1 por usuário do app)
     const { error: upErr } = await admin.from("creator_tokens").upsert(
       {

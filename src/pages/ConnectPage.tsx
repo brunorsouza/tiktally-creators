@@ -4,28 +4,30 @@ import { Logo } from "@/components/brand/Logo";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 /**
- * Conexão da conta de creator do TikTok Shop (OAuth `user_type=1`).
+ * Conexão da conta de CREATOR do TikTok Shop (OAuth `user_type=1`).
  *
- * Fluxo (a implementar na fase 1):
- * 1. Redireciona pro authorize da TikTok (services.tiktokshop.com/open/authorize)
- *    com o service_id do app e state = user.id.
- * 2. TikTok volta em /auth/callback?code=... (ver AuthCallbackPage).
- * 3. Edge fn `creator-token-exchange` troca o code por creator access_token e
- *    grava em `creator_tokens`.
+ * ⚠️ Creator ≠ Seller. A doc oficial ("Get Access Token") define domínios
+ * diferentes por tipo:
+ *   - Seller:  https://services.tiktokshop.com/open/authorize?service_id=...
+ *   - Partner: https://partner.tiktokshop.com/open/authorize?service_id=...
+ *   - Creator: https://shop.tiktok.com/alliance/creator/auth?app_key=...&state=...
+ * O link de creator usa **app_key** (não service_id) e outro domínio. Se cair no
+ * services.tiktokshop.com, aparece o login do VENDEDOR — não é o que queremos.
  *
- * IMPORTANTE (bloqueador conhecido): confirmar no Partner Center que o app tem
- * os escopos `creator.*` e disponibilidade BR liberados. Ver docs/SETUP.md.
+ * Fluxo: creator aprova o link → TikTok volta no redirect registrado do app
+ * (?code=...) → edge `creator-token-exchange` troca por access_token (deve vir
+ * user_type=1) e grava em `creator_tokens`.
  */
 function buildAuthorizeUrl(): string {
-  const serviceId = import.meta.env.VITE_TIKTOK_SERVICE_ID;
+  const appKey = import.meta.env.VITE_TIKTOK_APP_KEY;
   const state = encodeURIComponent(window.crypto.randomUUID());
   sessionStorage.setItem("tt_oauth_state", state);
-  // Endpoint de authorize do TikTok Shop; ajustar conforme o app (creator scope).
-  return `https://services.tiktokshop.com/open/authorize?service_id=${serviceId}&state=${state}`;
+  // Fluxo de CREATOR (user_type=1) — domínio e param específicos.
+  return `https://shop.tiktok.com/alliance/creator/auth?app_key=${appKey}&state=${state}`;
 }
 
 export default function ConnectPage() {
-  const canConnect = !!import.meta.env.VITE_TIKTOK_SERVICE_ID;
+  const canConnect = !!import.meta.env.VITE_TIKTOK_APP_KEY;
 
   return (
     <div className="flex min-h-[70vh] items-center justify-center">
@@ -57,7 +59,7 @@ export default function ConnectPage() {
           </Button>
           {!canConnect && (
             <p className="text-xs text-warning">
-              Configure <code>VITE_TIKTOK_SERVICE_ID</code> no .env para habilitar a conexão.
+              Configure <code>VITE_TIKTOK_APP_KEY</code> no .env para habilitar a conexão.
             </p>
           )}
         </CardContent>
