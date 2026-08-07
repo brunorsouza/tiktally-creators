@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plus, Pin, Trash2, Package, AlertCircle, Store, Percent } from "lucide-react";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,19 +83,8 @@ export default function VitrinePage() {
     );
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="animate-slide-up">
-          <h1 className="text-2xl font-bold tracking-tight">Vitrine</h1>
-          <p className="text-muted-foreground">
-            Produtos que você promove na sua vitrine
-            {data?.total_count != null ? ` · ${data.total_count} no total` : ""}.
-          </p>
-        </div>
-        <Badge variant={USE_MOCK ? "warning" : "success"} className="mt-1 shrink-0">
-          {USE_MOCK ? "Mock" : "Live"}
-        </Badge>
-      </header>
+    <div className="space-y-gap">
+      <PageHeader title="Vitrine" subtitle={<>Produtos que você promove na sua vitrine {data?.total_count != null ? ` · ${data.total_count} no total` : ""}.</>} />
 
       {/* Adicionar por ID */}
       <Card>

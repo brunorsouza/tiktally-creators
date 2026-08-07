@@ -7,6 +7,13 @@
       "runtimeArgs": ["run", "dev"],
       "port": 8092,
       "autoPort": false
+    },
+    {
+      "name": "preview",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "preview", "--", "--port", "8093", "--strictPort"],
+      "port": 8093,
+      "autoPort": false
     }
   ]
 }

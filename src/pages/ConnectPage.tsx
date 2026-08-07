@@ -36,8 +36,8 @@ export default function ConnectPage() {
           <div className="mb-2 flex h-14 w-14 items-center justify-center rounded-2xl border bg-gradient-card shadow-premium">
             <Logo size={34} />
           </div>
-          <CardTitle>Conecte sua conta de creator</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-[22px]">Conecte sua conta de creator</CardTitle>
+          <CardDescription className="leading-relaxed">
             Autorize o TikTally Creator a ler suas comissões e a performance dos seus vídeos e lives.
             Só leitura — nada é publicado sem você pedir.
           </CardDescription>
@@ -45,7 +45,7 @@ export default function ConnectPage() {
         <CardContent className="space-y-4">
           <div className="flex items-start gap-3 rounded-lg bg-muted/50 p-3 text-left text-sm text-muted-foreground">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-success" />
-            <span>
+            <span className="leading-relaxed">
               A conexão usa o login oficial do TikTok Shop. Seu token fica seguro no servidor e
               nunca no navegador.
             </span>

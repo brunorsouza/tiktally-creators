@@ -2,24 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer utilities {
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
-}
-
 /*
   ─────────────────────────────────────────────────────────────────────────────
   TikTally Creator — Design System
-  Inspirado no DS do TikTally Seller (mesma arquitetura de tokens), mas com a
-  identidade do creator: PINK-forward (#FE2C55, casa com o logo tally-check rosa)
-  e ciano como acento da família (gradientes dual-tone estilo TikTok).
-  Semânticas (success/warning/info/destructive) são idênticas às do seller pra
-  manter a família coesa.
+  Paleta "papel quente": neutros com viés bege/marrom (nada de cinza azulado),
+  acento rosa (#ff3f6c escuro / #e11d48 claro) e semânticas dessaturadas que
+  convivem com o fundo sem estourar. Tipografia: Archivo (display, números e
+  títulos) + Hanken Grotesk (texto).
 
   REGRA: todas as cores em HSL. Nada de hex/rgb solto nos componentes — use os
   tokens (hsl(var(--token))) ou as classes utilitárias do tailwind.config.ts.
@@ -28,147 +17,192 @@
 
 @layer base {
   :root {
-    /* superfícies (branco levemente quente/rosado) */
-    --background: 340 33% 99%;
-    --foreground: 240 10% 11%;
+    /* superfícies — papel bege */
+    --background: 39 39% 93%;
+    --foreground: 30 16% 10%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 11%;
+    /* painel = trilho/sidebar; card = superfície elevada */
+    --panel: 40 100% 99%;
+    --card: 40 100% 99%;
+    --card-foreground: 30 16% 10%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 11%;
+    --popover: 40 100% 99%;
+    --popover-foreground: 30 16% 10%;
 
-    /* marca — rosa TikTok (#FE2C55) */
-    --primary: 344 90% 56%;
+    /* marca — rosa */
+    --primary: 347 77% 50%;
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 344 96% 68%;
+    --primary-glow: 347 85% 62%;
 
-    --secondary: 340 30% 96%;
-    --secondary-foreground: 240 10% 11%;
+    /* surface-2: chips, trilhos de barra, thumbs */
+    --secondary: 39 35% 90%;
+    --secondary-foreground: 30 16% 10%;
 
-    --muted: 340 24% 96%;
-    --muted-foreground: 340 6% 45%;
+    --muted: 39 35% 90%;
+    --muted-foreground: 26 8% 38%; /* tx2 — texto de apoio */
+    --faint: 30 9% 55%; /* tx3 — legendas, metadados */
 
-    /* accent sutil (hover ghost) — cinza rosado, texto rosa */
-    --accent: 340 30% 95%;
-    --accent-foreground: 344 84% 44%;
+    --accent: 39 35% 90%;
+    --accent-foreground: 347 77% 50%;
 
-    /* semânticas — iguais ao seller (família) */
-    --destructive: 0 84% 60%;
+    /* semânticas dessaturadas, legíveis sobre papel */
+    --destructive: 0 65% 46%;
     --destructive-foreground: 0 0% 100%;
-    --success: 142 71% 45%;
+    --success: 161 68% 28%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
+    --warning: 29 70% 35%;
     --warning-foreground: 0 0% 100%;
-    --info: 199 89% 48%;
+    --info: 224 55% 45%;
     --info-foreground: 0 0% 100%;
 
-    /* cores da família da marca (logo) */
-    --brand-pink: 344 90% 56%;
-    --brand-cyan: 184 88% 45%;
+    /* superfície "tinta": cartões escuros sobre tema claro (saldo, destaques) */
+    --ink: 30 17% 11%;
+    --ink-foreground: 39 44% 94%;
+    --ink-border: 39 44% 94%;
 
-    --border: 340 16% 90%;
-    --input: 340 16% 90%;
-    --ring: 344 90% 56%;
+    /* cores da marca (logo tally-check) — vindas do SVG oficial da marca:
+       #f01068 / #10d8e0. FIXAS nos três temas: a marca não muda de cor. */
+    --brand-pink: 336 88% 50%;
+    --brand-cyan: 182 87% 47%;
 
-    --radius: 0.75rem;
+    --border: 38 28% 85%;
+    --input: 38 28% 85%;
+    --ring: 347 77% 50%;
 
-    /* gradientes — dual-tone rosa↔ciano */
-    --gradient-primary: linear-gradient(135deg, hsl(344 90% 56%) 0%, hsl(344 92% 66%) 100%);
-    --gradient-secondary: linear-gradient(135deg, hsl(184 88% 46%) 0%, hsl(344 90% 56%) 100%);
-    --gradient-success: linear-gradient(135deg, hsl(142 71% 45%) 0%, hsl(142 71% 55%) 100%);
-    --gradient-premium: linear-gradient(135deg, hsl(344 90% 56%) 0%, hsl(320 85% 58%) 50%, hsl(184 88% 48%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(340 33% 99%) 100%);
-    --gradient-dark: linear-gradient(145deg, hsl(240 15% 11%) 0%, hsl(240 18% 8%) 100%);
+    /* ── Escala de forma e ritmo ──────────────────────────────────────────
+       O DS tem UMA medida por papel, não uma escala genérica:
+         9px  cartão, chip, pílula de período   → rounded-lg
+         7px  item de navegação                 → rounded-md
+         6px  quadrado de ícone (tint)          → rounded-tint
+        12px  botão, campo                      → rounded-btn
+        15px  botão do trilho                   → rounded-rail
+       `--radius` é 9px pra `rounded-lg`/`-md` caírem em 9/7 sozinhos. */
+    --radius: 0.5625rem;
 
-    /* sombras — escala + rosa premium/glow */
-    --shadow-sm: 0 1px 2px 0 hsl(340 15% 12% / 0.05);
-    --shadow-md: 0 4px 6px -1px hsl(340 15% 12% / 0.08), 0 2px 4px -2px hsl(340 15% 12% / 0.06);
-    --shadow-lg: 0 10px 15px -3px hsl(340 15% 12% / 0.08), 0 4px 6px -4px hsl(340 15% 12% / 0.06);
-    --shadow-xl: 0 20px 25px -5px hsl(340 15% 12% / 0.08), 0 8px 10px -6px hsl(340 15% 12% / 0.06);
-    --shadow-premium: 0 20px 40px -12px hsl(344 90% 56% / 0.28);
-    --shadow-glow: 0 0 40px hsl(344 90% 56% / 0.32);
-    --shadow-elegant: 0 20px 50px -10px hsl(0 0% 0% / 0.5);
+    /* padding interno de cartão e gap entre cartões — densidade "arejada" */
+    --pad: 26px;
+    --gap: 20px;
+
+    /* opacidade das tintas suaves: fundo de chip, item ativo, ícone tintado.
+       Baixa de propósito — o DS marca cor por borda e texto, não por bloco.
+       No papel claro precisa ser ainda mais discreta que no escuro. */
+    --tint-soft: 0.065;
+
+    /* textura de papel do fundo */
+    --paper: repeating-linear-gradient(
+      45deg,
+      hsl(33 26% 37% / 0.045) 0 1px,
+      transparent 1px 7px
+    );
+
+    /* gradientes */
+    --gradient-primary: linear-gradient(135deg, hsl(347 77% 50%) 0%, hsl(347 85% 62%) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(184 88% 32%) 0%, hsl(347 77% 50%) 100%);
+    --gradient-success: linear-gradient(135deg, hsl(161 68% 28%) 0%, hsl(161 60% 38%) 100%);
+    --gradient-premium: linear-gradient(135deg, hsl(347 77% 50%) 0%, hsl(320 70% 48%) 50%, hsl(184 88% 32%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(40 100% 99%) 0%, hsl(39 39% 96%) 100%);
+    --gradient-dark: linear-gradient(145deg, hsl(30 17% 11%) 0%, hsl(30 18% 6%) 100%);
+
+    /* sombras — quentes e curtas, o DS é de borda, não de sombra */
+    --shadow-sm: 0 1px 2px hsl(30 22% 22% / 0.05);
+    --shadow-md: 0 1px 2px hsl(30 22% 22% / 0.05), 0 10px 26px hsl(30 22% 22% / 0.05);
+    --shadow-lg: 0 2px 4px hsl(30 22% 22% / 0.05), 0 16px 34px hsl(30 22% 22% / 0.07);
+    --shadow-xl: 0 4px 8px hsl(30 22% 22% / 0.06), 0 24px 48px hsl(30 22% 22% / 0.09);
+    --shadow-premium: 0 16px 34px -12px hsl(347 77% 50% / 0.32);
+    --shadow-glow: 0 0 36px hsl(347 77% 50% / 0.24);
+    --shadow-elegant: 0 22px 60px -14px hsl(30 22% 22% / 0.28);
 
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-spring: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 
     /* sidebar */
-    --sidebar-background: 340 33% 99%;
-    --sidebar-foreground: 240 5% 26%;
-    --sidebar-primary: 344 90% 56%;
+    --sidebar-background: 40 100% 99%;
+    --sidebar-foreground: 26 8% 38%;
+    --sidebar-primary: 347 77% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 340 30% 95%;
-    --sidebar-accent-foreground: 344 84% 44%;
-    --sidebar-border: 340 16% 90%;
-    --sidebar-ring: 344 90% 56%;
+    --sidebar-accent: 39 35% 90%;
+    --sidebar-accent-foreground: 347 77% 50%;
+    --sidebar-border: 38 28% 85%;
+    --sidebar-ring: 347 77% 50%;
   }
 
   .dark {
-    --background: 240 15% 8%;
-    --foreground: 340 15% 96%;
+    --background: 30 11% 7%;
+    --foreground: 38 33% 95%;
 
-    --card: 240 15% 10%;
-    --card-foreground: 340 15% 96%;
+    --panel: 26 16% 8%;
+    --card: 27 16% 11%;
+    --card-foreground: 38 33% 95%;
 
-    --popover: 240 15% 10%;
-    --popover-foreground: 340 15% 96%;
+    --popover: 26 16% 8%;
+    --popover-foreground: 38 33% 95%;
 
-    --primary: 344 90% 58%;
+    --primary: 346 100% 62%;
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 344 96% 66%;
+    --primary-glow: 347 100% 71%;
 
-    --secondary: 240 14% 15%;
-    --secondary-foreground: 340 15% 96%;
+    --secondary: 27 12% 14%;
+    --secondary-foreground: 38 33% 95%;
 
-    --muted: 240 14% 15%;
-    --muted-foreground: 340 8% 60%;
+    --muted: 27 12% 14%;
+    --muted-foreground: 26 9% 63%;
+    --faint: 25 7% 45%;
 
-    --accent: 240 14% 16%;
-    --accent-foreground: 344 90% 68%;
+    --accent: 27 12% 14%;
+    --accent-foreground: 346 100% 62%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 72% 60%;
     --destructive-foreground: 0 0% 100%;
-    --success: 142 71% 45%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
-    --info: 199 89% 48%;
-    --info-foreground: 0 0% 100%;
+    --success: 154 54% 59%;
+    --success-foreground: 30 11% 7%;
+    --warning: 32 68% 63%;
+    --warning-foreground: 30 11% 7%;
+    --info: 224 100% 74%;
+    --info-foreground: 30 11% 7%;
 
-    --brand-pink: 344 90% 58%;
-    --brand-cyan: 184 85% 50%;
+    --ink: 30 18% 4%;
+    --ink-foreground: 39 37% 93%;
+    --ink-border: 39 37% 93%;
 
-    --border: 240 14% 18%;
-    --input: 240 14% 18%;
-    --ring: 344 90% 58%;
+    --brand-pink: 336 88% 50%;
+    --brand-cyan: 182 87% 47%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(344 90% 50%) 0%, hsl(344 92% 60%) 100%);
-    --gradient-secondary: linear-gradient(135deg, hsl(184 85% 42%) 0%, hsl(344 90% 52%) 100%);
-    --gradient-success: linear-gradient(135deg, hsl(142 71% 38%) 0%, hsl(142 71% 48%) 100%);
-    --gradient-premium: linear-gradient(135deg, hsl(344 90% 52%) 0%, hsl(320 85% 54%) 50%, hsl(184 85% 44%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(240 15% 10%) 0%, hsl(240 15% 12%) 100%);
-    --gradient-dark: linear-gradient(145deg, hsl(240 15% 8%) 0%, hsl(240 18% 6%) 100%);
+    --border: 30 14% 17%;
+    --input: 30 14% 17%;
+    --ring: 346 100% 62%;
 
-    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.3);
-    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.3), 0 2px 4px -2px hsl(0 0% 0% / 0.25);
-    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.3), 0 4px 6px -4px hsl(0 0% 0% / 0.25);
-    --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.3), 0 8px 10px -6px hsl(0 0% 0% / 0.25);
-    --shadow-premium: 0 20px 40px -12px hsl(344 90% 58% / 0.4);
-    --shadow-glow: 0 0 40px hsl(344 90% 58% / 0.35);
-    --shadow-elegant: 0 20px 50px -10px hsl(0 0% 0% / 0.5);
+    /* no escuro as tintas podem ser um pouco mais presentes que no claro */
+    --tint-soft: 0.085;
 
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-spring: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    --paper: repeating-linear-gradient(
+      45deg,
+      hsl(35 30% 63% / 0.018) 0 1px,
+      transparent 1px 7px
+    );
 
-    --sidebar-background: 240 15% 10%;
-    --sidebar-foreground: 340 10% 90%;
-    --sidebar-primary: 344 90% 58%;
+    --gradient-primary: linear-gradient(135deg, hsl(346 100% 56%) 0%, hsl(347 100% 66%) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(184 85% 42%) 0%, hsl(346 100% 58%) 100%);
+    --gradient-success: linear-gradient(135deg, hsl(154 54% 46%) 0%, hsl(154 54% 59%) 100%);
+    --gradient-premium: linear-gradient(135deg, hsl(346 100% 58%) 0%, hsl(320 78% 56%) 50%, hsl(184 85% 44%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(27 16% 11%) 0%, hsl(27 16% 9%) 100%);
+    --gradient-dark: linear-gradient(145deg, hsl(30 18% 5%) 0%, hsl(30 18% 3%) 100%);
+
+    --shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.35);
+    --shadow-md: 0 1px 2px hsl(0 0% 0% / 0.35), 0 10px 26px hsl(0 0% 0% / 0.24);
+    --shadow-lg: 0 2px 4px hsl(0 0% 0% / 0.4), 0 16px 34px hsl(0 0% 0% / 0.3);
+    --shadow-xl: 0 4px 8px hsl(0 0% 0% / 0.42), 0 24px 48px hsl(0 0% 0% / 0.34);
+    --shadow-premium: 0 16px 34px -12px hsl(346 100% 62% / 0.4);
+    --shadow-glow: 0 0 36px hsl(346 100% 62% / 0.32);
+    --shadow-elegant: 0 22px 60px -14px hsl(0 0% 0% / 0.55);
+
+    --sidebar-background: 26 16% 8%;
+    --sidebar-foreground: 26 9% 63%;
+    --sidebar-primary: 346 100% 62%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 14% 16%;
-    --sidebar-accent-foreground: 344 90% 68%;
-    --sidebar-border: 240 14% 18%;
-    --sidebar-ring: 344 90% 58%;
+    --sidebar-accent: 27 12% 14%;
+    --sidebar-accent-foreground: 346 100% 62%;
+    --sidebar-border: 30 14% 17%;
+    --sidebar-ring: 346 100% 62%;
   }
 }
 
@@ -176,19 +210,142 @@
   * {
     @apply border-border;
   }
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+  }
   body {
     @apply bg-background text-foreground antialiased;
+    background-image: var(--paper);
     font-feature-settings: "rlig" 1, "calt" 1;
+    text-rendering: optimizeLegibility;
+    /* Base do DS: 15px e entrelinha `normal`. O ritmo vertical do design vem
+       da altura natural da fonte — quem precisa de respiro pede `leading-*`
+       no call site (1.35 no título de atalho, 1.45 no sub, 1.55 no lead).
+       Sem isso o preflight do Tailwind injeta 1.5 em tudo e cada linha de
+       texto sai 2–4px mais alta que no design. */
+    font-size: 15px;
+    line-height: normal;
+  }
+  ::selection {
+    background: hsl(var(--primary) / 0.28);
+  }
+
+  /* números e títulos no display face */
+  h1,
+  h2,
+  h3 {
+    @apply font-display tracking-tight;
+  }
+
+  /* scrollbar discreta, no tom do papel */
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: hsl(var(--faint) / 0.35);
+    border-radius: 8px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
   }
 
   /* item ativo da sidebar — rosa da marca */
   [data-sidebar="menu-button"][data-active="true"] {
-    background-color: hsl(var(--primary)) !important;
-    color: hsl(var(--primary-foreground)) !important;
+    background-color: hsl(var(--primary) / 0.1) !important;
+    color: hsl(var(--primary)) !important;
     font-weight: 600 !important;
   }
-  [data-sidebar="menu-button"][data-active="true"]:hover {
-    background-color: hsl(var(--primary) / 0.85) !important;
-    color: hsl(var(--primary-foreground)) !important;
+}
+
+@layer components {
+  /*
+    Os três tratamentos que o DS repete em toda tela. Estão aqui, e não
+    espalhados em classes soltas, porque a medida exata é o que dá a
+    identidade — 34/6px no ícone, 9px no chip, 26px no cartão.
+  */
+
+  /* Quadrado de ícone "tintado": fundo transparente, borda fina, ícone colorido.
+     A cor vem de quem usa (text-primary / text-success / text-warning). */
+  .tint {
+    @apply grid h-[34px] w-[34px] shrink-0 place-items-center rounded-tint border;
+  }
+
+  /* Chip de status: tinta suave, canto de 9px, texto curto e pesado. */
+  .chip {
+    @apply inline-flex items-center whitespace-nowrap rounded-lg px-2.5 py-[5px] text-xs font-bold;
+  }
+  .chip-neutral {
+    @apply chip bg-secondary text-faint;
+  }
+  .chip-success {
+    @apply chip text-success;
+    background: hsl(var(--success) / var(--tint-soft));
+  }
+  .chip-warning {
+    @apply chip text-warning;
+    background: hsl(var(--warning) / var(--tint-soft));
+  }
+
+  /* Superfície de cartão com o padding canônico do DS. */
+  .tile {
+    @apply rounded-lg border bg-card p-pad shadow-sm;
+  }
+
+  /* Grupo de abas/períodos: trilho em surface-2, item ativo "sobe" pro card. */
+  .segmented {
+    @apply flex gap-1 rounded-btn bg-secondary p-1;
+  }
+  .segmented-item {
+    @apply rounded-lg px-3.5 py-[7px] text-[13px] font-semibold text-faint transition-colors;
+  }
+  .segmented-item[aria-selected="true"],
+  .segmented-item[data-active="true"] {
+    @apply bg-card text-foreground shadow-sm;
+  }
+}
+
+@layer utilities {
+  /*
+    Fundo de papel: cor + a hachura diagonal de 1px. Precisa estar em TODA
+    superfície de shell que pinta fundo próprio — um `bg-background` opaco por
+    cima do body apaga a textura e o app fica liso.
+  */
+  .bg-paper {
+    background-color: hsl(var(--background));
+    background-image: var(--paper);
+  }
+
+  /* Tinta suave da cor corrente — o fundo dos itens ativos e destaques. */
+  .bg-soft {
+    background-color: color-mix(in srgb, currentColor calc(var(--tint-soft) * 100%), transparent);
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* placeholder de mídia: hachura diagonal no tom da superfície */
+  .bg-hatch {
+    background-image: repeating-linear-gradient(
+      135deg,
+      hsl(var(--secondary)) 0 6px,
+      transparent 6px 12px
+    );
+  }
+
+  /* Números tabulares no display face — KPIs, tabelas, moeda.
+     Sem `tracking` de propósito: cada tamanho tem o seu (-1px no KPI de 30px,
+     -0.9px no de 28px). Se entrar aqui, vence o do call site e achata tudo. */
+  .num {
+    @apply font-display tabular-nums;
   }
 }

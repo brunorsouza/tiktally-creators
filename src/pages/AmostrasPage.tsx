@@ -17,6 +17,7 @@ import {
   ChevronRight,
   X,
 } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -172,32 +173,38 @@ export default function AmostrasPage() {
   const [tab, setTab] = useState<Tab>("applications");
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="animate-slide-up">
-          <h1 className="text-2xl font-bold tracking-tight">Amostras</h1>
-          <p className="text-muted-foreground">
-            Solicitações de amostra grátis, rastreio de envio e elegibilidade produto a produto.
-          </p>
-        </div>
-        <Badge variant={USE_MOCK ? "warning" : "success"} className="mt-1 shrink-0">
-          {USE_MOCK ? "Mock" : "Live"}
-        </Badge>
-      </header>
+    <div className="space-y-gap">
+      <PageHeader title="Amostras" subtitle="Solicitações de amostra grátis, rastreio de envio e elegibilidade produto a produto." />
 
-      <Card>
-        <CardContent className="flex flex-wrap gap-2 p-4">
-          <Button variant={tab === "applications" ? "default" : "outline"} onClick={() => setTab("applications")} className="gap-2">
+        <div className="segmented w-fit" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "applications"}
+            onClick={() => setTab("applications")}
+            className="segmented-item flex items-center gap-2"
+          >
             <ClipboardList className="h-4 w-4" /> Solicitações
-          </Button>
-          <Button variant={tab === "fulfillments" ? "default" : "outline"} onClick={() => setTab("fulfillments")} className="gap-2">
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "fulfillments"}
+            onClick={() => setTab("fulfillments")}
+            className="segmented-item flex items-center gap-2"
+          >
             <Truck className="h-4 w-4" /> Envios
-          </Button>
-          <Button variant={tab === "eligibility" ? "default" : "outline"} onClick={() => setTab("eligibility")} className="gap-2">
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "eligibility"}
+            onClick={() => setTab("eligibility")}
+            className="segmented-item flex items-center gap-2"
+          >
             <ShieldCheck className="h-4 w-4" /> Elegibilidade
-          </Button>
-        </CardContent>
-      </Card>
+          </button>
+        </div>
 
       {tab === "applications" ? (
         <ApplicationsTab />
@@ -303,14 +310,14 @@ function ApplicationsTab() {
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <CardTitle className="text-base">Solicitações de amostra</CardTitle>
-            <p className="mt-0.5 text-xs text-muted-foreground">Search Creator Sample Applications (202412)</p>
+            <p className="mt-0.5 text-xs leading-snug text-muted-foreground">Search Creator Sample Applications (202412)</p>
           </div>
           <div className="flex flex-wrap justify-end gap-2">
             {APP_STATUS_CHIPS.map((chip, i) => (
               <Button
                 key={chip.label}
                 size="sm"
-                variant={activeChips.has(i) ? "default" : "outline"}
+                variant={activeChips.has(i) ? "toggle-on" : "toggle"}
                 onClick={() => toggleChip(i)}
               >
                 {chip.label}
@@ -593,7 +600,7 @@ function FulfillmentsTab() {
               <Truck className="h-4 w-4" /> Status do fulfillment
             </span>
             {ALL_FULFILLMENT_STATUSES.map((s) => (
-              <Button key={s} size="sm" variant={selected.has(s) ? "default" : "outline"} onClick={() => toggleStatus(s)}>
+              <Button key={s} size="sm" variant={selected.has(s) ? "toggle-on" : "toggle"} onClick={() => toggleStatus(s)}>
                 {FULFILLMENT_STATUS_LABELS[s]}
               </Button>
             ))}
@@ -602,10 +609,10 @@ function FulfillmentsTab() {
             <span className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
               <ArrowUpDown className="h-4 w-4" /> Ordenar por
             </span>
-            <Button size="sm" variant={sortField === "expired_time" ? "default" : "outline"} onClick={() => setSortField("expired_time")}>
+            <Button size="sm" variant={sortField === "expired_time" ? "toggle-on" : "toggle"} onClick={() => setSortField("expired_time")}>
               Prazo
             </Button>
-            <Button size="sm" variant={sortField === "create_time" ? "default" : "outline"} onClick={() => setSortField("create_time")}>
+            <Button size="sm" variant={sortField === "create_time" ? "toggle-on" : "toggle"} onClick={() => setSortField("create_time")}>
               Criação
             </Button>
             <Button

@@ -38,6 +38,7 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
+import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -309,27 +310,29 @@ export default function AnalyticsPage() {
   const [tab, setTab] = useState<"videos" | "live">("videos");
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="animate-slide-up">
-          <h1 className="text-2xl font-bold tracking-tight">Analytics de creator</h1>
-          <p className="text-muted-foreground">Performance por vídeo e por sala de live (creator scope).</p>
-        </div>
-        <Badge variant={USE_MOCK ? "warning" : "success"} className="mt-1 shrink-0">
-          {USE_MOCK ? "Mock" : "Live"}
-        </Badge>
-      </header>
+    <div className="space-y-gap">
+      <PageHeader title="Analytics de creator" subtitle="Performance por vídeo e por sala de live (creator scope)." />
 
-      <Card>
-        <CardContent className="flex flex-wrap gap-2 p-4">
-          <Button variant={tab === "videos" ? "default" : "outline"} onClick={() => setTab("videos")} className="gap-2">
+        <div className="segmented w-fit" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "videos"}
+            onClick={() => setTab("videos")}
+            className="segmented-item flex items-center gap-2"
+          >
             <Video className="h-4 w-4" /> Vídeos
-          </Button>
-          <Button variant={tab === "live" ? "default" : "outline"} onClick={() => setTab("live")} className="gap-2">
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "live"}
+            onClick={() => setTab("live")}
+            className="segmented-item flex items-center gap-2"
+          >
             <Radio className="h-4 w-4" /> Live
-          </Button>
-        </CardContent>
-      </Card>
+          </button>
+        </div>
 
       {tab === "videos" ? <VideosTab /> : <LiveTab />}
     </div>
@@ -488,7 +491,7 @@ function VideosTab() {
                     key={p.days}
                     type="button"
                     size="sm"
-                    variant={days === p.days ? "default" : "outline"}
+                    variant={days === p.days ? "toggle-on" : "toggle"}
                     onClick={() => setDays(p.days)}
                   >
                     {p.label}
@@ -595,7 +598,7 @@ function LiveTab() {
       <Card className="border-info/30 bg-info/5">
         <CardContent className="flex items-start gap-3 p-4 text-sm">
           <Signal className="mt-0.5 h-4 w-4 shrink-0 text-info" />
-          <p className="text-muted-foreground">
+          <p className="leading-relaxed text-muted-foreground">
             Esses 7 indicadores usam o escopo <code className="rounded bg-background/60 px-1 py-0.5 text-xs">creator.data.live.read.public</code>{" "}
             (pacote <strong>Live Data</strong>), que está <strong>ativo</strong> no app — funcionam em modo live real, desde que você
             informe o ID de uma sala de live da própria conta.
@@ -1127,10 +1130,10 @@ function UserPortraitsSection({ liveRoomId }: { liveRoomId: string }) {
           <p className="mt-0.5 text-xs text-muted-foreground">Get Live Room User Portraits (202502)</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant={scope === "all" ? "default" : "outline"} onClick={() => setScope("all")}>
+          <Button size="sm" variant={scope === "all" ? "toggle-on" : "toggle"} onClick={() => setScope("all")}>
             Todos os espectadores
           </Button>
-          <Button size="sm" variant={scope === "paid" ? "default" : "outline"} onClick={() => setScope("paid")}>
+          <Button size="sm" variant={scope === "paid" ? "toggle-on" : "toggle"} onClick={() => setScope("paid")}>
             Só anúncios pagos
           </Button>
         </div>

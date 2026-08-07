@@ -4,7 +4,8 @@ import { ModeBadge } from "./ModeBadge";
 
 /**
  * Cabeçalho de página padrão: título + subtítulo + (ações e/ou badge Mock/Live).
- * Substitui os headers reimplementados inline em cada tela.
+ * Título no display face (Archivo), subtítulo largo e legível — mesmo ritmo em
+ * todas as telas do app.
  */
 export function PageHeader({
   title,
@@ -20,10 +21,21 @@ export function PageHeader({
   className?: string;
 }) {
   return (
-    <header className={cn("flex flex-wrap items-start justify-between gap-4 animate-slide-up", className)}>
+    <header
+      className={cn(
+        "flex animate-slide-up flex-wrap items-end justify-between gap-5",
+        className
+      )}
+    >
       <div className="min-w-0">
-        <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-        {subtitle && <p className="text-muted-foreground">{subtitle}</p>}
+        <h1 className="font-display text-[26px] font-extrabold leading-[1.1] tracking-[-1px] md:text-[32px]">
+          {title}
+        </h1>
+        {subtitle && (
+          <p className="mt-[9px] max-w-[600px] text-pretty text-[15.5px] leading-[1.55] text-muted-foreground">
+            {subtitle}
+          </p>
+        )}
       </div>
       {(actions || showMode) && (
         <div className="flex shrink-0 items-center gap-2">

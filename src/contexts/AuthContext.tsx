@@ -7,7 +7,8 @@ interface AuthContextValue {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
+  /** `name` vira `user_metadata.name` — é como o creator aparece no shell. */
+  signUp: (email: string, password: string, name?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -22,14 +23,14 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 const MOCK_AUTH = import.meta.env.VITE_USE_MOCK !== "false";
 const MOCK_KEY = "tc-mock-session";
 
-function makeMockSession(email: string): Session {
+function makeMockSession(email: string, name?: string): Session {
   const user = {
     id: "mock-" + (email.replace(/[^a-z0-9]/gi, "").slice(0, 24) || "user"),
     aud: "authenticated",
     role: "authenticated",
     email,
     app_metadata: { provider: "mock" },
-    user_metadata: { name: email.split("@")[0] },
+    user_metadata: { name: name?.trim() || email.split("@")[0] },
     created_at: new Date().toISOString(),
   } as unknown as User;
   return {
@@ -76,30 +77,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  const signIn = async (email: string, password: string) => {
-    if (MOCK_AUTH) {
-      if (!email.trim() || password.length < 4) {
-        return { error: new Error("Informe um e-mail e uma senha de 4+ caracteres.") };
-      }
-      const s = makeMockSession(email.trim());
-      localStorage.setItem(MOCK_KEY, JSON.stringify(s));
-      setSession(s);
-      setUser(s.user);
-      return { error: null };
+  const mockSignIn = (email: string, password: string, name?: string) => {
+    if (!email.trim() || password.length < 4) {
+      return { error: new Error("Informe um e-mail e uma senha de 4+ caracteres.") };
     }
+    const s = makeMockSession(email.trim(), name);
+    localStorage.setItem(MOCK_KEY, JSON.stringify(s));
+    setSession(s);
+    setUser(s.user);
+    return { error: null };
+  };
+
+  const signIn = async (email: string, password: string) => {
+    if (MOCK_AUTH) return mockSignIn(email, password);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error: error as Error | null };
   };
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, name?: string) => {
     if (MOCK_AUTH) {
-      // Em dev não há cadastro real: cai direto no login local.
-      return signIn(email, password);
+      // Em dev não há cadastro real: cai direto no login local, guardando o nome.
+      return mockSignIn(email, password, name);
     }
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: `${import.meta.env.VITE_PUBLIC_URL}/` },
+      options: {
+        emailRedirectTo: `${import.meta.env.VITE_PUBLIC_URL}/`,
+        data: name?.trim() ? { name: name.trim() } : undefined,
+      },
     });
     return { error: error as Error | null };
   };

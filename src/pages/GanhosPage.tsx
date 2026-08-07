@@ -14,6 +14,7 @@ import {
   Store,
   type LucideIcon,
 } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -213,16 +214,8 @@ export default function GanhosPage() {
         };
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="animate-slide-up">
-          <h1 className="text-2xl font-bold tracking-tight">Ganhos & Rastreio</h1>
-          <p className="text-muted-foreground">Comissões e pedidos de afiliado gerados pelo seu conteúdo.</p>
-        </div>
-        <Badge variant={USE_MOCK ? "warning" : "success"} className="mt-1 shrink-0">
-          {USE_MOCK ? "Mock" : "Live"}
-        </Badge>
-      </header>
+    <div className="space-y-gap">
+      <PageHeader title="Ganhos & Rastreio" subtitle="Comissões e pedidos de afiliado gerados pelo seu conteúdo." />
 
       {/* Seletor de período */}
       <Card>
@@ -235,7 +228,7 @@ export default function GanhosPage() {
               <Button
                 key={p.days}
                 size="sm"
-                variant={days === p.days ? "default" : "outline"}
+                variant={days === p.days ? "toggle-on" : "toggle"}
                 onClick={() => setDays(p.days)}
               >
                 {p.label}
@@ -305,10 +298,10 @@ export default function GanhosPage() {
             <p className="mt-0.5 text-xs text-muted-foreground">Fonte: {active.source}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant={tab === "trace" ? "default" : "outline"} onClick={() => setTab("trace")}>
+            <Button size="sm" variant={tab === "trace" ? "toggle-on" : "toggle"} onClick={() => setTab("trace")}>
               Rastreio de comissão
             </Button>
-            <Button size="sm" variant={tab === "orders" ? "default" : "outline"} onClick={() => setTab("orders")}>
+            <Button size="sm" variant={tab === "orders" ? "toggle-on" : "toggle"} onClick={() => setTab("orders")}>
               Pedidos por conteúdo
             </Button>
           </div>

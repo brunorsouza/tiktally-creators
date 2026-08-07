@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Play, Braces } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -80,16 +81,17 @@ export default function ApiTesterPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">API Tester</h1>
-          <p className="text-muted-foreground">Rode qualquer um dos {ENDPOINT_KEYS.length} endpoints de creator.</p>
-        </div>
-        <Badge variant={USE_MOCK ? "secondary" : "success"}>
-          {USE_MOCK ? "Modo MOCK (fixtures da doc)" : "Modo LIVE (TikTok real)"}
-        </Badge>
-      </header>
+    <div className="space-y-gap">
+      <PageHeader
+        title="API Tester"
+        subtitle={<>Rode qualquer um dos {ENDPOINT_KEYS.length} endpoints de creator.</>}
+        showMode={false}
+        actions={
+          <Badge variant={USE_MOCK ? "secondary" : "success"}>
+            {USE_MOCK ? "Modo MOCK (fixtures da doc)" : "Modo LIVE (TikTok real)"}
+          </Badge>
+        }
+      />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
         {/* lista de endpoints */}
@@ -129,7 +131,7 @@ export default function ApiTesterPage() {
             <CardContent className="space-y-4 p-5">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={METHOD_VARIANT[def.method]}>{def.method}</Badge>
-                <code className="break-all rounded bg-muted px-2 py-1 text-sm">{def.path}</code>
+                <code className="break-all rounded bg-muted px-2 py-1 text-sm leading-snug">{def.path}</code>
                 <Badge variant="outline">v{def.version}</Badge>
               </div>
               <p className="text-sm text-muted-foreground">

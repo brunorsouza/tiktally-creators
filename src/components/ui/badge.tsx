@@ -3,16 +3,21 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  // Chip do DS: canto de 9px (não pílula), 12px/700, e cor por tinta suave —
+  // fundo cheio só no `default`, que é o único caso de ênfase real.
+  // Sem borda na base: no design o chip é 5px/10px de padding e nada mais, e
+  // uma borda transparente somaria 2px de altura fora do ritmo da linha.
+  "inline-flex items-center whitespace-nowrap rounded-lg px-2.5 py-[5px] text-xs font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
   {
     variants: {
       variant: {
-        default: "border-transparent bg-primary text-primary-foreground",
-        secondary: "border-transparent bg-secondary text-secondary-foreground",
-        destructive: "border-transparent bg-destructive text-destructive-foreground",
-        success: "border-transparent bg-success text-success-foreground",
-        warning: "border-transparent bg-warning text-warning-foreground",
-        outline: "text-foreground",
+        default: "bg-primary text-primary-foreground",
+        secondary: "bg-secondary text-faint",
+        destructive: "bg-destructive/[.08] text-destructive",
+        success: "bg-success/[.08] text-success",
+        warning: "bg-warning/[.08] text-warning",
+        info: "bg-info/[.08] text-info",
+        outline: "border text-muted-foreground",
       },
     },
     defaultVariants: {

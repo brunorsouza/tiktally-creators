@@ -13,6 +13,31 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ["'Hanken Grotesk'", "system-ui", "sans-serif"],
+        display: ["Archivo", "'Hanken Grotesk'", "system-ui", "sans-serif"],
+      },
+      /*
+        Escala tipográfica SEM entrelinha embutida. No DS a altura de linha é
+        `normal` por padrão e só vira número onde o texto quebra em várias
+        linhas — por isso `text-sm` não pode arrastar 1.25rem junto. Quem
+        precisa de respiro escreve `leading-*` explicitamente.
+      */
+      fontSize: {
+        xs: ["0.75rem", "normal"],
+        sm: ["0.875rem", "normal"],
+        base: ["1rem", "normal"],
+        lg: ["1.125rem", "normal"],
+        xl: ["1.25rem", "normal"],
+        "2xl": ["1.5rem", "normal"],
+        "3xl": ["1.875rem", "normal"],
+        "4xl": ["2.25rem", "normal"],
+        "5xl": ["3rem", "normal"],
+        "6xl": ["3.75rem", "normal"],
+        "7xl": ["4.5rem", "normal"],
+        "8xl": ["6rem", "normal"],
+        "9xl": ["8rem", "normal"],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -65,6 +90,16 @@ export default {
           pink: "hsl(var(--brand-pink))",
           cyan: "hsl(var(--brand-cyan))",
         },
+        // trilho/sidebar do shell — mais escuro que o card no dark
+        panel: "hsl(var(--panel))",
+        // 3º nível de texto: legendas, metadados, unidades
+        faint: "hsl(var(--faint))",
+        // superfície "tinta": cartões escuros mesmo no tema claro
+        ink: {
+          DEFAULT: "hsl(var(--ink))",
+          foreground: "hsl(var(--ink-foreground))",
+          border: "hsl(var(--ink-border))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -84,10 +119,19 @@ export default {
         "gradient-card": "var(--gradient-card)",
         "gradient-dark": "var(--gradient-dark)",
       },
+      spacing: {
+        // padding interno de cartão e gap entre cartões (densidade do DS)
+        pad: "var(--pad)",
+        gap: "var(--gap)",
+      },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        lg: "var(--radius)", // 9px — cartão, chip, pílula de período
+        md: "calc(var(--radius) - 2px)", // 7px — item de navegação
+        sm: "calc(var(--radius) - 4px)", // 5px
+        tint: "6px", // quadrado de ícone
+        btn: "12px", // botão, campo, trilho de abas
+        pill: "14px", // botão grande / CTA
+        rail: "15px", // botão do trilho de seções
       },
       boxShadow: {
         sm: "var(--shadow-sm)",
@@ -122,6 +166,26 @@ export default {
           "0%, 100%": { boxShadow: "0 0 20px hsl(var(--primary) / 0.3)" },
           "50%": { boxShadow: "0 0 40px hsl(var(--primary) / 0.55)" },
         },
+        /* pontinho "ao vivo" — respira em vez de piscar */
+        breathe: {
+          "0%, 100%": { opacity: "1", transform: "scale(1)" },
+          "50%": { opacity: ".35", transform: "scale(.82)" },
+        },
+        /* entrada de item novo no feed */
+        rise: {
+          from: { opacity: "0", transform: "translateY(10px)" },
+          to: { opacity: "1", transform: "none" },
+        },
+        /* celebração de marco */
+        pop: {
+          "0%": { transform: "scale(.7)", opacity: "0" },
+          "60%": { transform: "scale(1.06)" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-5px)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -129,6 +193,10 @@ export default {
         "fade-in": "fade-in 0.5s ease-out",
         "slide-up": "slide-up 0.5s ease-out",
         glow: "glow 2s ease-in-out infinite",
+        breathe: "breathe 2.2s ease-in-out infinite",
+        rise: "rise 0.5s ease both",
+        pop: "pop 0.5s cubic-bezier(.2,.9,.3,1.2)",
+        float: "float 3.4s ease-in-out infinite",
       },
     },
   },

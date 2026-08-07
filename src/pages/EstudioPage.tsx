@@ -28,6 +28,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -136,34 +137,40 @@ export default function EstudioPage() {
   const [lastVideoId, setLastVideoId] = useState<string | undefined>();
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="animate-slide-up">
-          <h1 className="text-2xl font-bold tracking-tight">Estúdio de conteúdo</h1>
-          <p className="text-muted-foreground">
-            Descubra produtos e músicas, monte o pipeline de upload/precheck e publique vídeos e fotos shoppable.
-          </p>
-        </div>
-        <Badge variant={USE_MOCK ? "warning" : "success"} className="mt-1 shrink-0">
-          {USE_MOCK ? "Mock" : "Live"}
-        </Badge>
-      </header>
+    <div className="space-y-gap">
+      <PageHeader title="Estúdio de conteúdo" subtitle="Descubra produtos e músicas, monte o pipeline de upload/precheck e publique vídeos e fotos shoppable." />
 
       {!USE_MOCK && <GatingBanner />}
 
-      <Card>
-        <CardContent className="flex flex-wrap gap-2 p-4">
-          <Button variant={tab === "discover" ? "default" : "outline"} onClick={() => setTab("discover")} className="gap-2">
+        <div className="segmented w-fit" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "discover"}
+            onClick={() => setTab("discover")}
+            className="segmented-item flex items-center gap-2"
+          >
             <Package className="h-4 w-4" /> Produtos & Música
-          </Button>
-          <Button variant={tab === "publish" ? "default" : "outline"} onClick={() => setTab("publish")} className="gap-2">
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "publish"}
+            onClick={() => setTab("publish")}
+            className="segmented-item flex items-center gap-2"
+          >
             <Rocket className="h-4 w-4" /> Publicar
-          </Button>
-          <Button variant={tab === "status" ? "default" : "outline"} onClick={() => setTab("status")} className="gap-2">
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "status"}
+            onClick={() => setTab("status")}
+            className="segmented-item flex items-center gap-2"
+          >
             <PlayCircle className="h-4 w-4" /> Status
-          </Button>
-        </CardContent>
-      </Card>
+          </button>
+        </div>
 
       {tab === "discover" ? (
         <DiscoverTab />
@@ -272,7 +279,7 @@ function ShopProductsSection() {
               <Button
                 key={opt.value}
                 size="sm"
-                variant={sortField === opt.value ? "default" : "outline"}
+                variant={sortField === opt.value ? "toggle-on" : "toggle"}
                 onClick={() => setSortField(opt.value)}
               >
                 {opt.label}
@@ -901,7 +908,7 @@ function StepPostVideo({ defaultFileId, onPosted }: { defaultFileId?: string; on
           />
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" size="sm" variant={isAiGenerated ? "default" : "outline"} onClick={() => setIsAiGenerated((v) => !v)}>
+          <Button type="button" size="sm" variant={isAiGenerated ? "toggle-on" : "toggle"} onClick={() => setIsAiGenerated((v) => !v)}>
             {isAiGenerated ? "Marcado como gerado por IA" : "Marcar como gerado por IA"}
           </Button>
           {defaultFileId && defaultFileId !== fileId && (
@@ -1083,7 +1090,7 @@ function StepPostPhotos({ defaultPhotoUris }: { defaultPhotoUris: string[] }) {
                 key={opt.value}
                 type="button"
                 size="sm"
-                variant={postType === opt.value ? "default" : "outline"}
+                variant={postType === opt.value ? "toggle-on" : "toggle"}
                 onClick={() => setPostType(opt.value)}
               >
                 {opt.label}

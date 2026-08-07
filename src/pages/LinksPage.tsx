@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { Link2, Copy, ExternalLink, AlertCircle, ShieldAlert, Send, Users, Globe, X } from "lucide-react";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,7 +45,7 @@ async function copyLink(value: string, label: string) {
 }
 
 const textareaClass =
-  "flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
+  "flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm leading-snug ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
 
 type Mode = "general" | "publisher";
 
@@ -53,18 +53,8 @@ export default function LinksPage() {
   const [mode, setMode] = useState<Mode>("general");
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="animate-slide-up">
-          <h1 className="text-2xl font-bold tracking-tight">Links de afiliado</h1>
-          <p className="text-muted-foreground">
-            Gere links de compartilhamento para produtos — link geral ou atrelado a um publisher específico.
-          </p>
-        </div>
-        <Badge variant={USE_MOCK ? "warning" : "success"} className="mt-1 shrink-0">
-          {USE_MOCK ? "Mock" : "Live"}
-        </Badge>
-      </header>
+    <div className="space-y-gap">
+      <PageHeader title="Links de afiliado" subtitle="Gere links de compartilhamento para produtos — link geral ou atrelado a um publisher específico." />
 
       {!USE_MOCK && (
         <Card className="border-warning/30 bg-warning/10">
@@ -86,10 +76,10 @@ export default function LinksPage() {
 
       <Card>
         <CardContent className="flex flex-wrap gap-2 p-4">
-          <Button variant={mode === "general" ? "default" : "outline"} onClick={() => setMode("general")} className="gap-2">
+          <Button variant={mode === "general" ? "toggle-on" : "toggle"} onClick={() => setMode("general")} className="gap-2">
             <Send className="h-4 w-4" /> Link geral
           </Button>
-          <Button variant={mode === "publisher" ? "default" : "outline"} onClick={() => setMode("publisher")} className="gap-2">
+          <Button variant={mode === "publisher" ? "toggle-on" : "toggle"} onClick={() => setMode("publisher")} className="gap-2">
             <Users className="h-4 w-4" /> Link de publisher
           </Button>
         </CardContent>
@@ -170,7 +160,7 @@ function GeneralLinkTool() {
               </div>
               <Button
                 type="button"
-                variant={tokoLink ? "default" : "outline"}
+                variant={tokoLink ? "toggle-on" : "toggle"}
                 onClick={() => setTokoLink((v) => !v)}
                 disabled={mutation.isPending}
                 className="gap-2"
@@ -293,7 +283,7 @@ function PublisherLinkTool() {
               </div>
               <Button
                 type="button"
-                variant={tokoLink ? "default" : "outline"}
+                variant={tokoLink ? "toggle-on" : "toggle"}
                 onClick={() => setTokoLink((v) => !v)}
                 disabled={mutation.isPending}
                 className="gap-2"

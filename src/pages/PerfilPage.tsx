@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { MapPin, ShieldCheck, BadgeCheck, Store, AlertCircle } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCreatorProfile } from "@/hooks/useCreatorProfile";
-import { USE_MOCK } from "@/services/creatorClient";
 
 const PERM_LABELS: Record<string, string> = {
   LIVE_STREAM_PERMISSION: "Live",
@@ -24,16 +24,8 @@ export default function PerfilPage() {
   const { data: profile, isLoading, error } = useCreatorProfile();
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="animate-slide-up">
-          <h1 className="text-2xl font-bold tracking-tight">Perfil do creator</h1>
-          <p className="text-muted-foreground">Identidade e permissões da sua conta no TikTok Shop.</p>
-        </div>
-        <Badge variant={USE_MOCK ? "warning" : "success"} className="mt-1 shrink-0">
-          {USE_MOCK ? "Mock" : "Live"}
-        </Badge>
-      </header>
+    <div className="space-y-gap">
+      <PageHeader title="Perfil do creator" subtitle="Identidade e permissões da sua conta no TikTok Shop." />
 
       {error && (
         <Card className="border-destructive/30 bg-destructive/5">

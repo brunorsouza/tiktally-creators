@@ -10,8 +10,8 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -42,25 +42,15 @@ function parseTokoPids(raw: string): number[] {
 
 export default function TokoPage() {
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="animate-slide-up">
-          <h1 className="text-2xl font-bold tracking-tight">Toko Mapper</h1>
-          <p className="text-muted-foreground">
-            Converte IDs de produto entre o formato Tokopedia e o formato TikTok Shop.
-          </p>
-        </div>
-        <Badge variant={USE_MOCK ? "warning" : "success"} className="mt-1 shrink-0">
-          {USE_MOCK ? "Mock" : "Live"}
-        </Badge>
-      </header>
+    <div className="space-y-gap">
+      <PageHeader title="Toko Mapper" subtitle="Converte IDs de produto entre o formato Tokopedia e o formato TikTok Shop." />
 
       <Card className="border-primary/30 bg-primary/5">
         <CardContent className="flex items-start gap-3 p-4 text-sm">
           <Globe2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
           <div className="space-y-1">
             <p className="font-medium">Recurso específico da Tokopedia (Indonésia)</p>
-            <p className="text-muted-foreground">
+            <p className="leading-relaxed text-muted-foreground">
               A Tokopedia foi incorporada ao TikTok Shop na Indonésia e manteve seu próprio formato de ID de
               produto (<code className="rounded bg-background/60 px-1 py-0.5 text-xs">toko_pid</code>). Esta área
               só é útil para agências/creators cadastrados na região da Indonésia — <strong>não se aplica ao
