@@ -11,6 +11,17 @@ dist
 dist-ssr
 *.local
 
+# Artefatos de build/deploy — gerados por `npm run build` e `scripts/deploy.sh`.
+# Não versionar: o que vai pro Hostinger sai sempre de um build limpo.
+creator-dist/
+creator-dist.zip
+tiktally_creator_*.zip
+tiktally_creator_*/
+
+# Capturas de tela (referência visual, ~15 MB)
+screenshots/
+screenshots-*.zip
+
 # Env
 .env
 .env.*
