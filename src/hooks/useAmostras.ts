@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { callEndpoint } from "@/services/creatorClient";
 import type {
@@ -6,6 +6,7 @@ import type {
   SearchCreatorSampleApplicationsData,
   GetCreatorSampleApplicationDetailData,
   CreatorSearchSampleApplicationFulfillmentsData,
+  CreatorGetSampleRequestDeeplinkData,
 } from "@/types/creator-api.generated";
 
 /**
@@ -80,8 +81,32 @@ export interface SampleApplicationDetailParams {
   mainOrderId?: string;
 }
 
+/**
+ * Enum completo de `application_statuses` (Search Creator Sample Applications 202412).
+ * Usado como padrão quando o usuário não filtra — a API exige a lista preenchida.
+ */
+export const ALL_APPLICATION_STATUSES = [
+  "PENDING",
+  "AWAITING_SHIPMENT",
+  "SHIPPED",
+  "CONTENT_PENDING",
+  "REJECT_CANCELLED",
+  "OVERDUE_CANCELLED",
+  "UNFULFILL_CANCELLED",
+  "DEL_OPEN_COLLAB",
+  "SELLER_NOT_SHIP_CANCELLED",
+  "WITHDRAW_CANCELLED",
+  "UNFULFILLABLE_CANCELLED",
+  "OPS_CANCELLED",
+  "OPS_FAILED",
+  "OPS_COMPLETED",
+  "COMPLETED",
+] as const;
+
 export const amostrasKeys = {
   all: ["amostras"] as const,
+  applicationsInfinite: (userId?: string, statuses?: readonly string[]) =>
+    ["amostras", "applications", "infinite", userId, statuses] as const,
   applications: (userId?: string, filters?: SampleApplicationsFilters) =>
     [...amostrasKeys.all, "applications", userId, filters] as const,
   fulfillments: (userId?: string, filters?: SampleFulfillmentsFilters) =>
@@ -101,8 +126,12 @@ export function useSampleApplications(filters: SampleApplicationsFilters) {
   return useQuery({
     queryKey: amostrasKeys.applications(user?.id, filters),
     queryFn: async ({ signal }) => {
-      const body: Record<string, unknown> = {};
-      if (filters.statuses?.length) body.application_statuses = filters.statuses;
+      // `application_statuses` é de fato obrigatório: sem ele a TikTok responde
+      // 98001004 "invalid status_list". Sem filtro do usuário, mandamos o enum
+      // inteiro (equivale a "todos os status").
+      const body: Record<string, unknown> = {
+        application_statuses: filters.statuses?.length ? filters.statuses : ALL_APPLICATION_STATUSES,
+      };
       const r = await callEndpoint<SearchCreatorSampleApplicationsData>(
         "searchCreatorSampleApplications",
         { query: { page_size: filters.pageSize ?? 20, page_token: filters.pageToken }, body },
@@ -197,6 +226,69 @@ export function useApplicableSampleLabel(productId: string) {
       return r.data as GetCreatorApplicableSampleLabelData;
     },
     enabled: !!user && !!productId,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+}
+
+/**
+ * Creator Get Sample Request Deeplink (202512) — link que abre a solicitação de
+ * amostra dentro do app da TikTok.
+ *
+ * Pré-condição verificada em produção: o produto precisa estar na vitrine do creator.
+ * Fora disso a API responde 16032001 "please ensure creator has added product", que
+ * é uma condição de uso, não falha do app — por isso a mensagem é traduzida aqui.
+ */
+export function useSampleRequestDeeplink() {
+  return useMutation({
+    mutationFn: async (input: { productId: string; skuId: string }) => {
+      const r = await callEndpoint<CreatorGetSampleRequestDeeplinkData>(
+        "creatorGetSampleRequestDeeplink",
+        { query: { product_id: input.productId, sku_id: input.skuId } }
+      );
+      if (!r.ok) {
+        if (/creator has added product/i.test(r.error || "")) {
+          throw new Error(
+            "Este produto precisa estar na sua vitrine antes de você solicitar a amostra."
+          );
+        }
+        throw new Error(r.error || "Não foi possível gerar o link da solicitação");
+      }
+      return r.data as CreatorGetSampleRequestDeeplinkData;
+    },
+  });
+}
+
+/** Máximo aceito pela API neste endpoint (testado: 100 é recusado). */
+export const SAMPLE_PAGE_SIZE = 50;
+
+/**
+ * Solicitações de amostra com rolagem infinita.
+ *
+ * O endpoint não devolve `total_count`, só `next_page_token` — não dá para mostrar
+ * "x de y" nem pular páginas, então acumular conforme a rolagem é o modelo que
+ * respeita o que a API oferece.
+ */
+export function useSampleApplicationsInfinite(statuses?: SampleApplicationStatus[]) {
+  const { user } = useAuth();
+  return useInfiniteQuery({
+    queryKey: amostrasKeys.applicationsInfinite(user?.id, statuses),
+    initialPageParam: undefined as string | undefined,
+    queryFn: async ({ pageParam, signal }) => {
+      const r = await callEndpoint<SearchCreatorSampleApplicationsData>(
+        "searchCreatorSampleApplications",
+        {
+          query: { page_size: SAMPLE_PAGE_SIZE, page_token: pageParam },
+          // Obrigatório: sem a lista, a API responde 98001004 "invalid status_list".
+          body: { application_statuses: statuses?.length ? statuses : ALL_APPLICATION_STATUSES },
+        },
+        signal
+      );
+      if (!r.ok) throw new Error(r.error || "Falha ao carregar as solicitações de amostra");
+      return r.data as SearchCreatorSampleApplicationsData;
+    },
+    getNextPageParam: (last) => last.next_page_token || undefined,
+    enabled: !!user,
     staleTime: 5 * 60 * 1000,
     retry: 1,
   });

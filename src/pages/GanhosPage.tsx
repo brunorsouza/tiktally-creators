@@ -1,36 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  Wallet,
-  TrendingUp,
-  BadgeCheck,
-  ShoppingBag,
-  Ticket,
-  AlertCircle,
-  Calendar,
-  Package,
-  ChevronRight,
-  Video,
-  Radio,
-  Store,
-  type LucideIcon,
-} from "lucide-react";
+import { AlertCircle, BadgeCheck, Package, ChevronRight, type LucideIcon, Radio, ShoppingBag, Store, Ticket, TrendingUp, Video, Wallet, Search } from "lucide-react";
+import { PeriodPicker } from "@/components/PeriodPicker";
+import { ROLLING_DAYS, resolvePeriod, type Period } from "@/lib/period";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCard } from "@/components/StatCard";
-import { useAffiliateOrders, useTraceOrders, type GanhosFilters } from "@/hooks/useGanhos";
+import { useAllAffiliateOrders, useTraceOrders, salesBaseOf, type GanhosFilters } from "@/hooks/useGanhos";
 import { USE_MOCK } from "@/services/creatorClient";
-import { formatCurrency, formatNumber, formatPercent } from "@/lib/formatters";
+import { formatCurrency, formatNumber, formatPercent, parseAmount } from "@/lib/formatters";
 
 type Money = { amount?: string; currency?: string };
-
-const PERIODS = [
-  { days: 7, label: "Últimos 7 dias" },
-  { days: 30, label: "Últimos 30 dias" },
-  { days: 90, label: "Últimos 90 dias" },
-] as const;
 
 const CONTENT_LABELS: Record<string, string> = {
   VIDEO: "Vídeo",
@@ -65,12 +47,6 @@ function statusVariant(status?: string): "success" | "destructive" | "secondary"
 }
 
 /** Alguns valores mock vêm com símbolo de moeda embutido (ex.: "Rp9.900") — limpa antes de parsear. */
-function parseAmount(amount?: string | number | null): number {
-  if (amount == null) return 0;
-  if (typeof amount === "number") return Number.isFinite(amount) ? amount : 0;
-  const n = parseFloat(amount.replace(/[^0-9.-]/g, ""));
-  return Number.isFinite(n) ? n : 0;
-}
 
 /** formatCurrency com fallback — nunca derruba a tela se vier um código de moeda inválido do fixture. */
 function money(amount: number, currency?: string): string {
@@ -81,18 +57,19 @@ function money(amount: number, currency?: string): string {
   }
 }
 
-/** Comissão "resolvida" da SKU: valor fechado quando o pedido já foi pago, estimativa caso contrário. */
+/**
+ * Comissão "resolvida" da SKU: valor fechado quando o pedido já foi pago, estimativa
+ * caso contrário.
+ *
+ * `estimated_commission_base` é a BASE DE CÁLCULO, não a comissão — usá-la inflava o
+ * valor em cerca de 10x (ex.: base R$ 29,98 para uma comissão de R$ 1,48).
+ */
 function resolveCommission(
   orderStatus: string | undefined,
-  sku: { actual_commission?: Money; estimated_commission_base?: Money }
+  sku: { actual_commission?: Money; estimated_commission?: Money }
 ): Money | undefined {
-  if (orderStatus === "SETTLED") return sku.actual_commission ?? sku.estimated_commission_base;
-  return sku.estimated_commission_base ?? sku.actual_commission;
-}
-
-function periodRange(days: number) {
-  const now = Math.floor(Date.now() / 1000);
-  return { createTimeGe: now - days * 24 * 3600, createTimeLt: now };
+  if (orderStatus === "SETTLED") return sku.actual_commission ?? sku.estimated_commission;
+  return sku.estimated_commission ?? sku.actual_commission;
 }
 
 interface OrderRow {
@@ -107,8 +84,12 @@ interface OrderRow {
 }
 
 export default function GanhosPage() {
-  const [days, setDays] = useState<7 | 30 | 90>(30);
-  const [tab, setTab] = useState<"trace" | "orders">("trace");
+  // Mesmo seletor do Painel: janelas móveis e mês de calendário, com o mesmo cálculo.
+  const [periodKey, setPeriodKey] = useState<string>("month");
+  const [monthOffset, setMonthOffset] = useState(0);
+  // A aba padrão é a que funciona hoje. O rastreio depende de
+  // `creator.affiliate.share_link.read`, que o token ainda não tem.
+  const [tab, setTab] = useState<"trace" | "orders">("orders");
   const [traceToken, setTraceToken] = useState<string | undefined>();
   const [ordersToken, setOrdersToken] = useState<string | undefined>();
 
@@ -116,9 +97,17 @@ export default function GanhosPage() {
   useEffect(() => {
     setTraceToken(undefined);
     setOrdersToken(undefined);
-  }, [days]);
+  }, [periodKey, monthOffset]);
 
-  const range = useMemo(() => periodRange(days), [days]);
+  const now = useMemo(() => Math.floor(Date.now() / 1000), []);
+  const resolved = useMemo(() => {
+    const period: Period =
+      periodKey === "month"
+        ? { kind: "month", offset: monthOffset }
+        : { kind: "rolling", days: ROLLING_DAYS[periodKey] ?? 30 };
+    return resolvePeriod(period, now);
+  }, [periodKey, monthOffset, now]);
+  const range = resolved.current;
   const traceFilters: GanhosFilters = useMemo(
     () => ({ ...range, pageToken: traceToken, pageSize: 20 }),
     [range, traceToken]
@@ -129,34 +118,46 @@ export default function GanhosPage() {
   );
 
   const trace = useTraceOrders(traceFilters);
-  const affiliate = useAffiliateOrders(ordersFilters);
+  const affiliate = useAllAffiliateOrders(range);
+
+  // Sem resposta ainda (pendente ou pausado por falta de rede) não é "zero ganho".
+  const traceNoData = trace.isPending && !trace.isError;
+  const affiliateNoData = affiliate.isPending && !affiliate.isError;
+  const offline = affiliate.fetchStatus === "paused";
 
   const traceOrders = useMemo(() => trace.data?.orders ?? [], [trace.data]);
   const affiliateOrders = useMemo(() => affiliate.data?.orders ?? [], [affiliate.data]);
 
-  // KPIs — sempre a partir do Trace Orders (fonte principal da comissão em R$)
+  /**
+   * KPIs a partir de Search Creator Affiliate Orders.
+   *
+   * Antes vinham do Trace Orders, que responde 105005 por falta do escopo
+   * `creator.affiliate.share_link.read` — os cinco cartões ficavam vazios mesmo com
+   * a conta conectada. Esta fonte é a mesma do Painel, então os números batem entre
+   * as duas telas.
+   */
   const kpis = useMemo(() => {
     let gmv = 0;
     let estimated = 0;
     let settled = 0;
+    let itemCount = 0;
     let currency = "BRL";
-    for (const order of traceOrders) {
+    for (const order of affiliateOrders) {
       const isSettled = order.status === "SETTLED";
       for (const sku of order.skus ?? []) {
-        gmv += parseAmount(sku.price?.amount);
+        itemCount += 1;
+        gmv += salesBaseOf(sku, order.status);
         if (sku.price?.currency) currency = sku.price.currency;
         const actual = parseAmount(sku.actual_commission?.amount);
-        const base = parseAmount(sku.estimated_commission_base?.amount);
-        estimated += isSettled ? actual : base;
+        const estimate = parseAmount(sku.estimated_commission?.amount);
+        estimated += isSettled ? actual : estimate;
         if (isSettled) settled += actual;
       }
     }
-    const orderCount = traceOrders.length;
+    const orderCount = affiliateOrders.length;
     const avgTicket = orderCount ? gmv / orderCount : 0;
-    return { gmv, estimated, settled, orderCount, avgTicket, currency };
-  }, [traceOrders]);
-
-  const totalCount = trace.data?.total_count;
+    return { gmv, estimated, settled, orderCount, itemCount, avgTicket, currency };
+  }, [affiliateOrders]);
 
   const traceRows: OrderRow[] = useMemo(
     () =>
@@ -196,7 +197,7 @@ export default function GanhosPage() {
     tab === "trace"
       ? {
           rows: traceRows,
-          isLoading: trace.isLoading,
+          isLoading: trace.isLoading || traceNoData,
           error: trace.error,
           nextToken: trace.data?.next_page_token,
           token: traceToken,
@@ -205,11 +206,12 @@ export default function GanhosPage() {
         }
       : {
           rows: affiliateRows,
-          isLoading: affiliate.isLoading,
+          isLoading: affiliate.isLoading || affiliateNoData,
           error: affiliate.error,
-          nextToken: affiliate.data?.next_page_token,
-          token: ordersToken,
-          setToken: setOrdersToken,
+          // Já percorremos todas as páginas do período — não há cursor a exibir.
+          nextToken: undefined,
+          token: undefined,
+          setToken: () => {},
           source: "Search Creator Affiliate Orders (202410)",
         };
 
@@ -217,27 +219,17 @@ export default function GanhosPage() {
     <div className="space-y-gap">
       <PageHeader title="Ganhos & Rastreio" subtitle="Comissões e pedidos de afiliado gerados pelo seu conteúdo." />
 
-      {/* Seletor de período */}
-      <Card>
-        <CardContent className="flex flex-wrap items-center gap-3 p-4">
-          <span className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-            <Calendar className="h-4 w-4" /> Período
-          </span>
-          <div className="flex flex-wrap gap-2">
-            {PERIODS.map((p) => (
-              <Button
-                key={p.days}
-                size="sm"
-                variant={days === p.days ? "toggle-on" : "toggle"}
-                onClick={() => setDays(p.days)}
-              >
-                {p.label}
-              </Button>
-            ))}
-          </div>
-          <span className="text-xs text-muted-foreground">Filtra pedidos por data de criação (create_time).</span>
-        </CardContent>
-      </Card>
+      <PeriodPicker
+        periodKey={periodKey}
+        onPeriodKey={setPeriodKey}
+        monthOffset={monthOffset}
+        onMonthOffset={setMonthOffset}
+        monthLabel={resolved.kpiLabel}
+      />
+
+      {offline && (
+        <ErrorBanner text="Sem conexão com o servidor — os valores abaixo não refletem seus ganhos. Verifique a internet e recarregue." />
+      )}
 
       {trace.error && (
         <ErrorBanner
@@ -254,15 +246,15 @@ export default function GanhosPage() {
           value={money(kpis.gmv, kpis.currency)}
           icon={Wallet}
           accent="primary"
-          loading={trace.isLoading}
-          hint="Soma dos preços dos pedidos"
+          loading={affiliate.isLoading || affiliateNoData}
+          hint="Base de comissão do período (preço × quantidade)"
         />
         <StatCard
           label="Comissão estimada"
           value={money(kpis.estimated, kpis.currency)}
           icon={TrendingUp}
           accent="info"
-          loading={trace.isLoading}
+          loading={affiliate.isLoading || affiliateNoData}
           hint="Fechada quando SETTLED, estimada nos demais"
         />
         <StatCard
@@ -270,7 +262,7 @@ export default function GanhosPage() {
           value={money(kpis.settled, kpis.currency)}
           icon={BadgeCheck}
           accent="success"
-          loading={trace.isLoading}
+          loading={affiliate.isLoading || affiliateNoData}
           hint="Só pedidos já liquidados"
         />
         <StatCard
@@ -278,15 +270,15 @@ export default function GanhosPage() {
           value={formatNumber(kpis.orderCount)}
           icon={ShoppingBag}
           accent="warning"
-          loading={trace.isLoading}
-          hint={totalCount && totalCount !== kpis.orderCount ? `${formatNumber(totalCount)} no total (todas as páginas)` : undefined}
+          loading={affiliate.isLoading || affiliateNoData}
+          hint={kpis.itemCount ? `${formatNumber(kpis.itemCount)} itens vendidos` : undefined}
         />
         <StatCard
           label="Ticket médio"
           value={money(kpis.avgTicket, kpis.currency)}
           icon={Ticket}
           accent="primary"
-          loading={trace.isLoading}
+          loading={affiliate.isLoading || affiliateNoData}
         />
       </section>
 

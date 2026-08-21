@@ -41,7 +41,7 @@ const SECTIONS: Section[] = [
     sub: "O resumo do seu dia em um lugar só.",
     panel: {
       label: "Bom saber",
-      text: "O painel soma os últimos 30 dias de pedidos atribuídos ao seu conteúdo.",
+      text: "O painel soma os pedidos atribuídos ao seu conteúdo no período que você escolher.",
     },
     items: [{ to: "/", label: "Painel", icon: LayoutDashboard }],
   },

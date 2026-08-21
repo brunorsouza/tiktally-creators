@@ -12,6 +12,8 @@ import type {
   PostShoppableVideoData,
   PostShoppablePhotosData,
   GetShoppableVideoStatusData,
+  CheckAnchorPrerequisitesData,
+  CheckAnchorContentData,
 } from "@/types/creator-api.generated";
 
 /**
@@ -124,7 +126,9 @@ export function useMusicSearch(filters: MusicSearchFilters) {
             keyword: filters.keyword,
             search_id: filters.searchId,
             page_token: filters.pageToken,
-            page_size: filters.pageSize,
+            // page_size sem default era omitido da query; a API trata como
+            // obrigatório nos demais endpoints paginados, então fixamos o padrão.
+            page_size: filters.pageSize ?? 20,
             region: filters.region,
             language: filters.language,
           },
@@ -361,5 +365,49 @@ export function useShoppableVideoStatus(videoId: string) {
     enabled: !!user && !!videoId.trim(),
     staleTime: 10 * 1000,
     retry: 1,
+  });
+}
+
+/**
+ * Check Anchor Prerequisites (202402) — o creator pode transformar este produto em
+ * âncora de vídeo?
+ *
+ * Verificado em produção: funciona com os escopos atuais, sem depender de
+ * `creator.video.write`. Sucesso é `code: 0` com data vazio; reprovação chega como
+ * erro da API, então quem chama trata pelo `throw`.
+ */
+export function useCheckAnchorPrerequisites() {
+  return useMutation({
+    mutationFn: async (productId: string) => {
+      const r = await callEndpoint<CheckAnchorPrerequisitesData>("checkAnchorPrerequisites", {
+        body: { product_id: productId },
+      });
+      if (!r.ok) throw new Error(r.error || "Este produto não pode ser usado como âncora");
+      return true;
+    },
+  });
+}
+
+/**
+ * Check Anchor Content (202403) — valida o título da âncora.
+ *
+ * Regra confirmada na API: título com 30 caracteres ou mais é recusado com 16012007
+ * ("The title should be shorter than 30 characters"). Também reprova palavrão,
+ * pontuação e emoji.
+ */
+export function useCheckAnchorContent() {
+  return useMutation({
+    mutationFn: async (title: string) => {
+      const r = await callEndpoint<CheckAnchorContentData>("checkAnchorContent", {
+        body: { title },
+      });
+      if (!r.ok) {
+        if (/shorter than 30/i.test(r.error || "")) {
+          throw new Error("O título da âncora precisa ter menos de 30 caracteres.");
+        }
+        throw new Error(r.error || "Título de âncora recusado");
+      }
+      return true;
+    },
   });
 }

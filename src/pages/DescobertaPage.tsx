@@ -31,13 +31,16 @@ import {
   type OpenCollaborationSortField,
   type SortOrder,
   type TargetCollaborationsFilters,
+  useSelectionProducts,
+  type SelectionSortType,
 } from "@/hooks/useDescoberta";
 import { USE_MOCK } from "@/services/creatorClient";
-import { formatCurrency, formatMoney, formatNumber, formatPercent, abbreviateNumber } from "@/lib/formatters";
+import { formatCurrency, formatMoney, formatNumber, formatPercent, abbreviateNumber, parseAmount } from "@/lib/formatters";
 import type {
   CreatorSearchOpenCollaborationProductData,
   GetOpenCollaborationProductListByProductIdsData,
   SearchCreatorTargetCollaborationsData,
+  CreatorSelectAffiliateProductData,
 } from "@/types/creator-api.generated";
 
 type OpenProduct = NonNullable<CreatorSearchOpenCollaborationProductData["products"]>[number];
@@ -80,16 +83,25 @@ function commissionPercent(rate?: number): string {
   return formatPercent(rate / 10000, 2);
 }
 
-type Tab = "open" | "target";
+type Tab = "catalogo" | "open" | "target";
 
 export default function DescobertaPage() {
-  const [tab, setTab] = useState<Tab>("open");
+  const [tab, setTab] = useState<Tab>("catalogo");
 
   return (
     <div className="space-y-gap">
       <PageHeader title="Descoberta & Colaborações" subtitle="Encontre produtos para promover no marketplace de colaboração aberta e veja os convites que você recebeu." />
 
         <div className="segmented w-fit" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "catalogo"}
+            onClick={() => setTab("catalogo")}
+            className="segmented-item flex items-center gap-2"
+          >
+            <Compass className="h-4 w-4" /> Produtos para promover
+          </button>
           <button
             type="button"
             role="tab"
@@ -110,12 +122,179 @@ export default function DescobertaPage() {
           </button>
         </div>
 
-      {tab === "open" ? <OpenCollaborationsTab /> : <TargetCollaborationsTab />}
+      {tab === "catalogo" ? (
+        <SelectionTab />
+      ) : tab === "open" ? (
+        <OpenCollaborationsTab />
+      ) : (
+        <TargetCollaborationsTab />
+      )}
     </div>
   );
 }
 
-// =============== Aba 1: Colaborações abertas (marketplace) ===============
+// =============== Aba 1: Catálogo de produtos (funciona no BR) ===============
+
+const SELECTION_SORTS: { value: SelectionSortType; label: string }[] = [
+  { value: "RECOMMENDED", label: "Recomendados" },
+  { value: "BEST_SELLERS", label: "Mais vendidos" },
+  { value: "HIGH_COMMISSION_RATE", label: "Maior comissão" },
+  { value: "LOW_PRICE", label: "Menor preço" },
+  { value: "HIGH_PRICE", label: "Maior preço" },
+  { value: "NEWLY_RELEASED", label: "Novidades" },
+];
+
+function SelectionTab() {
+  const [termo, setTermo] = useState("");
+  const [busca, setBusca] = useState("");
+  const [sortType, setSortType] = useState<SelectionSortType>("RECOMMENDED");
+  const [pageToken, setPageToken] = useState<string | undefined>();
+
+  const filtros = useMemo(
+    () => ({ titleKeyword: busca || undefined, sortType, pageToken, pageSize: 20 }),
+    [busca, sortType, pageToken]
+  );
+  const { data, isLoading, error } = useSelectionProducts(filtros);
+  const produtos = data?.products ?? [];
+
+  const aplicar = (e: FormEvent) => {
+    e.preventDefault();
+    setBusca(termo.trim());
+    setPageToken(undefined);
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardContent className="space-y-3 p-4">
+          <form onSubmit={aplicar} className="flex flex-col gap-2 sm:flex-row">
+            <Input
+              value={termo}
+              onChange={(e) => setTermo(e.target.value)}
+              placeholder="Buscar produto pelo nome..."
+              className="flex-1"
+            />
+            <Button type="submit" className="gap-2">
+              <Search className="h-4 w-4" /> Buscar
+            </Button>
+          </form>
+          <div className="flex flex-wrap gap-2">
+            {SELECTION_SORTS.map((o) => (
+              <Button
+                key={o.value}
+                size="sm"
+                variant={sortType === o.value ? "toggle-on" : "toggle"}
+                onClick={() => {
+                  setSortType(o.value);
+                  setPageToken(undefined);
+                }}
+              >
+                {o.label}
+              </Button>
+            ))}
+          </div>
+          {/* A API só calcula `total_count` quando há filtro; sem busca vem 0 e
+              exibir "0 produtos" contradiz a grade cheia logo abaixo. */}
+          {busca && !!data?.total_count && (
+            <p className="text-xs text-muted-foreground">
+              {formatNumber(data.total_count)} produtos encontrados para "{busca}".
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {error ? (
+        <ErrorBanner text={(error as Error).message} />
+      ) : isLoading ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="h-72 w-full rounded-xl" />
+          ))}
+        </div>
+      ) : produtos.length === 0 ? (
+        <Card>
+          <CardContent className="py-16 text-center text-sm text-muted-foreground">
+            Nenhum produto encontrado{busca ? ` para "${busca}"` : ""}.
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {produtos.map((p, i) => (
+              <SelectionCard key={p.id ?? i} product={p} />
+            ))}
+          </div>
+          {(pageToken || data?.next_page_token) && (
+            <Card>
+              <CardContent className="flex items-center justify-between gap-2 p-4">
+                <Button size="sm" variant="outline" disabled={!pageToken} onClick={() => setPageToken(undefined)}>
+                  Primeira página
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!data?.next_page_token}
+                  onClick={() => setPageToken(data?.next_page_token)}
+                  className="gap-1"
+                >
+                  Próxima página <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+type SelectionProduct = NonNullable<CreatorSelectAffiliateProductData["products"]>[number];
+
+function SelectionCard({ product }: { product: SelectionProduct }) {
+  const cur = product.price?.currency || "BRL";
+  const faixa = product.price?.floor_price
+    ? product.price.ceiling_price && product.price.ceiling_price !== product.price.floor_price
+      ? `${formatCurrency(parseAmount(product.price.floor_price), cur)} – ${formatCurrency(parseAmount(product.price.ceiling_price), cur)}`
+      : formatCurrency(parseAmount(product.price.floor_price), cur)
+    : "—";
+
+  return (
+    <Card className="animate-fade-in overflow-hidden">
+      <div className="relative flex h-40 items-center justify-center bg-muted">
+        <ProductImage src={product.main_image_url} alt={product.title} />
+        {product.commission?.amount && (
+          <Badge variant="success" className="absolute right-2 top-2">
+            {formatCurrency(parseAmount(product.commission.amount), cur)} por venda
+          </Badge>
+        )}
+      </div>
+      <CardContent className="space-y-3 p-4">
+        <p className="line-clamp-2 min-h-[2.5rem] text-sm font-medium">{product.title ?? `Produto ${product.id}`}</p>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Store className="h-3.5 w-3.5" />
+          <span className="truncate">{product.shop?.name ?? "—"}</span>
+          {product.shop?.rating && <span className="shrink-0">· {product.shop.rating}★</span>}
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-semibold">{faixa}</span>
+          {product.commission?.rate != null && (
+            <Badge variant="outline" className="shrink-0 gap-1">
+              <Percent className="h-3 w-3" /> {commissionPercent(product.commission.rate)}
+            </Badge>
+          )}
+        </div>
+        {product.market_performance?.historical_sold_quantity != null && (
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <TrendingUp className="h-3.5 w-3.5" />
+            {abbreviateNumber(product.market_performance.historical_sold_quantity)} vendidos
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// =============== Aba 2: Colaborações abertas (marketplace) ===============
 
 interface OpenForm {
   keyword: string;
@@ -169,7 +348,11 @@ function OpenCollaborationsTab() {
     [applied, sortField, sortOrder, pageToken]
   );
 
-  const { data, isLoading, error } = useOpenCollaborationProducts(filters);
+  const { data, isLoading, error, isPending, isError, fetchStatus } = useOpenCollaborationProducts(filters);
+  // Sem resposta (pendente/pausado) não é "nenhum resultado" — e um erro da API
+  // (região bloqueada, escopo) tem que aparecer, não virar lista vazia.
+  const semResposta = isPending && !isError;
+  const offline = fetchStatus === "paused";
   const products = data?.products ?? [];
 
   const {
@@ -323,7 +506,11 @@ function OpenCollaborationsTab() {
         />
       )}
 
-      {isLoading ? (
+      {offline && (
+        <ErrorBanner text="Sem conexão com o servidor — não foi possível consultar o marketplace." />
+      )}
+
+      {isLoading || semResposta ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-80 w-full rounded-xl" />
@@ -333,7 +520,18 @@ function OpenCollaborationsTab() {
         <Card>
           <CardContent className="flex flex-col items-center gap-2 py-16 text-center text-muted-foreground">
             <Compass className="h-8 w-8" />
-            <p className="text-sm">Nenhum produto encontrado com esses filtros.</p>
+            <p className="text-sm">
+              {error
+                ? "A busca não pôde ser feita — veja o motivo acima."
+                : "Nenhum produto encontrado com esses filtros."}
+            </p>
+            {!error && (
+              <p className="max-w-md text-xs">
+                Esta aba usa a busca de colaboração aberta, que a TikTok libera só nas
+                regiões em que você está registrado no afiliado. Use "Produtos para
+                promover" para o catálogo disponível no Brasil.
+              </p>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -558,7 +756,9 @@ function TargetCollaborationsTab() {
     [applied, pageToken]
   );
 
-  const { data, isLoading, error } = useTargetCollaborations(filters);
+  const { data, isLoading, error, isPending, isError, fetchStatus } = useTargetCollaborations(filters);
+  const semResposta = !!filters.shopId && isPending && !isError;
+  const offline = fetchStatus === "paused";
   const collaborations = data?.target_collaborations ?? [];
 
   const handleSubmit = (e: FormEvent) => {
@@ -618,10 +818,17 @@ function TargetCollaborationsTab() {
             </Button>
           </form>
           <p className="text-[11px] text-muted-foreground">
-            A API exige o ID da loja que te convidou — não existe endpoint de creator para listar suas lojas conectadas.
+            A API exige o ID da loja que te convidou, e não existe endpoint de creator que
+            liste suas lojas: nenhuma resposta traz <code>shop_id</code> (só nome e logo).
+            Você encontra esse número no convite recebido dentro do app do TikTok Shop ou
+            pedindo ao próprio vendedor.
           </p>
         </CardContent>
       </Card>
+
+      {offline && (
+        <ErrorBanner text="Sem conexão com o servidor — não foi possível buscar os convites." />
+      )}
 
       {!filters.shopId ? (
         <Card>
@@ -632,7 +839,7 @@ function TargetCollaborationsTab() {
         </Card>
       ) : error ? (
         <ErrorBanner text={`Não foi possível buscar as colaborações-alvo: ${(error as Error).message}`} />
-      ) : isLoading ? (
+      ) : isLoading || semResposta ? (
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-32 w-full rounded-xl" />

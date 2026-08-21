@@ -15,10 +15,48 @@ export function formatCurrency(value: number, currency = "BRL"): string {
 }
 
 /** Recebe o objeto { amount, currency } que a API do TikTok retorna. */
+/**
+ * Converte o `amount` da API em número.
+ *
+ * A Affiliate Creator API devolve valores JÁ FORMATADOS na moeda da loja
+ * ("R$ 14,99", "R$ 1.499,00", "Rp9.900"), não em decimal cru. Um `parseFloat`
+ * direto erra feio: "R$ 14,99" vira 1499 (100x maior) e "R$ 1.499,00" vira 1.499
+ * (1000x menor), porque o separador decimal vira ruído.
+ *
+ * Regra: o último separador é decimal apenas quando sobram 1 ou 2 dígitos depois
+ * dele; caso contrário todos os separadores são de milhar.
+ */
+export function parseAmount(amount?: string | number | null): number {
+  if (amount == null) return 0;
+  if (typeof amount === "number") return Number.isFinite(amount) ? amount : 0;
+
+  const cleaned = amount.replace(/[^0-9,.-]/g, "");
+  if (!cleaned) return 0;
+
+  const lastComma = cleaned.lastIndexOf(",");
+  const lastDot = cleaned.lastIndexOf(".");
+  const sepIndex = Math.max(lastComma, lastDot);
+
+  let normalized: string;
+  if (sepIndex === -1) {
+    normalized = cleaned;
+  } else {
+    const decimals = cleaned.length - sepIndex - 1;
+    if (decimals === 1 || decimals === 2) {
+      // separador decimal de verdade — o resto é milhar
+      normalized = cleaned.slice(0, sepIndex).replace(/[.,]/g, "") + "." + cleaned.slice(sepIndex + 1);
+    } else {
+      normalized = cleaned.replace(/[.,]/g, "");
+    }
+  }
+
+  const n = parseFloat(normalized);
+  return Number.isFinite(n) ? n : 0;
+}
+
 export function formatMoney(money?: { amount?: string | number; currency?: string } | null): string {
   if (!money || money.amount == null) return "—";
-  const n = typeof money.amount === "string" ? parseFloat(money.amount) : money.amount;
-  return formatCurrency(n, money.currency || "BRL");
+  return formatCurrency(parseAmount(money.amount), money.currency || "BRL");
 }
 
 export function formatNumber(value: number): string {

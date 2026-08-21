@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { parseAmount } from "@/lib/formatters";
 import { useAuth } from "@/contexts/AuthContext";
 import { callEndpoint } from "@/services/creatorClient";
 import type {
@@ -86,4 +87,77 @@ export function useTraceOrders(filters: GanhosFilters) {
     staleTime: 5 * 60 * 1000,
     retry: 1,
   });
+}
+
+/** Teto de segurança: 20 páginas x 100 = 2000 pedidos por período. */
+const MAX_PAGES = 20;
+const FULL_PAGE_SIZE = 100;
+
+/**
+ * Todos os pedidos de afiliado do período, percorrendo a paginação até o fim.
+ *
+ * Por que existe: a API devolve no máximo ~100 pedidos por página, e somar só a
+ * primeira página subestima a comissão. Em 30 dias esta conta tinha 376 pedidos e o
+ * painel exibia o total de 98 — e como todo período estourava a primeira página, os
+ * KPIs ficavam idênticos em 7, 30 e 90 dias, dando a impressão de filtro quebrado.
+ *
+ * `truncated` avisa quando o teto foi atingido, para a tela não afirmar um total
+ * que na verdade está incompleto.
+ */
+export function useAllAffiliateOrders(filters: GanhosFilters) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: [...ganhosKeys.orders(user?.id, filters), "all"] as const,
+    queryFn: async ({ signal }) => {
+      const orders: NonNullable<SearchCreatorAffiliateOrdersData["orders"]> = [];
+      let pageToken: string | undefined;
+      let totalCount: number | undefined;
+      let pages = 0;
+
+      do {
+        const r = await callEndpoint<SearchCreatorAffiliateOrdersData>(
+          "searchCreatorAffiliateOrders",
+          {
+            query: { page_size: FULL_PAGE_SIZE, page_token: pageToken },
+            body: { create_time_ge: filters.createTimeGe, create_time_lt: filters.createTimeLt },
+          },
+          signal
+        );
+        if (!r.ok) throw new Error(r.error || "Falha ao carregar os pedidos");
+        const d = r.data as SearchCreatorAffiliateOrdersData;
+        orders.push(...(d.orders ?? []));
+        totalCount = d.total_count ?? totalCount;
+        pageToken = d.next_page_token || undefined;
+        pages += 1;
+      } while (pageToken && pages < MAX_PAGES);
+
+      return { orders, total_count: totalCount, truncated: !!pageToken };
+    },
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+}
+
+/**
+ * Base de vendas da SKU — o que representa "GMV gerado" para o creator.
+ *
+ * NÃO é `price.amount`. A própria TikTok define a base de comissão como preço de
+ * venda x quantidade, já descontadas devoluções e reembolsos; somar `price` ignora
+ * a quantidade e não desconta nada. Medido nesta conta, a diferença foi de 14%.
+ *
+ * `actual_commission_base` só existe em pedido liquidado (ausente em 87% das SKUs do
+ * mês corrente), então ele vale quando o pedido está SETTLED e a estimativa cobre o
+ * resto — mesma regra que já usamos para a comissão.
+ */
+export function salesBaseOf(
+  sku: {
+    actual_commission_base?: { amount?: string };
+    estimated_commission_base?: { amount?: string };
+  },
+  orderStatus?: string
+): number {
+  const actual = parseAmount(sku.actual_commission_base?.amount);
+  if (orderStatus === "SETTLED" && actual) return actual;
+  return parseAmount(sku.estimated_commission_base?.amount) || actual;
 }

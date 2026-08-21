@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Plus, Pin, Trash2, Package, AlertCircle, Store, Percent } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, Pin, Trash2, Package, AlertCircle, Store, Percent, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  useShowcaseProducts,
+  useShowcaseProductsInfinite,
   useAddShowcaseProducts,
   useRemoveShowcaseProducts,
   useTopShowcaseProducts,
@@ -39,13 +39,31 @@ function ProductImage({ src, alt }: { src?: string; alt?: string }) {
 }
 
 export default function VitrinePage() {
-  const { data, isLoading, error } = useShowcaseProducts();
+  const { data, isLoading, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useShowcaseProductsInfinite();
+
+  // Sentinela no fim da lista: quando ela entra em cena (com folga de 400px), pede a
+  // próxima página. Assim a vitrine carrega conforme a rolagem, sem botão.
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasNextPage) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isFetchingNextPage) fetchNextPage();
+      },
+      { rootMargin: "400px" }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
   const add = useAddShowcaseProducts();
   const remove = useRemoveShowcaseProducts();
   const top = useTopShowcaseProducts();
   const [newId, setNewId] = useState("");
 
-  const products = data?.products ?? [];
+  const products = data?.pages.flatMap((pg) => pg.products ?? []) ?? [];
+  const totalCount = data?.pages[0]?.total_count;
   const busy = add.isPending || remove.isPending || top.isPending;
   const mockNote = USE_MOCK ? " (simulado no mock)" : "";
 
@@ -84,7 +102,14 @@ export default function VitrinePage() {
 
   return (
     <div className="space-y-gap">
-      <PageHeader title="Vitrine" subtitle={<>Produtos que você promove na sua vitrine {data?.total_count != null ? ` · ${data.total_count} no total` : ""}.</>} />
+      <PageHeader title="Vitrine" subtitle={
+          <>
+            Produtos que você promove na sua vitrine
+            {totalCount != null ? ` · ${totalCount} no total` : ""}
+            {products.length > 0 ? ` · ${products.length} carregados` : ""}
+            .
+          </>
+        } />
 
       {/* Adicionar por ID */}
       <Card>
@@ -182,6 +207,18 @@ export default function VitrinePage() {
               </Card>
             );
           })}
+        </div>
+      )}
+
+      {products.length > 0 && (
+        <div ref={sentinelRef} className="py-6 text-center">
+          {isFetchingNextPage ? (
+            <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Carregando mais produtos...
+            </span>
+          ) : !hasNextPage ? (
+            <span className="text-sm text-muted-foreground">Fim da vitrine.</span>
+          ) : null}
         </div>
       )}
     </div>

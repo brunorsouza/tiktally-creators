@@ -7,8 +7,17 @@
 import { resolveCreatorAuth } from "../_shared/creatorAuth.ts";
 import { callTikTok, getAppCredentials, getBaseUrl, corsHeaders } from "../_shared/tiktokSign.ts";
 
-// Prefixos de path liberados (todos os 36 endpoints caem aqui).
-const ALLOWED_PREFIXES = ["/affiliate_creator/", "/analytics/", "/open/"];
+// Prefixos de path liberados.
+//
+// `/affiliate/` (sem o sufixo `_creator`) é o módulo mais antigo, onde vivem os
+// endpoints de sala de live — inclusive o que lista as lives do creator. Ele não
+// colide com `/affiliate_creator/`, que é outro prefixo.
+const ALLOWED_PREFIXES = [
+  "/affiliate_creator/",
+  "/affiliate/",
+  "/analytics/",
+  "/open/",
+];
 const ALLOWED_METHODS = ["GET", "POST", "PUT", "DELETE"];
 
 interface Payload {

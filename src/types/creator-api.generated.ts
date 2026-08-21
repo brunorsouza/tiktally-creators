@@ -2010,3 +2010,49 @@ export interface TokoProductMapperV2Body {
   toko_pids?: number[];
 }
 
+
+/** Creator Select Affiliate Product - POST /affiliate_creator/202501/selection/products/search */
+export interface CreatorSelectAffiliateProductData {
+  /** Cursor da próxima página; vazio quando acabou. */
+  next_page_token?: string;
+  /** Total de produtos que casam com o filtro. */
+  total_count?: number;
+  products?: {
+    id?: string;
+    title?: string;
+    brand_name?: string;
+    main_image_url?: string;
+    /** `rate` em centésimos de % (1250 = 12,5%); `amount` já é o valor da comissão. */
+    commission?: { amount?: string; rate?: number };
+    /** Faixa de preço do produto na moeda local. */
+    price?: { floor_price?: string; ceiling_price?: string; currency?: string };
+    review?: { count?: number; overall_score?: string };
+    shop?: { name?: string; logo_url?: string; rating?: string };
+    stock?: { quantity?: number };
+    market_performance?: { historical_sold_quantity?: number };
+  }[];
+}
+
+/**
+ * Creator Get Sample Request Deeplink - GET /affiliate_creator/202512/samples/deeplink
+ * Devolve um deeplink `snssdk1180://` que abre a solicitação de amostra no app da
+ * TikTok. Exige que o produto já esteja na vitrine do creator; caso contrário a API
+ * responde 16032001 "please ensure creator has added product".
+ */
+export interface CreatorGetSampleRequestDeeplinkData {
+  deeplink?: string;
+}
+
+/**
+ * Check Anchor Prerequisites - POST /affiliate/202402/anchors/prerequisite_check
+ * Pré-verificação de permissão do creator e status do produto para virar âncora de
+ * vídeo. Sucesso é `code: 0` com data vazio; a reprovação vem como erro da API.
+ */
+export type CheckAnchorPrerequisitesData = Record<string, never>;
+
+/**
+ * Check Anchor Content - POST /affiliate/202403/anchors/content_check
+ * Valida o título da âncora. Reprova título com 30 caracteres ou mais (16012007),
+ * além de palavrão, pontuação e emoji.
+ */
+export type CheckAnchorContentData = Record<string, never>;

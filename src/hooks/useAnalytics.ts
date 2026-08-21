@@ -1,6 +1,8 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { callEndpoint, type EndpointKey } from "@/services/creatorClient";
+import { useAffiliateOrders } from "@/hooks/useGanhos";
 import type {
   GetVideoPerformancesData,
   GetLiveRoomCoreStatsData,
@@ -143,4 +145,42 @@ export function useLiveRoomProductStats(liveRoomId: string) {
  *  pagos — prefixo `all_` vs `paid_`). `region_indicators.value` já vem como share rate ×10.000. */
 export function useLiveRoomUserPortraits(liveRoomId: string) {
   return useLiveRoomQuery<GetLiveRoomUserPortraitsData>("getLiveRoomUserPortraits", "user-portraits", liveRoomId);
+}
+
+/**
+ * Lives recentes do creator, derivadas dos pedidos de afiliado.
+ *
+ * A Affiliate Creator API não tem endpoint que liste "minhas salas de live", mas os
+ * pedidos trazem `content_type: "LIVE"` com o `content_id` correspondente — e esse
+ * `content_id` É o `live_room_id` aceito pelos 7 endpoints de /analytics/202502/live_rooms.
+ * Sem isso o usuário teria que descobrir o ID por fora, o que torna a aba inutilizável.
+ *
+ * Retorna os IDs distintos, do mais recente para o mais antigo.
+ */
+export function useRecentLiveRooms(days = 90, max = 8) {
+  const range = useMemo(() => {
+    const now = Math.floor(Date.now() / 1000);
+    return { createTimeGe: now - days * 86400, createTimeLt: now };
+  }, [days]);
+
+  const orders = useAffiliateOrders({ ...range, pageSize: 50 });
+
+  const liveRoomIds = useMemo(() => {
+    const seen = new Map<string, number>();
+    for (const o of orders.data?.orders ?? []) {
+      for (const s of o.skus ?? []) {
+        if (s.content_type !== "LIVE" || !s.content_id) continue;
+        const t = o.create_time ?? 0;
+        if (!seen.has(s.content_id) || t > (seen.get(s.content_id) as number)) {
+          seen.set(s.content_id, t);
+        }
+      }
+    }
+    return [...seen.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, max)
+      .map(([id, createTime]) => ({ id, createTime }));
+  }, [orders.data, max]);
+
+  return { liveRoomIds, isLoading: orders.isLoading || (orders.isPending && !orders.isError) };
 }

@@ -25,8 +25,7 @@ import {
   XCircle,
   Clock,
   RefreshCw,
-  type LucideIcon,
-} from "lucide-react";
+  type LucideIcon, BadgeCheck } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,6 +49,8 @@ import {
   type ShopProductSortField,
   type MusicSearchFilters,
   type PhotoPostType,
+  useCheckAnchorPrerequisites,
+  useCheckAnchorContent,
 } from "@/hooks/useEstudio";
 import { USE_MOCK } from "@/services/creatorClient";
 import { formatMoney, formatNumber, formatDate } from "@/lib/formatters";
@@ -784,6 +785,30 @@ function StepPrecheck({ defaultFileId, onTaskId }: { defaultFileId?: string; onT
   const [anchorTitle, setAnchorTitle] = useState(USE_MOCK ? "Sample product anchor title" : "");
   const mockNote = USE_MOCK ? " (simulado)" : "";
 
+  const prereq = useCheckAnchorPrerequisites();
+  const content = useCheckAnchorContent();
+  const validando = prereq.isPending || content.isPending;
+
+  /**
+   * Roda as duas checagens de âncora. Elas NÃO dependem de `creator.video.write`,
+   * então funcionam com os escopos atuais mesmo com a publicação travada.
+   */
+  const validarAncora = async () => {
+    try {
+      await prereq.mutateAsync(productId.trim());
+    } catch (e) {
+      toast.error(`Produto: ${(e as Error).message}`);
+      return;
+    }
+    try {
+      await content.mutateAsync(anchorTitle.trim());
+    } catch (e) {
+      toast.error(`Título: ${(e as Error).message}`);
+      return;
+    }
+    toast.success("Produto e título aprovados para virar âncora.");
+  };
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!fileId.trim() || !productId.trim() || !anchorTitle.trim()) {
@@ -825,9 +850,23 @@ function StepPrecheck({ defaultFileId, onTaskId }: { defaultFileId?: string; onT
             Usar file_id enviado no passo 2 ({defaultFileId})
           </Button>
         )}
-        <Button type="submit" disabled={mutation.isPending} className="gap-2">
-          <ShieldCheck className="h-4 w-4" /> {mutation.isPending ? "Enviando…" : "Prechecar vídeo"}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="submit" disabled={mutation.isPending} className="gap-2">
+            <ShieldCheck className="h-4 w-4" /> {mutation.isPending ? "Enviando…" : "Prechecar vídeo"}
+          </Button>
+          {/* Estas duas checagens NÃO dependem de creator.video.write — funcionam
+              com os escopos atuais, então servem de validação prévia mesmo com a
+              publicação travada. */}
+          <Button
+            type="button"
+            variant="outline"
+            className="gap-2"
+            disabled={!productId.trim() || !anchorTitle.trim() || validando}
+            onClick={validarAncora}
+          >
+            <BadgeCheck className="h-4 w-4" /> {validando ? "Validando…" : "Validar produto e título"}
+          </Button>
+        </div>
       </form>
       {mutation.isError && (
         <ErrorBanner text={`Não foi possível prechecar o vídeo: ${(mutation.error as Error).message}`} />

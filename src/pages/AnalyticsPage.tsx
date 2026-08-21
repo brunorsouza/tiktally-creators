@@ -56,9 +56,10 @@ import {
   useLiveRoomProductStats,
   useLiveRoomUserPortraits,
   type VideoPerformancesFilters,
+  useRecentLiveRooms,
 } from "@/hooks/useAnalytics";
 import { USE_MOCK } from "@/services/creatorClient";
-import { formatCurrency, formatMoney, formatNumber, formatPercent, formatDate, abbreviateNumber } from "@/lib/formatters";
+import { formatCurrency, formatMoney, formatNumber, formatPercent, formatDate, abbreviateNumber, parseAmount } from "@/lib/formatters";
 import type { GetVideoPerformancesData, GetLiveRoomTrafficPerformanceData } from "@/types/creator-api.generated";
 
 /**
@@ -81,12 +82,6 @@ function parseLines(raw: string): string[] {
 }
 
 /** Alguns valores mock vêm com símbolo de moeda embutido — limpa antes de parsear. */
-function parseAmount(amount?: string | number | null): number {
-  if (amount == null) return 0;
-  if (typeof amount === "number") return Number.isFinite(amount) ? amount : 0;
-  const n = parseFloat(amount.replace(/[^0-9.-]/g, ""));
-  return Number.isFinite(n) ? n : 0;
-}
 
 /** formatCurrency com fallback — nunca derruba a tela se vier um código de moeda inválido do fixture. */
 function money(amount: number, currency?: string): string {
@@ -587,6 +582,15 @@ function LiveTab() {
   const [idInput, setIdInput] = useState(USE_MOCK ? "7093488394589768494" : "");
   const [liveRoomId, setLiveRoomId] = useState(USE_MOCK ? idInput : "");
 
+  // A API não expõe "listar minhas lives"; os IDs saem do content_id dos pedidos
+  // com content_type LIVE. Sem isso o creator não teria como saber o próprio ID.
+  const { liveRoomIds, isLoading: loadingRooms } = useRecentLiveRooms();
+
+  const pick = (id: string) => {
+    setIdInput(id);
+    setLiveRoomId(id);
+  };
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!idInput.trim()) return;
@@ -617,6 +621,41 @@ function LiveTab() {
               <Search className="h-4 w-4" /> Ver dashboard da live
             </Button>
           </form>
+
+          {!USE_MOCK && (
+            <div className="mt-4 border-t pt-3">
+              {loadingRooms ? (
+                <p className="text-sm text-muted-foreground">Procurando suas lives recentes...</p>
+              ) : liveRoomIds.length > 0 ? (
+                <>
+                  <p className="mb-2 text-sm text-muted-foreground">
+                    Suas lives recentes (identificadas pelos pedidos gerados nelas):
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {liveRoomIds.map((r) => (
+                      <Button
+                        key={r.id}
+                        size="sm"
+                        variant={liveRoomId === r.id ? "default" : "outline"}
+                        className="gap-1.5 font-mono text-xs"
+                        onClick={() => pick(r.id)}
+                      >
+                        <Radio className="h-3 w-3" />
+                        {r.id}
+                        {r.createTime ? (
+                          <span className="font-sans opacity-70">{formatDate(r.createTime)}</span>
+                        ) : null}
+                      </Button>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Nenhuma live encontrada nos pedidos dos últimos 90 dias. Cole o ID manualmente.
+                </p>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 

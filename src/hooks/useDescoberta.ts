@@ -1,10 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { callEndpoint } from "@/services/creatorClient";
 import type {
   CreatorSearchOpenCollaborationProductData,
   GetOpenCollaborationProductListByProductIdsData,
   SearchCreatorTargetCollaborationsData,
+  CreatorSelectAffiliateProductData,
 } from "@/types/creator-api.generated";
 
 /**
@@ -22,6 +24,31 @@ import type {
 /** Campos aceitos por `sort_field` na busca de colaboração aberta (202405). */
 export type OpenCollaborationSortField = "commission_rate" | "product_sales_price" | "commission" | "units_sold";
 export type SortOrder = "ASC" | "DESC";
+
+/** Ordenações aceitas por Creator Select Affiliate Product (202501). */
+export type SelectionSortType =
+  | "RECOMMENDED"
+  | "BEST_SELLERS"
+  | "LOW_PRICE"
+  | "HIGH_PRICE"
+  | "NEWLY_RELEASED"
+  | "HIGH_COMMISSION_RATE";
+
+/** Filtros do catálogo de afiliados (Creator Select Affiliate Product). */
+export interface SelectionFilters {
+  /** Busca difusa no nome do produto. */
+  titleKeyword?: string;
+  /** Comissão em centésimos de % (1250 = 12,5%). */
+  rateGe?: number;
+  rateLe?: number;
+  /** Preço na moeda local, como string. */
+  priceGe?: string;
+  priceLe?: string;
+  sortType?: SelectionSortType;
+  pageToken?: string;
+  /** Faixa aceita pela API: 1–50. */
+  pageSize?: number;
+}
 
 /** Filtros da busca de produtos em colaboração aberta (marketplace público). */
 export interface OpenCollaborationFilters {
@@ -172,4 +199,115 @@ export function useTargetCollaborations(filters: TargetCollaborationsFilters) {
     staleTime: 5 * 60 * 1000,
     retry: 1,
   });
+}
+
+/**
+ * Creator Select Affiliate Product (202501) — catálogo de produtos de afiliado.
+ *
+ * É a fonte que FUNCIONA no Brasil. O `open_collaborations/products/search` (202405)
+ * responde 98001004 "unauthorized region" para creators registrados no BR — a própria
+ * doc diz que a busca de colaboração aberta só vale nas regiões em que o creator está
+ * registrado no afiliado. Este traz preço, comissão (valor e taxa), loja com nota,
+ * avaliações, estoque e vendas históricas.
+ */
+export function useSelectionProducts(filters: SelectionFilters) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: [...descobertaKeys.all, "selection", user?.id, filters] as const,
+    queryFn: async ({ signal }) => {
+      const filter_params: Record<string, unknown> = {};
+      if (filters.titleKeyword?.trim()) filter_params.title_keyword = filters.titleKeyword.trim();
+      if (filters.rateGe != null || filters.rateLe != null) {
+        filter_params.commission_rate_range = {
+          ...(filters.rateGe != null ? { rate_ge: filters.rateGe } : {}),
+          ...(filters.rateLe != null ? { rate_le: filters.rateLe } : {}),
+        };
+      }
+      if (filters.priceGe || filters.priceLe) {
+        filter_params.price_range = {
+          ...(filters.priceGe ? { price_ge: filters.priceGe } : {}),
+          ...(filters.priceLe ? { price_le: filters.priceLe } : {}),
+        };
+      }
+
+      const body: Record<string, unknown> = {};
+      if (Object.keys(filter_params).length) body.filter_params = filter_params;
+      if (filters.sortType) body.sort_params = { sort_type: filters.sortType };
+
+      const r = await callEndpoint<CreatorSelectAffiliateProductData>(
+        "creatorSelectAffiliateProduct",
+        {
+          // page_size é obrigatório e limitado a 50 pela API.
+          query: { page_size: Math.min(filters.pageSize ?? 20, 50), page_token: filters.pageToken },
+          body,
+        },
+        signal
+      );
+      if (!r.ok) throw new Error(r.error || "Falha ao buscar produtos para promover");
+      return r.data as CreatorSelectAffiliateProductData;
+    },
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+}
+
+/** A API resolve até 50 product_ids por chamada (testado). */
+const PRODUCT_BASICS_CHUNK = 50;
+
+export interface ProductBasics {
+  title?: string;
+  imageUrl?: string;
+}
+
+/**
+ * Nome e foto de produtos a partir dos IDs.
+ *
+ * Várias respostas de creator trazem só `product_id` (pedidos de afiliado e
+ * solicitações de amostra, por exemplo) — sem título e sem imagem. Este hook busca
+ * esses dados em lotes, com um cache por lote, para a lista não recarregar tudo a
+ * cada página nova.
+ *
+ * O enriquecimento é opcional por natureza: se um lote falhar, os outros seguem e a
+ * tela cai no texto padrão em vez de quebrar.
+ */
+export function useProductBasics(productIds: string[]) {
+  const { user } = useAuth();
+
+  const chunks = useMemo(() => {
+    const unicos = [...new Set(productIds.filter(Boolean))];
+    const out: string[][] = [];
+    for (let i = 0; i < unicos.length; i += PRODUCT_BASICS_CHUNK) {
+      out.push(unicos.slice(i, i + PRODUCT_BASICS_CHUNK));
+    }
+    return out;
+  }, [productIds]);
+
+  const results = useQueries({
+    queries: chunks.map((chunk) => ({
+      queryKey: [...descobertaKeys.all, "basics", user?.id, chunk] as const,
+      queryFn: async ({ signal }: { signal: AbortSignal }) => {
+        const r = await callEndpoint<GetOpenCollaborationProductListByProductIdsData>(
+          "getOpenCollaborationProductListByProductIds",
+          { query: { product_ids: chunk.join(",") } },
+          signal
+        );
+        if (!r.ok) throw new Error(r.error || "Falha ao carregar dados dos produtos");
+        return r.data as GetOpenCollaborationProductListByProductIdsData;
+      },
+      enabled: !!user && chunk.length > 0,
+      staleTime: 30 * 60 * 1000,
+      retry: 1,
+    })),
+  });
+
+  return useMemo(() => {
+    const map = new Map<string, ProductBasics>();
+    for (const res of results) {
+      for (const p of res.data?.products ?? []) {
+        if (p.id) map.set(String(p.id), { title: p.title, imageUrl: p.main_image_url });
+      }
+    }
+    return map;
+  }, [results]);
 }

@@ -1,32 +1,42 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Wallet, ShoppingBag, Receipt, Tag, PlugZap, Zap, Radio, Store, Film,
-  ChevronRight, Compass, Link2, Clapperboard, type LucideIcon,
-} from "lucide-react";
+  ChevronRight, Compass, Link2, Clapperboard, type LucideIcon, TriangleAlert, ChevronLeft } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
-import { useAffiliateOrders, type GanhosFilters } from "@/hooks/useGanhos";
-import { formatCurrency } from "@/lib/formatters";
+import { useAllAffiliateOrders, salesBaseOf, type GanhosFilters } from "@/hooks/useGanhos";
+import { isNotConnected } from "@/services/creatorClient";
+import { PeriodPicker } from "@/components/PeriodPicker";
+import { DAY, ROLLING_DAYS, resolvePeriod, type Period } from "@/lib/period";
+import { useOpenCollaborationByIds } from "@/hooks/useDescoberta";
+import { formatCurrency, parseAmount } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 
-const DAY = 24 * 3600;
 
-/** Janela de N dias terminando `endingAt` (Unix em segundos). */
-function periodOf(days: number, endingAt: number): GanhosFilters {
-  return { createTimeGe: endingAt - days * DAY, createTimeLt: endingAt, pageSize: 100 };
-}
-
-/** Alguns valores mock vêm com símbolo de moeda embutido (ex.: "Rp9.900") — limpa antes de parsear. */
-function parseAmount(amount?: string | number | null): number {
-  if (amount == null) return 0;
-  if (typeof amount === "number") return Number.isFinite(amount) ? amount : 0;
-  const n = parseFloat(amount.replace(/[^0-9.-]/g, ""));
-  return Number.isFinite(n) ? n : 0;
+/**
+ * Miniatura do pedido.
+ *
+ * Search Creator Affiliate Orders NÃO devolve imagem do produto (só id e nome), por
+ * isso o cartão nascia com um placeholder hachurado. A foto vem de um segundo
+ * endpoint, por product_id; se o produto não resolver (ou a imagem falhar), cai de
+ * volta no placeholder em vez de deixar um quadrado quebrado.
+ */
+function OrderThumb({ src, alt }: { src?: string; alt?: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) return <div className="bg-hatch h-[46px] w-[46px] shrink-0 rounded-xl border" />;
+  return (
+    <img
+      src={src}
+      alt={alt ?? ""}
+      onError={() => setFailed(true)}
+      className="h-[46px] w-[46px] shrink-0 rounded-xl border object-cover"
+    />
+  );
 }
 
 /** formatCurrency com fallback — nunca derruba a tela se vier um código de moeda inválido. */
@@ -38,13 +48,27 @@ function money(amount: number, currency?: string): string {
   }
 }
 
-/** `commission_rate` vem em centésimos de % (3000 = 30%). */
-function commissionOf(sku: { price?: { amount?: string }; commission_rate?: number }): number {
-  return (parseAmount(sku.price?.amount) * (sku.commission_rate ?? 0)) / 10000;
+/**
+ * Comissão da SKU — vem DA API, não é recalculada aqui.
+ *
+ * `price * commission_rate` dá um número diferente do que a TikTok paga: a base de
+ * cálculo (`estimated_commission_base`) não é o preço, e o valor final embute bônus e
+ * regras de tier. Para pedido liquidado vale `actual_commission`; nos demais, a
+ * estimativa. Atenção: `*_commission_base` é a BASE, não a comissão.
+ */
+function commissionOf(sku: {
+  estimated_commission?: { amount?: string };
+  actual_commission?: { amount?: string };
+}, orderStatus?: string): number {
+  if (orderStatus === "SETTLED") {
+    const actual = parseAmount(sku.actual_commission?.amount);
+    if (actual) return actual;
+  }
+  return parseAmount(sku.estimated_commission?.amount);
 }
 
 type Order = NonNullable<
-  ReturnType<typeof useAffiliateOrders>["data"]
+  ReturnType<typeof useAllAffiliateOrders>["data"]
 >["orders"] extends (infer T)[] | undefined
   ? T
   : never;
@@ -66,8 +90,8 @@ function totalsOf(orders: Order[]): Totals {
   for (const o of orders) {
     for (const s of o.skus ?? []) {
       skuCount++;
-      gross += parseAmount(s.price?.amount);
-      commission += commissionOf(s);
+      gross += salesBaseOf(s, o.status);
+      commission += commissionOf(s, o.status);
       if (s.price?.currency) currency = s.price.currency;
     }
   }
@@ -154,45 +178,132 @@ const SHORTCUTS = [
   },
 ];
 
-/** Janelas do gráfico de comissão — o segmentado do topo do cartão. */
-const CHART_PERIODS = [7, 14, 30] as const;
-
 export default function DashboardPage() {
+  // Largura real da área de barras: decide se o rótulo de valor cabe. Chutar por
+  // número de colunas errava — depende também do tamanho da tela.
+  //
+  // Callback ref (e não useRef + useEffect): a área só existe depois que os dados
+  // chegam; um efeito de montagem rodaria enquanto ainda era skeleton e nunca mais.
+  const [plotWidth, setPlotWidth] = useState(0);
+  const observerRef = useRef<ResizeObserver | null>(null);
+  const plotRef = useCallback((node: HTMLDivElement | null) => {
+    observerRef.current?.disconnect();
+    if (!node) return;
+    setPlotWidth(node.getBoundingClientRect().width);
+    observerRef.current = new ResizeObserver(([entry]) => setPlotWidth(entry.contentRect.width));
+    observerRef.current.observe(node);
+  }, []);
+
   const { user } = useAuth();
-  const [chartDays, setChartDays] = useState<number>(14);
+  // Período de TODO o painel. Antes era fixo em 30 dias e nada na tela dizia isso.
+  const [periodKey, setPeriodKey] = useState<string>("month");
+  // Qual mês está sendo olhado: 0 = mês corrente, 1 = anterior, e assim por diante.
+  const [monthOffset, setMonthOffset] = useState(0);
   const name = ((user?.user_metadata?.name as string | undefined) ?? "").split(" ")[0];
 
-  // Duas janelas de 30 dias em sequência: a atual e a anterior, para a variação.
+  // Duas janelas comparáveis: a atual e a anterior, para a variação.
   const now = useMemo(() => Math.floor(Date.now() / 1000), []);
-  const current = useMemo(() => periodOf(30, now), [now]);
-  const previous = useMemo(() => periodOf(30, now - 30 * DAY), [now]);
+  const resolved = useMemo(() => {
+    const period: Period =
+      periodKey === "month"
+        ? { kind: "month", offset: monthOffset }
+        : { kind: "rolling", days: ROLLING_DAYS[periodKey] ?? 30 };
+    return resolvePeriod(period, now);
+  }, [periodKey, monthOffset, now]);
+  const { current, previous } = resolved;
 
-  const { data, isLoading, error } = useAffiliateOrders(current);
-  const { data: prevData } = useAffiliateOrders(previous);
+
+  const { data, isLoading, error, isPending, isError, fetchStatus } = useAllAffiliateOrders(current);
+
+  // "Ainda sem resposta" != "carregou e deu zero". Num painel de comissão, exibir
+  // R$ 0,00 antes da API responder afirma que o creator não ganhou nada.
+  const noData = isPending && !isError;
+  const offline = fetchStatus === "paused";
+  const busy = isLoading || noData;
+  const { data: prevData } = useAllAffiliateOrders(previous);
 
   const orders = useMemo(() => data?.orders ?? [], [data]);
+  // ATENÇÃO: `total_count` da API conta ITENS (SKUs), não pedidos — conferido em
+  // 7/30/90 dias. O número de pedidos é o tamanho da lista, já que percorremos
+  // todas as páginas (ver useAllAffiliateOrders).
+  const orderTotal = orders.length;
   const kpis = useMemo(() => totalsOf(orders), [orders]);
   const prevKpis = useMemo(() => totalsOf(prevData?.orders ?? []), [prevData]);
 
-  /** Comissão por dia na janela escolhida — a série do gráfico. */
+  /**
+ * Rótulo curto para a barra do gráfico: com cifrão para deixar claro que é dinheiro,
+ * mas sem centavos e com milhar abreviado — são até 14 colunas lado a lado.
+ */
+function compactAmount(value: number, dense = false): string {
+  const n = value >= 1000 ? (value / 1000).toFixed(1).replace(".", ",") + "k" : Math.round(value).toString();
+  // No mês cheio são até 31 colunas: sem o espaço depois do cifrão sobra ~4px por rótulo.
+  return dense ? `R$${n}` : `R$ ${n}`;
+}
+
+/** Comissão por dia na janela escolhida — a série do gráfico. */
+  /**
+   * Série do gráfico: cobre a JANELA INTEIRA do período escolhido.
+   *
+   * Antes o gráfico tinha o próprio seletor (7/14/30 dias), que brigava com o filtro
+   * do painel: com "agosto" selecionado ele desenhava só os últimos 14 dias e o mês
+   * aparecia cortado, começando no dia 8. Janelas longas (90 dias) são agrupadas por
+   * semana, senão as barras ficam com poucos pixels.
+   */
   const chart = useMemo(() => {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    const buckets = Array.from({ length: chartDays }, (_, i) => {
-      const d = new Date(start);
-      d.setDate(d.getDate() - (chartDays - 1 - i));
+    const startDate = new Date(current.createTimeGe * 1000);
+    startDate.setHours(0, 0, 0, 0);
+    const lastDate = new Date((current.createTimeLt - 1) * 1000);
+    lastDate.setHours(0, 0, 0, 0);
+
+    const dayCount = Math.max(1, Math.round((lastDate.getTime() - startDate.getTime()) / (DAY * 1000)) + 1);
+    const groupDays = dayCount > 31 ? 7 : 1;
+    const bucketCount = Math.ceil(dayCount / groupDays);
+
+    const buckets = Array.from({ length: bucketCount }, (_, i) => {
+      const d = new Date(startDate);
+      d.setDate(d.getDate() + i * groupDays);
       return { date: d, value: 0 };
     });
-    const first = buckets[0].date.getTime() / 1000;
+
+    const firstTs = startDate.getTime() / 1000;
     for (const o of orders) {
-      if (!o.create_time || o.create_time < first) continue;
-      const index = Math.floor((o.create_time - first) / DAY);
+      if (!o.create_time || o.create_time < firstTs) continue;
+      const index = Math.floor((o.create_time - firstTs) / (DAY * groupDays));
       if (index < 0 || index >= buckets.length) continue;
-      for (const s of o.skus ?? []) buckets[index].value += commissionOf(s);
+      for (const s of o.skus ?? []) buckets[index].value += commissionOf(s, o.status);
     }
+
     const max = Math.max(...buckets.map((b) => b.value), 1);
-    return { buckets, max };
-  }, [orders, chartDays]);
+    const total = buckets.reduce((acc, b) => acc + b.value, 0);
+    return { buckets, max, total, groupDays, dayCount };
+  }, [orders, current.createTimeGe, current.createTimeLt]);
+
+  /** Largura por coluna; abaixo de ~30px o rótulo "R$ 897" não cabe sem invadir a vizinha. */
+  const gapPx = chart.buckets.length > 24 ? 2 : chart.buckets.length > 16 ? 4 : 9;
+  const colWidth = plotWidth
+    ? (plotWidth - gapPx * Math.max(0, chart.buckets.length - 1)) / chart.buckets.length
+    : 0;
+  const showBarLabels = colWidth >= 30;
+
+  /** Os pedidos exibidos no cartão e as imagens correspondentes. */
+  const recentOrders = useMemo(() => orders.slice(0, 5), [orders]);
+  const recentProductIds = useMemo(
+    () =>
+      [
+        ...new Set(
+          recentOrders.map((o) => o.skus?.[0]?.product_id).filter((id): id is string => !!id)
+        ),
+      ],
+    [recentOrders]
+  );
+  const { data: productDetails } = useOpenCollaborationByIds(recentProductIds);
+  const imageByProduct = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const prod of productDetails?.products ?? []) {
+      if (prod.id && prod.main_image_url) map.set(String(prod.id), prod.main_image_url);
+    }
+    return map;
+  }, [productDetails]);
 
   /** Feed "acontecendo agora": os pedidos mais recentes, do mais novo pro mais velho. */
   const feed = useMemo(
@@ -220,8 +331,10 @@ export default function DashboardPage() {
     [orders]
   );
 
-  // Sem backend ainda / TikTok não conectado → estado de conexão.
-  const notConnected = !!error;
+  // Só é "não conectado" quando a API diz isso. Escopo ausente, região bloqueada ou
+  // erro da TikTok são outras causas e merecem outra mensagem.
+  const notConnected = isNotConnected(error);
+  const failureMessage = !notConnected && error instanceof Error ? error.message : null;
   const commissionDelta = delta(kpis.commission, prevKpis.commission);
   const grossDelta = delta(kpis.gross, prevKpis.gross);
   const orderDelta = delta(kpis.orderCount, prevKpis.orderCount);
@@ -236,33 +349,60 @@ export default function DashboardPage() {
   return (
     // O ritmo do painel não é uniforme: 26px depois da saudação e 20px (--gap)
     // entre os blocos de cartão. Daí margens explícitas em vez de um `space-y`.
-    <div className="max-w-[1340px]">
+    <div className="w-full">
       {/* ── Saudação ── */}
       <header className="mb-[26px] animate-slide-up">
-        <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-faint">
-          {todayLabel}
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <p className="text-[13px] font-semibold uppercase tracking-[0.4px] text-faint">
+            {todayLabel}
+          </p>
+          <PeriodPicker
+            periodKey={periodKey}
+            onPeriodKey={setPeriodKey}
+            monthOffset={monthOffset}
+            onMonthOffset={setMonthOffset}
+            monthLabel={resolved.kpiLabel}
+          />
+        </div>
         <h1 className="mt-2 font-display text-[30px] font-extrabold leading-[1.1] tracking-[-1.1px] md:text-[36px]">
           {greeting()}
           {name ? `, ${name}` : ""}
         </h1>
-        {!isLoading && !notConnected && (
+        {!busy && !notConnected && (
           <p className="mt-2.5 max-w-[560px] text-pretty text-base leading-[1.55] text-muted-foreground">
             {kpis.orderCount > 0 ? (
               <>
-                Nos últimos 30 dias entraram {kpis.orderCount}{" "}
-                {kpis.orderCount === 1 ? "pedido" : "pedidos"} e{" "}
+                Em {resolved.subject} entraram {orderTotal}{" "}
+                {orderTotal === 1 ? "pedido" : "pedidos"} e{" "}
                 <strong className="font-semibold text-foreground">
                   {money(kpis.commission, kpis.currency)}
                 </strong>{" "}
                 em comissão.
               </>
             ) : (
-              "Nenhum pedido nos últimos 30 dias. Assim que uma venda entrar, ela aparece aqui."
+              `Nenhum pedido em ${resolved.subject}. Assim que uma venda entrar, ela aparece aqui.`
             )}
           </p>
         )}
       </header>
+
+      {(offline || failureMessage) && (
+        <Card className="mb-gap border-warning/30 bg-warning/5">
+          <CardContent className="flex items-start gap-3 p-5">
+            <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
+            <div>
+              <p className="font-semibold">
+                {offline ? "Sem conexão com o servidor" : "Não foi possível carregar seus ganhos"}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {offline
+                  ? "Os números abaixo não refletem seus ganhos. Verifique a internet e recarregue."
+                  : failureMessage}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {notConnected && (
         <Card className="mb-gap border-primary/30 bg-primary/5">
@@ -286,49 +426,48 @@ export default function DashboardPage() {
       {/* ── KPIs ── */}
       <section className="mb-gap grid grid-cols-1 gap-gap sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          label="Comissão do período"
+          label={`Comissão · ${resolved.kpiLabel}`}
           value={money(kpis.commission, kpis.currency)}
           icon={Wallet}
           accent="primary"
-          loading={isLoading}
+          loading={busy}
           delta={commissionDelta?.text}
           up={commissionDelta?.up}
-          deltaLabel={commissionDelta ? "vs. 30 dias anteriores" : "últimos 30 dias"}
+          deltaLabel={commissionDelta ? resolved.deltaLabel : resolved.subject}
         />
         <StatCard
           label="Vendas geradas"
           value={money(kpis.gross, kpis.currency)}
           icon={ShoppingBag}
           accent="success"
-          loading={isLoading}
+          loading={busy}
           delta={grossDelta?.text}
           up={grossDelta?.up}
-          deltaLabel={grossDelta ? "vs. 30 dias anteriores" : "GMV atribuído a você"}
+          deltaLabel={grossDelta ? resolved.deltaLabel : "GMV atribuído a você"}
         />
         <StatCard
           label="Pedidos"
           value={String(kpis.orderCount)}
           icon={Receipt}
           accent="warning"
-          loading={isLoading}
+          loading={busy}
           delta={orderDelta?.text}
           up={orderDelta?.up}
-          deltaLabel={orderDelta ? "vs. 30 dias anteriores" : `${kpis.skuCount} itens vendidos`}
+          deltaLabel={orderDelta ? resolved.deltaLabel : `${kpis.skuCount} itens vendidos`}
         />
         <StatCard
           label="Ticket médio"
           value={money(kpis.avgTicket, kpis.currency)}
           icon={Tag}
           accent="info"
-          loading={isLoading}
+          loading={busy}
           delta={ticketDelta?.text}
           up={ticketDelta?.up}
-          deltaLabel={ticketDelta ? "vs. 30 dias anteriores" : "por pedido"}
+          deltaLabel={ticketDelta ? resolved.deltaLabel : "por pedido"}
         />
       </section>
 
-      <div className="grid gap-gap xl:grid-cols-[1.6fr_1fr] xl:items-start">
-        <div className="flex min-w-0 flex-col gap-gap">
+      <div className="mb-gap">
           {/* ── Comissão por dia ── */}
           <div className="tile">
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -337,38 +476,78 @@ export default function DashboardPage() {
                   Comissão por dia
                 </div>
                 <p className="mt-[3px] text-[13.5px] text-faint">
-                  A partir dos pedidos atribuídos ao seu conteúdo.
+                  A partir dos pedidos atribuídos ao seu conteúdo
+                  {/* Sem resposta ainda, o total fica de fora — "R$ 0,00" aqui seria mentira. */}
+                  {!busy && (
+                    <>
+                      {" · total "}
+                      <strong className="font-semibold text-foreground">
+                        {money(chart.total, kpis.currency)}
+                      </strong>{" "}
+                      em {chart.dayCount} dias
+                    </>
+                  )}
                 </p>
-              </div>
-              <div className="segmented" role="tablist" aria-label="Período do gráfico">
-                {CHART_PERIODS.map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    role="tab"
-                    aria-selected={chartDays === d}
-                    onClick={() => setChartDays(d)}
-                    className="segmented-item"
-                  >
-                    {d} dias
-                  </button>
-                ))}
               </div>
             </div>
 
-            {isLoading ? (
+            {busy ? (
               <Skeleton className="mt-6 h-[190px] w-full" />
             ) : (
-              <div className="mt-[26px] flex h-[190px] items-end gap-[9px]">
+              <div className="mt-[26px] flex gap-2">
+                {/* Eixo Y: dá a escala mesmo quando não cabe rótulo em cada barra. */}
+                <div
+                  className={cn(
+                    "flex h-[190px] shrink-0 flex-col justify-between text-[9.5px] tabular-nums text-faint",
+                    // a faixa das barras exclui o eixo de dias (embaixo) e, quando há
+                    // rótulo de valor, também a linha dele (em cima)
+                    "pb-[19px]",
+                    showBarLabels ? "pt-[15px]" : "pt-0"
+                  )}
+                >
+                  <span>{money(chart.max, kpis.currency)}</span>
+                  <span>{money(chart.max / 2, kpis.currency)}</span>
+                  <span>R$ 0</span>
+                </div>
+                <div
+                  ref={plotRef}
+                  style={{ gap: `${gapPx}px` }}
+                  className="relative flex h-[190px] min-w-0 flex-1 items-end overflow-hidden"
+                >
+                  {/* linhas de referência alinhadas ao eixo */}
+                  <div
+                    className={cn(
+                      "pointer-events-none absolute inset-x-0 bottom-[19px]",
+                      showBarLabels ? "top-[15px]" : "top-0"
+                    )}
+                  >
+                    <div className="absolute inset-x-0 top-0 border-t border-border/40" />
+                    <div className="absolute inset-x-0 top-1/2 border-t border-border/25" />
+                    <div className="absolute inset-x-0 bottom-0 border-t border-border/40" />
+                  </div>
                 {chart.buckets.map((b, i) => {
                   const last = i === chart.buckets.length - 1;
                   return (
                     <div
                       key={b.date.toISOString()}
-                      className="flex h-full flex-1 flex-col items-center justify-end gap-[9px]"
+                      className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-[5px]"
                     >
+                      {showBarLabels && (
+                      <span
+                        className={cn(
+                          "whitespace-nowrap text-[9.5px] leading-none tracking-[-0.2px] tabular-nums",
+                          b.value === 0 ? "opacity-0" : last ? "font-bold text-primary" : "text-faint"
+                        )}
+                      >
+                        {b.value > 0 ? compactAmount(b.value) : "R$ 0"}
+                      </span>
+                      )}
                       <div
-                        title={`${b.date.toLocaleDateString("pt-BR")} — ${money(b.value, kpis.currency)}`}
+                        title={
+                          chart.groupDays === 1
+                            ? `${b.date.toLocaleDateString("pt-BR")} — ${money(b.value, kpis.currency)}`
+                            : `semana de ${b.date.toLocaleDateString("pt-BR")} — ${money(b.value, kpis.currency)}`
+                        }
                         style={{ height: `${Math.max((b.value / chart.max) * 100, 2)}%` }}
                         className={cn(
                           "w-full max-w-[34px] rounded-[8px_8px_4px_4px] transition-[height] duration-500",
@@ -381,15 +560,22 @@ export default function DashboardPage() {
                           last ? "font-bold text-primary" : "font-medium text-faint"
                         )}
                       >
-                        {b.date.getDate()}
+                        {chart.groupDays === 1
+                          ? b.date.getDate()
+                          : `${b.date.getDate()}/${b.date.getMonth() + 1}`}
                       </span>
                     </div>
                   );
                 })}
+                </div>
               </div>
             )}
           </div>
 
+      </div>
+
+      <div className="grid gap-gap xl:grid-cols-[1.6fr_1fr] xl:items-start">
+        <div className="flex min-w-0 flex-col gap-gap">
           {/* ── Pedidos recentes ── */}
           <div className="tile">
             <div className="mb-1.5 flex items-center justify-between">
@@ -404,7 +590,7 @@ export default function DashboardPage() {
               </Link>
             </div>
 
-            {isLoading ? (
+            {busy ? (
               <div className="space-y-3 pt-2">
                 {Array.from({ length: 4 }).map((_, i) => (
                   <Skeleton key={i} className="h-14 w-full" />
@@ -414,17 +600,22 @@ export default function DashboardPage() {
               <p className="py-10 text-center text-sm text-muted-foreground">
                 {notConnected
                   ? "Conecte o TikTok para ver seus pedidos aqui."
-                  : "Nenhum pedido no período."}
+                  : failureMessage
+                    ? "Não foi possível carregar os pedidos."
+                    : "Nenhum pedido no período."}
               </p>
             ) : (
               <div>
-                {orders.slice(0, 5).map((o) => {
+                {recentOrders.map((o) => {
                   const sku = o.skus?.[0];
-                  const commission = (o.skus ?? []).reduce((s, k) => s + commissionOf(k), 0);
+                  const commission = (o.skus ?? []).reduce((s, k) => s + commissionOf(k, o.status), 0);
                   const type = sku?.content_type ?? "";
                   return (
                     <div key={o.id} className="flex items-center gap-3.5 border-t py-[15px]">
-                      <div className="bg-hatch h-[46px] w-[46px] shrink-0 rounded-xl border" />
+                      <OrderThumb
+                        src={sku?.product_id ? imageByProduct.get(String(sku.product_id)) : undefined}
+                        alt={sku?.product_name}
+                      />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[14.5px] font-semibold">
                           {sku?.product_name ?? `Pedido ${o.id}`}
@@ -464,7 +655,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {isLoading ? (
+            {busy ? (
               <div className="space-y-3 pt-3">
                 {Array.from({ length: 3 }).map((_, i) => (
                   <Skeleton key={i} className="h-12 w-full" />

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   Gift,
   ClipboardList,
@@ -15,8 +15,9 @@ import {
   ArrowUpNarrowWide,
   ArrowDownWideNarrow,
   ChevronRight,
-  X,
-} from "lucide-react";
+  X, ExternalLink, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { useProductBasics } from "@/hooks/useDescoberta";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +36,8 @@ import {
   type SampleApplicationsFilters,
   type SampleFulfillmentsFilters,
   type SampleApplicationDetailParams,
+  useSampleRequestDeeplink,
+  useSampleApplicationsInfinite,
 } from "@/hooks/useAmostras";
 import { USE_MOCK } from "@/services/creatorClient";
 import { formatMoney, formatNumber, formatDate } from "@/lib/formatters";
@@ -240,9 +243,32 @@ const APP_STATUS_CHIPS: { label: string; statuses: SampleApplicationStatus[] }[]
   { label: "Canceladas/falhas", statuses: CANCEL_APPLICATION_STATUSES },
 ];
 
+/**
+ * Miniatura do produto na lista. Sem `loading="lazy"`: em aba de segundo plano o
+ * navegador não dispara o carregamento e a imagem fica pendurada para sempre.
+ */
+function ProductThumb({ src, alt }: { src?: string; alt?: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) {
+    return (
+      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border bg-muted">
+        <Package className="h-4 w-4 text-muted-foreground" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt={alt ?? ""}
+      onError={() => setFailed(true)}
+      className="h-10 w-10 shrink-0 rounded-lg border object-cover"
+    />
+  );
+}
+
 function ApplicationsTab() {
   const [activeChips, setActiveChips] = useState<Set<number>>(new Set());
-  const [pageToken, setPageToken] = useState<string | undefined>();
+
   const [detailParams, setDetailParams] = useState<SampleApplicationDetailParams | undefined>();
 
   const statuses = useMemo<SampleApplicationStatus[] | undefined>(() => {
@@ -252,17 +278,33 @@ function ApplicationsTab() {
     return Array.from(set);
   }, [activeChips]);
 
-  // troca de filtro reinicia a paginação
-  useEffect(() => {
-    setPageToken(undefined);
-  }, [statuses]);
+  // Trocar de filtro muda a queryKey, e o React Query já recomeça a lista do zero —
+  // não há cursor manual para reiniciar.
+  const { data, isLoading, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useSampleApplicationsInfinite(statuses);
+  const rows = data?.pages.flatMap((pg) => pg.sample_applications ?? []) ?? [];
 
-  const filters: SampleApplicationsFilters = useMemo(
-    () => ({ statuses, pageToken, pageSize: 20 }),
-    [statuses, pageToken]
+  // A resposta traz só `product_id`; nome e foto vêm de um segundo endpoint.
+  const productIds = useMemo(
+    () => rows.map((r) => r.sample_product?.id).filter((id): id is string => !!id),
+    [rows]
   );
-  const { data, isLoading, error } = useSampleApplications(filters);
-  const rows = data?.sample_applications ?? [];
+  const basics = useProductBasics(productIds);
+
+  // Mesma sentinela da Vitrine: pede a próxima página quando o fim se aproxima.
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasNextPage) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isFetchingNextPage) fetchNextPage();
+      },
+      { rootMargin: "400px" }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const kpis = useMemo(() => {
     let active = 0;
@@ -364,11 +406,22 @@ function ApplicationsTab() {
                     return (
                       <tr key={r.id ?? i} className="align-top">
                         <td className="py-3 pr-4">
-                          <p className="whitespace-nowrap font-medium">Produto {r.sample_product?.id ?? "—"}</p>
-                          <p className="whitespace-nowrap text-xs text-muted-foreground">
-                            SKU {r.sample_product?.sku_id ?? "—"}
-                            {props && ` · ${props}`}
-                          </p>
+                          <div className="flex items-center gap-3">
+                            <ProductThumb
+                              src={basics.get(String(r.sample_product?.id))?.imageUrl}
+                              alt={basics.get(String(r.sample_product?.id))?.title}
+                            />
+                            <div className="min-w-0">
+                              <p className="max-w-[320px] truncate font-medium">
+                                {basics.get(String(r.sample_product?.id))?.title ??
+                                  `Produto ${r.sample_product?.id ?? "—"}`}
+                              </p>
+                              <p className="truncate text-xs text-muted-foreground">
+                                SKU {r.sample_product?.sku_id ?? "—"}
+                                {props && ` · ${props}`}
+                              </p>
+                            </div>
+                          </div>
                         </td>
                         <td className="whitespace-nowrap py-3 pr-4 text-muted-foreground">
                           {r.main_order_id || "—"}
@@ -416,25 +469,15 @@ function ApplicationsTab() {
             </div>
           )}
 
-          {!isLoading && !error && rows.length > 0 && (pageToken || data?.next_page_token) && (
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t pt-4">
-              <Button size="sm" variant="outline" disabled={!pageToken} onClick={() => setPageToken(undefined)}>
-                Primeira página
-              </Button>
-              <div className="flex items-center gap-3">
-                {USE_MOCK && (
-                  <span className="text-xs text-muted-foreground">O mock sempre retorna a mesma página de exemplo</span>
-                )}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={!data?.next_page_token}
-                  onClick={() => setPageToken(data?.next_page_token)}
-                  className="gap-1"
-                >
-                  Próxima página <ChevronRight className="h-3.5 w-3.5" />
-                </Button>
-              </div>
+          {rows.length > 0 && (
+            <div ref={sentinelRef} className="mt-4 border-t pt-5 text-center">
+              {isFetchingNextPage ? (
+                <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Carregando mais solicitações...
+                </span>
+              ) : !hasNextPage ? (
+                <span className="text-sm text-muted-foreground">Fim das solicitações.</span>
+              ) : null}
             </div>
           )}
         </CardContent>
@@ -728,6 +771,27 @@ function EligibilityTab() {
   const label = data?.label;
   const skus: SampleSku[] = label?.sample_product?.sample_sku_list ?? [];
 
+  // O deeplink abre a solicitação dentro do app da TikTok — a API não permite
+  // solicitar amostra direto, só devolve o link do fluxo nativo.
+  const deeplink = useSampleRequestDeeplink();
+  const pedirAmostra = (skuId?: string) => {
+    if (!skuId || !productId) return;
+    deeplink.mutate(
+      { productId, skuId },
+      {
+        onSuccess: (d) => {
+          if (d.deeplink) {
+            window.location.href = d.deeplink;
+            toast.success("Abrindo a solicitação no app do TikTok...");
+          } else {
+            toast.error("A API não devolveu o link da solicitação.");
+          }
+        },
+        onError: (e) => toast.error((e as Error).message),
+      }
+    );
+  };
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!productId.trim()) return;
@@ -831,6 +895,17 @@ function EligibilityTab() {
                           <Badge variant={available ? "success" : "secondary"}>
                             {available ? "Disponível" : "Indisponível"}
                           </Badge>
+                          {available && label?.can_apply && (
+                            <Button
+                              size="sm"
+                              className="gap-1.5"
+                              disabled={deeplink.isPending}
+                              onClick={() => pedirAmostra(sku.id)}
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                              {deeplink.isPending ? "Gerando..." : "Solicitar"}
+                            </Button>
+                          )}
                         </div>
                       </div>
                     );
