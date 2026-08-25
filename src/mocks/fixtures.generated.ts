@@ -114,110 +114,288 @@ export const searchCreatorAffiliateOrdersFixture = {
   "orders": [
     {
       "id": "789078671231123124",
-      "create_time": 1685548800,
-      "delivery_time": 1685548800,
+      "create_time": 1786190400,
       "status": "SETTLED",
       "skus": [
         {
           "id": "1729793769377925388",
-          "campaign_id": "73661290629",
-          "open_collaboration_id": "73661290629",
-          "target_collaboration_id": "73661290629",
-          "product_name": "black_suit",
+          "product_name": "Máscara Facial Argila Verde",
           "product_id": "1729793769377859852",
-          "price": {
-            "amount": "Rp9.900",
-            "currency": "IDR"
-          },
-          "shop_name": "TestCase idl2l",
+          "price": { "amount": "49.90", "currency": "BRL" },
+          "shop_name": "Bella Store",
           "content_type": "LIVE",
           "content_id": "7493990579714164574",
           "quantity": 2,
           "commission_rate": 1000,
-          "commission_tier_setting": "3.0 OR 5.0",
-          "commission_model": "Tiered commission",
-          "commission_bonus_rate": 1000,
-          "estimated_commission_base": {
-            "amount": "Rp9.900",
-            "currency": "IDR"
-          },
-          "standard_commission_rate": 5000,
-          "shop_ads_commission_rate": 5000,
-          "estimated_bonus_commission": {
-            "amount": "Rp1.00",
-            "currency": "IDR"
-          },
-          "estimated_standard_commission": {
-            "amount": "Rp8.000",
-            "currency": "IDR"
-          },
-          "estimated_shop_ads_commission": {
-            "amount": "Rp8.000",
-            "currency": "IDR"
-          },
-          "estimated_commission": {
-            "amount": "Rp1.980",
-            "currency": "IDR"
-          },
-          "actual_commission": {
-            "amount": "Rp1.900",
-            "currency": "IDR"
-          },
-          "actual_bonus_commission": {
-            "amount": "Rp2.000",
-            "currency": "IDR"
-          },
-          "actual_commission_base": {
-            "amount": "Rp9.900",
-            "currency": "IDR"
-          },
-          "actual_standard_commission": {
-            "amount": "Rp5.000",
-            "currency": "IDR"
-          },
-          "actual_shop_ads_commission": {
-            "amount": "Rp5.000",
-            "currency": "IDR"
-          },
+          "estimated_commission_base": { "amount": "99.80", "currency": "BRL" },
+          "estimated_commission": { "amount": "9.98", "currency": "BRL" },
+          "actual_commission_base": { "amount": "49.90", "currency": "BRL" },
+          "actual_commission": { "amount": "4.99", "currency": "BRL" },
           "returned_quantity": 1,
-          "refunded_quantity": 0,
-          "tag": "test-01",
-          "creator_commission_reward_rate": 1000,
-          "estimated_creator_commission_reward_fee": {
-            "amount": "250",
-            "currency": "IDR"
-          },
-          "actual_creator_commission_reward_fee": {
-            "amount": "100",
-            "currency": "IRD"
-          },
-          "isr": {
-            "amount": "100",
-            "currency": "IRD"
-          },
-          "iva": {
-            "amount": "100",
-            "currency": "IRD"
-          },
-          "pit": {
-            "amount": "100",
-            "currency": "IRD"
-          },
-          "shared_with_partner": {
-            "amount": "100",
-            "currency": "IRD"
-          },
-          "trace_info": {
-            "id": "15678763",
-            "type": "SPECIFIC"
-          },
-          "last_update_time": 1685548800
+          "refunded_quantity": 0
+        }
+      ]
+    },
+    {
+      "id": "800000000000001",
+      "create_time": 1785748500,
+      "status": "SETTLED",
+      "skus": [
+        {
+          "id": "900000000000001",
+          "product_name": "Sérum Vitamina C 30ml",
+          "product_id": "620000000000001",
+          "price": { "amount": "89.90", "currency": "BRL" },
+          "shop_name": "Bella Store",
+          "content_type": "VIDEO",
+          "content_id": "7271486684427046149",
+          "quantity": 1,
+          "commission_rate": 1500,
+          "estimated_commission_base": { "amount": "89.90", "currency": "BRL" },
+          "estimated_commission": { "amount": "13.49", "currency": "BRL" },
+          "actual_commission_base": { "amount": "89.90", "currency": "BRL" },
+          "actual_commission": { "amount": "13.49", "currency": "BRL" }
+        }
+      ]
+    },
+    {
+      "id": "800000000000002",
+      "create_time": 1786348800,
+      "status": "SETTLED",
+      "skus": [
+        {
+          "id": "900000000000002",
+          "product_name": "Sérum Vitamina C 30ml",
+          "product_id": "620000000000001",
+          "price": { "amount": "89.90", "currency": "BRL" },
+          "shop_name": "Bella Store",
+          "content_type": "VIDEO",
+          "content_id": "7271486684427046149",
+          "quantity": 2,
+          "commission_rate": 1500,
+          "estimated_commission_base": { "amount": "179.80", "currency": "BRL" },
+          "estimated_commission": { "amount": "26.97", "currency": "BRL" },
+          "actual_commission_base": { "amount": "179.80", "currency": "BRL" },
+          "actual_commission": { "amount": "26.97", "currency": "BRL" }
+        }
+      ]
+    },
+    {
+      "id": "800000000000003",
+      "create_time": 1787135400,
+      "status": "To-SETTLE",
+      "skus": [
+        {
+          "id": "900000000000003",
+          "product_name": "Sérum Vitamina C 30ml",
+          "product_id": "620000000000001",
+          "price": { "amount": "89.90", "currency": "BRL" },
+          "shop_name": "Bella Store",
+          "content_type": "VIDEO",
+          "content_id": "7271486684427046149",
+          "quantity": 1,
+          "commission_rate": 1500,
+          "estimated_commission_base": { "amount": "89.90", "currency": "BRL" },
+          "estimated_commission": { "amount": "13.49", "currency": "BRL" }
+        }
+      ]
+    },
+    {
+      "id": "800000000000004",
+      "create_time": 1785853800,
+      "status": "SETTLED",
+      "skus": [
+        {
+          "id": "900000000000004",
+          "product_name": "Kit Skincare Noturno",
+          "product_id": "620000000000002",
+          "price": { "amount": "159.90", "currency": "BRL" },
+          "shop_name": "Bella Store",
+          "content_type": "VIDEO",
+          "content_id": "7271486684427046250",
+          "quantity": 1,
+          "commission_rate": 2500,
+          "estimated_commission_base": { "amount": "159.90", "currency": "BRL" },
+          "estimated_commission": { "amount": "39.98", "currency": "BRL" },
+          "actual_commission_base": { "amount": "159.90", "currency": "BRL" },
+          "actual_commission": { "amount": "39.98", "currency": "BRL" }
+        }
+      ]
+    },
+    {
+      "id": "800000000000005",
+      "create_time": 1786722000,
+      "status": "SETTLED",
+      "skus": [
+        {
+          "id": "900000000000005",
+          "product_name": "Kit Skincare Noturno",
+          "product_id": "620000000000002",
+          "price": { "amount": "159.90", "currency": "BRL" },
+          "shop_name": "Bella Store",
+          "content_type": "VIDEO",
+          "content_id": "7271486684427046250",
+          "quantity": 2,
+          "commission_rate": 2500,
+          "estimated_commission_base": { "amount": "319.80", "currency": "BRL" },
+          "estimated_commission": { "amount": "79.95", "currency": "BRL" },
+          "actual_commission_base": { "amount": "319.80", "currency": "BRL" },
+          "actual_commission": { "amount": "79.95", "currency": "BRL" }
+        }
+      ]
+    },
+    {
+      "id": "800000000000006",
+      "create_time": 1786034700,
+      "status": "SETTLED",
+      "skus": [
+        {
+          "id": "900000000000006",
+          "product_name": "Base Líquida Matte FPS30",
+          "product_id": "620000000000003",
+          "price": { "amount": "39.90", "currency": "BRL" },
+          "shop_name": "Cor & Pele",
+          "content_type": "VIDEO",
+          "content_id": "7271486684427046351",
+          "quantity": 1,
+          "commission_rate": 1000,
+          "estimated_commission_base": { "amount": "39.90", "currency": "BRL" },
+          "estimated_commission": { "amount": "3.99", "currency": "BRL" },
+          "actual_commission_base": { "amount": "39.90", "currency": "BRL" },
+          "actual_commission": { "amount": "3.99", "currency": "BRL" }
+        }
+      ]
+    },
+    {
+      "id": "800000000000007",
+      "create_time": 1786475400,
+      "status": "SETTLED",
+      "skus": [
+        {
+          "id": "900000000000007",
+          "product_name": "Base Líquida Matte FPS30",
+          "product_id": "620000000000003",
+          "price": { "amount": "39.90", "currency": "BRL" },
+          "shop_name": "Cor & Pele",
+          "content_type": "VIDEO",
+          "content_id": "7271486684427046351",
+          "quantity": 1,
+          "commission_rate": 1000,
+          "estimated_commission_base": { "amount": "39.90", "currency": "BRL" },
+          "estimated_commission": { "amount": "3.99", "currency": "BRL" },
+          "actual_commission_base": { "amount": "39.90", "currency": "BRL" },
+          "actual_commission": { "amount": "3.99", "currency": "BRL" }
+        }
+      ]
+    },
+    {
+      "id": "800000000000008",
+      "create_time": 1786997100,
+      "status": "SETTLED",
+      "skus": [
+        {
+          "id": "900000000000008",
+          "product_name": "Base Líquida Matte FPS30",
+          "product_id": "620000000000003",
+          "price": { "amount": "39.90", "currency": "BRL" },
+          "shop_name": "Cor & Pele",
+          "content_type": "VIDEO",
+          "content_id": "7271486684427046351",
+          "quantity": 1,
+          "commission_rate": 1000,
+          "estimated_commission_base": { "amount": "39.90", "currency": "BRL" },
+          "estimated_commission": { "amount": "3.99", "currency": "BRL" },
+          "actual_commission_base": { "amount": "39.90", "currency": "BRL" },
+          "actual_commission": { "amount": "3.99", "currency": "BRL" }
+        }
+      ]
+    },
+    {
+      "id": "800000000000009",
+      "create_time": 1787399100,
+      "status": "ORDERED",
+      "skus": [
+        {
+          "id": "900000000000009",
+          "product_name": "Base Líquida Matte FPS30",
+          "product_id": "620000000000003",
+          "price": { "amount": "39.90", "currency": "BRL" },
+          "shop_name": "Cor & Pele",
+          "content_type": "VIDEO",
+          "content_id": "7271486684427046351",
+          "quantity": 1,
+          "commission_rate": 1000,
+          "estimated_commission_base": { "amount": "39.90", "currency": "BRL" },
+          "estimated_commission": { "amount": "3.99", "currency": "BRL" }
+        }
+      ]
+    },
+    {
+      "id": "800000000000010",
+      "create_time": 1785927600,
+      "status": "SETTLED",
+      "skus": [
+        {
+          "id": "900000000000010",
+          "product_name": "Fone Bluetooth TWS Pro",
+          "product_id": "620000000000004",
+          "price": { "amount": "199.90", "currency": "BRL" },
+          "shop_name": "TechHouse",
+          "content_type": "VIDEO",
+          "content_id": "7271486684427046452",
+          "quantity": 1,
+          "commission_rate": 500,
+          "estimated_commission_base": { "amount": "199.90", "currency": "BRL" },
+          "estimated_commission": { "amount": "10.00", "currency": "BRL" },
+          "actual_commission_base": { "amount": "199.90", "currency": "BRL" },
+          "actual_commission": { "amount": "10.00", "currency": "BRL" }
+        }
+      ]
+    },
+    {
+      "id": "800000000000011",
+      "create_time": 1786814700,
+      "status": "SETTLED",
+      "skus": [
+        {
+          "id": "900000000000011",
+          "product_name": "Fone Bluetooth TWS Pro",
+          "product_id": "620000000000004",
+          "price": { "amount": "199.90", "currency": "BRL" },
+          "shop_name": "TechHouse",
+          "content_type": "VIDEO",
+          "content_id": "7271486684427046452",
+          "quantity": 1,
+          "commission_rate": 500,
+          "estimated_commission_base": { "amount": "199.90", "currency": "BRL" },
+          "estimated_commission": { "amount": "10.00", "currency": "BRL" },
+          "actual_commission_base": { "amount": "199.90", "currency": "BRL" },
+          "actual_commission": { "amount": "10.00", "currency": "BRL" }
+        }
+      ]
+    },
+    {
+      "id": "800000000000012",
+      "create_time": 1787336100,
+      "status": "ORDERED",
+      "skus": [
+        {
+          "id": "900000000000012",
+          "product_name": "Garrafa Térmica 1L Inox",
+          "product_id": "620000000000005",
+          "price": { "amount": "79.90", "currency": "BRL" },
+          "shop_name": "CasaViva",
+          "content_type": "VIDEO",
+          "content_id": "7271486684427046553",
+          "quantity": 1,
+          "commission_rate": 2000,
+          "estimated_commission_base": { "amount": "79.90", "currency": "BRL" },
+          "estimated_commission": { "amount": "15.98", "currency": "BRL" }
         }
       ]
     }
   ],
-  "next_page_token": "b2Zmc2V0PTEw",
-  "total_count": 10
+  "total_count": 13
 } as unknown as T.SearchCreatorAffiliateOrdersData;
 export const creatorSearchAffiliateTraceOrdersFixture = {
   "orders": [
@@ -228,75 +406,274 @@ export const creatorSearchAffiliateTraceOrdersFixture = {
         {
           "id": "1729793769377925388",
           "product_id": "1729793769377859852",
-          "price": {
-            "amount": "Rp9.900",
-            "currency": "IDR"
-          },
+          "price": { "amount": "49.90", "currency": "BRL" },
           "quantity": 2,
           "commission_rate": 1000,
-          "estimated_commission_base": {
-            "amount": "Rp9.900",
-            "currency": "IDR"
-          },
-          "actual_commission": {
-            "amount": "Rp1.900",
-            "currency": "IDR"
-          },
-          "shop_ads_commission_rate": 5000,
-          "commission_bonus_rate": 1000,
-          "product_name": "black suit",
-          "shop_name": "TestCase idl2l",
+          "estimated_commission_base": { "amount": "99.80", "currency": "BRL" },
+          "actual_commission": { "amount": "4.99", "currency": "BRL" },
+          "estimated_commission": { "amount": "9.98", "currency": "BRL" },
+          "product_name": "Máscara Facial Argila Verde",
+          "shop_name": "Bella Store",
           "returned_quantity": 1,
           "refunded_quantity": 0,
-          "campaign_id": "73661290629",
-          "actual_commission_base": {
-            "amount": "Rp9.900",
-            "currency": "IDR"
-          },
-          "actual_shop_ads_commission": {
-            "amount": "Rp5.000",
-            "currency": "IDR"
-          },
-          "estimated_shop_ads_commission": {
-            "amount": "Rp8.000",
-            "currency": "IDR"
-          },
-          "estimated_bonus_commission": {
-            "amount": "Rp1.00",
-            "currency": "IDR"
-          },
-          "delivery_time": 1685548800,
-          "creator_commission_reward_rate": 1000,
-          "estimated_creator_commission_reward_fee": {
-            "amount": "250",
-            "currency": "IDR"
-          },
-          "actual_creator_commission_reward_fee": {
-            "amount": "100",
-            "currency": "IDR"
-          },
+          "actual_commission_base": { "amount": "49.90", "currency": "BRL" },
           "content_type": "LIVE",
-          "content_id": "7493990579714164574",
-          "trace": {
-            "id": "15678763",
-            "type": "SPECIFIC"
-          },
-          "estimated_commission": {
-            "amount": "1",
-            "currency": "USD"
-          },
-          "actual_bonus_commission": {
-            "amount": "1",
-            "currency": "USD"
-          }
+          "content_id": "7493990579714164574"
         }
       ],
-      "create_time": 1685548800,
-      "delivery_time": 1685548800
+      "create_time": 1786190400
+    },
+    {
+      "id": 800000000000001,
+      "status": "SETTLED",
+      "skus": [
+        {
+          "id": "900000000000001",
+          "product_id": "620000000000001",
+          "price": { "amount": "89.90", "currency": "BRL" },
+          "quantity": 1,
+          "commission_rate": 1500,
+          "estimated_commission_base": { "amount": "89.90", "currency": "BRL" },
+          "actual_commission": { "amount": "13.49", "currency": "BRL" },
+          "estimated_commission": { "amount": "13.49", "currency": "BRL" },
+          "product_name": "Sérum Vitamina C 30ml",
+          "shop_name": "Bella Store",
+          "content_type": "VIDEO",
+          "content_id": "7271486684427046149"
+        }
+      ],
+      "create_time": 1785748500
+    },
+    {
+      "id": 800000000000002,
+      "status": "SETTLED",
+      "skus": [
+        {
+          "id": "900000000000002",
+          "product_id": "620000000000001",
+          "price": { "amount": "89.90", "currency": "BRL" },
+          "quantity": 2,
+          "commission_rate": 1500,
+          "estimated_commission_base": { "amount": "179.80", "currency": "BRL" },
+          "actual_commission": { "amount": "26.97", "currency": "BRL" },
+          "estimated_commission": { "amount": "26.97", "currency": "BRL" },
+          "product_name": "Sérum Vitamina C 30ml",
+          "shop_name": "Bella Store",
+          "content_type": "VIDEO",
+          "content_id": "7271486684427046149"
+        }
+      ],
+      "create_time": 1786348800
+    },
+    {
+      "id": 800000000000003,
+      "status": "To-SETTLE",
+      "skus": [
+        {
+          "id": "900000000000003",
+          "product_id": "620000000000001",
+          "price": { "amount": "89.90", "currency": "BRL" },
+          "quantity": 1,
+          "commission_rate": 1500,
+          "estimated_commission_base": { "amount": "89.90", "currency": "BRL" },
+          "estimated_commission": { "amount": "13.49", "currency": "BRL" },
+          "product_name": "Sérum Vitamina C 30ml",
+          "shop_name": "Bella Store",
+          "content_type": "VIDEO",
+          "content_id": "7271486684427046149"
+        }
+      ],
+      "create_time": 1787135400
+    },
+    {
+      "id": 800000000000004,
+      "status": "SETTLED",
+      "skus": [
+        {
+          "id": "900000000000004",
+          "product_id": "620000000000002",
+          "price": { "amount": "159.90", "currency": "BRL" },
+          "quantity": 1,
+          "commission_rate": 2500,
+          "estimated_commission_base": { "amount": "159.90", "currency": "BRL" },
+          "actual_commission": { "amount": "39.98", "currency": "BRL" },
+          "estimated_commission": { "amount": "39.98", "currency": "BRL" },
+          "product_name": "Kit Skincare Noturno",
+          "shop_name": "Bella Store",
+          "content_type": "VIDEO",
+          "content_id": "7271486684427046250"
+        }
+      ],
+      "create_time": 1785853800
+    },
+    {
+      "id": 800000000000005,
+      "status": "SETTLED",
+      "skus": [
+        {
+          "id": "900000000000005",
+          "product_id": "620000000000002",
+          "price": { "amount": "159.90", "currency": "BRL" },
+          "quantity": 2,
+          "commission_rate": 2500,
+          "estimated_commission_base": { "amount": "319.80", "currency": "BRL" },
+          "actual_commission": { "amount": "79.95", "currency": "BRL" },
+          "estimated_commission": { "amount": "79.95", "currency": "BRL" },
+          "product_name": "Kit Skincare Noturno",
+          "shop_name": "Bella Store",
+          "content_type": "VIDEO",
+          "content_id": "7271486684427046250"
+        }
+      ],
+      "create_time": 1786722000
+    },
+    {
+      "id": 800000000000006,
+      "status": "SETTLED",
+      "skus": [
+        {
+          "id": "900000000000006",
+          "product_id": "620000000000003",
+          "price": { "amount": "39.90", "currency": "BRL" },
+          "quantity": 1,
+          "commission_rate": 1000,
+          "estimated_commission_base": { "amount": "39.90", "currency": "BRL" },
+          "actual_commission": { "amount": "3.99", "currency": "BRL" },
+          "estimated_commission": { "amount": "3.99", "currency": "BRL" },
+          "product_name": "Base Líquida Matte FPS30",
+          "shop_name": "Cor & Pele",
+          "content_type": "VIDEO",
+          "content_id": "7271486684427046351"
+        }
+      ],
+      "create_time": 1786034700
+    },
+    {
+      "id": 800000000000007,
+      "status": "SETTLED",
+      "skus": [
+        {
+          "id": "900000000000007",
+          "product_id": "620000000000003",
+          "price": { "amount": "39.90", "currency": "BRL" },
+          "quantity": 1,
+          "commission_rate": 1000,
+          "estimated_commission_base": { "amount": "39.90", "currency": "BRL" },
+          "actual_commission": { "amount": "3.99", "currency": "BRL" },
+          "estimated_commission": { "amount": "3.99", "currency": "BRL" },
+          "product_name": "Base Líquida Matte FPS30",
+          "shop_name": "Cor & Pele",
+          "content_type": "VIDEO",
+          "content_id": "7271486684427046351"
+        }
+      ],
+      "create_time": 1786475400
+    },
+    {
+      "id": 800000000000008,
+      "status": "SETTLED",
+      "skus": [
+        {
+          "id": "900000000000008",
+          "product_id": "620000000000003",
+          "price": { "amount": "39.90", "currency": "BRL" },
+          "quantity": 1,
+          "commission_rate": 1000,
+          "estimated_commission_base": { "amount": "39.90", "currency": "BRL" },
+          "actual_commission": { "amount": "3.99", "currency": "BRL" },
+          "estimated_commission": { "amount": "3.99", "currency": "BRL" },
+          "product_name": "Base Líquida Matte FPS30",
+          "shop_name": "Cor & Pele",
+          "content_type": "VIDEO",
+          "content_id": "7271486684427046351"
+        }
+      ],
+      "create_time": 1786997100
+    },
+    {
+      "id": 800000000000009,
+      "status": "ORDERED",
+      "skus": [
+        {
+          "id": "900000000000009",
+          "product_id": "620000000000003",
+          "price": { "amount": "39.90", "currency": "BRL" },
+          "quantity": 1,
+          "commission_rate": 1000,
+          "estimated_commission_base": { "amount": "39.90", "currency": "BRL" },
+          "estimated_commission": { "amount": "3.99", "currency": "BRL" },
+          "product_name": "Base Líquida Matte FPS30",
+          "shop_name": "Cor & Pele",
+          "content_type": "VIDEO",
+          "content_id": "7271486684427046351"
+        }
+      ],
+      "create_time": 1787399100
+    },
+    {
+      "id": 800000000000010,
+      "status": "SETTLED",
+      "skus": [
+        {
+          "id": "900000000000010",
+          "product_id": "620000000000004",
+          "price": { "amount": "199.90", "currency": "BRL" },
+          "quantity": 1,
+          "commission_rate": 500,
+          "estimated_commission_base": { "amount": "199.90", "currency": "BRL" },
+          "actual_commission": { "amount": "10.00", "currency": "BRL" },
+          "estimated_commission": { "amount": "10.00", "currency": "BRL" },
+          "product_name": "Fone Bluetooth TWS Pro",
+          "shop_name": "TechHouse",
+          "content_type": "VIDEO",
+          "content_id": "7271486684427046452"
+        }
+      ],
+      "create_time": 1785927600
+    },
+    {
+      "id": 800000000000011,
+      "status": "SETTLED",
+      "skus": [
+        {
+          "id": "900000000000011",
+          "product_id": "620000000000004",
+          "price": { "amount": "199.90", "currency": "BRL" },
+          "quantity": 1,
+          "commission_rate": 500,
+          "estimated_commission_base": { "amount": "199.90", "currency": "BRL" },
+          "actual_commission": { "amount": "10.00", "currency": "BRL" },
+          "estimated_commission": { "amount": "10.00", "currency": "BRL" },
+          "product_name": "Fone Bluetooth TWS Pro",
+          "shop_name": "TechHouse",
+          "content_type": "VIDEO",
+          "content_id": "7271486684427046452"
+        }
+      ],
+      "create_time": 1786814700
+    },
+    {
+      "id": 800000000000012,
+      "status": "ORDERED",
+      "skus": [
+        {
+          "id": "900000000000012",
+          "product_id": "620000000000005",
+          "price": { "amount": "79.90", "currency": "BRL" },
+          "quantity": 1,
+          "commission_rate": 2000,
+          "estimated_commission_base": { "amount": "79.90", "currency": "BRL" },
+          "estimated_commission": { "amount": "15.98", "currency": "BRL" },
+          "product_name": "Garrafa Térmica 1L Inox",
+          "shop_name": "CasaViva",
+          "content_type": "VIDEO",
+          "content_id": "7271486684427046553"
+        }
+      ],
+      "create_time": 1787336100
     }
   ],
-  "next_page_token": "b2Zmc2V0PTEw",
-  "total_count": 10
+  "total_count": 13
 } as unknown as T.CreatorSearchAffiliateTraceOrdersData;
 export const creatorSearchOpenCollaborationProductFixture = {
   "products": [
@@ -640,19 +1017,73 @@ export const getVideoPerformancesFixture = {
       "id": "7271486684427046149",
       "performances": [
         {
-          "time_range": {
-            "start_time": 1704067200,
-            "end_time": 1704067200
-          },
+          "time_range": { "start_time": 1785542400, "end_time": 1787615940 },
           "metrics": {
-            "anchor_display_rate": "0.64",
-            "click_through_rate": "0.08",
+            "anchor_display_rate": "0.55",
+            "click_through_rate": "0.09",
+            "order_count": 4,
+            "item_sold_count": 5,
+            "gmv": { "amount": "420.00", "currency": "BRL" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "7271486684427046250",
+      "performances": [
+        {
+          "time_range": { "start_time": 1785542400, "end_time": 1787615940 },
+          "metrics": {
+            "anchor_display_rate": "0.62",
+            "click_through_rate": "0.11",
             "order_count": 3,
-            "item_sold_count": 3,
-            "gmv": {
-              "amount": "27.85",
-              "currency": "USD"
-            }
+            "item_sold_count": 4,
+            "gmv": { "amount": "480.00", "currency": "BRL" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "7271486684427046351",
+      "performances": [
+        {
+          "time_range": { "start_time": 1785542400, "end_time": 1787615940 },
+          "metrics": {
+            "anchor_display_rate": "0.40",
+            "click_through_rate": "0.05",
+            "order_count": 5,
+            "item_sold_count": 5,
+            "gmv": { "amount": "160.00", "currency": "BRL" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "7271486684427046452",
+      "performances": [
+        {
+          "time_range": { "start_time": 1785542400, "end_time": 1787615940 },
+          "metrics": {
+            "anchor_display_rate": "0.70",
+            "click_through_rate": "0.14",
+            "order_count": 6,
+            "item_sold_count": 7,
+            "gmv": { "amount": "850.00", "currency": "BRL" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "7271486684427046553",
+      "performances": [
+        {
+          "time_range": { "start_time": 1785542400, "end_time": 1787615940 },
+          "metrics": {
+            "anchor_display_rate": "0.30",
+            "click_through_rate": "0.03",
+            "order_count": 1,
+            "item_sold_count": 1,
+            "gmv": { "amount": "60.00", "currency": "BRL" }
           }
         }
       ]
@@ -843,6 +1274,20 @@ export const tokoProductMapperV2Fixture = {
   ]
 } as unknown as T.TokoProductMapperV2Data;
 
+export const getLiveRoomInfoFixture = {
+  id: "7280670009880123456",
+  start_time: 1699900000,
+  status: "ONGOING",
+  title: "Live de lançamento — kit skincare",
+} as unknown as T.GetLiveRoomInfoData;
+
+export const generateAffiliateSharingLinkFixture = {
+  affiliate_sharing_links: [
+    { affiliate_sharing_link: "https://www.tiktok.com/t/ZSabc12345/", tag: "video-01" },
+  ],
+  errors: [],
+} as unknown as T.GenerateAffiliateSharingLinkData;
+
 export const FIXTURES: Record<string, unknown> = {
   getCreatorProfile: getCreatorProfileFixture,
   getShowcaseProducts: getShowcaseProductsFixture,
@@ -880,4 +1325,6 @@ export const FIXTURES: Record<string, unknown> = {
   getLiveRoomUserPortraits: getLiveRoomUserPortraitsFixture,
   getTokoProductMappers: getTokoProductMappersFixture,
   tokoProductMapperV2: tokoProductMapperV2Fixture,
+  getLiveRoomInfo: getLiveRoomInfoFixture,
+  generateAffiliateSharingLink: generateAffiliateSharingLinkFixture,
 };

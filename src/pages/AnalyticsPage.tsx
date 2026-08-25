@@ -10,7 +10,6 @@ import {
   Flame,
   UserPlus,
   Ticket,
-  Calendar,
   Search,
   Film,
   MousePointerClick,
@@ -23,6 +22,11 @@ import {
   AlertCircle,
   Package,
   ShieldAlert,
+  Trophy,
+  TrendingUp,
+  TrendingDown,
+  ArrowDownRight,
+  Clock,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -39,6 +43,7 @@ import {
   Legend,
 } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
+import { PeriodPicker } from "@/components/PeriodPicker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,6 +53,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatCard } from "@/components/StatCard";
 import {
   useVideoPerformances,
+  aggregateVideoPerformance,
+  aggregateVideoKpis,
+  useVideoContentPerformance,
   useLiveRoomCoreStats,
   useLiveRoomGmvTrend,
   useLiveRoomViewTrends,
@@ -55,17 +63,30 @@ import {
   useLiveRoomInteractiveTrends,
   useLiveRoomProductStats,
   useLiveRoomUserPortraits,
+  useLiveRoomInfo,
   type VideoPerformancesFilters,
+  type ContentVideoRow,
   useRecentLiveRooms,
 } from "@/hooks/useAnalytics";
+import type { GanhosFilters } from "@/hooks/useGanhos";
+import { ROLLING_DAYS, resolvePeriod, type Period } from "@/lib/period";
 import { USE_MOCK } from "@/services/creatorClient";
-import { formatCurrency, formatMoney, formatNumber, formatPercent, formatDate, abbreviateNumber, parseAmount } from "@/lib/formatters";
-import type { GetVideoPerformancesData, GetLiveRoomTrafficPerformanceData } from "@/types/creator-api.generated";
+import {
+  formatCurrency,
+  formatMoney,
+  formatNumber,
+  formatPercent,
+  formatDate,
+  formatDateTime,
+  abbreviateNumber,
+} from "@/lib/formatters";
+import type { GetLiveRoomTrafficPerformanceData } from "@/types/creator-api.generated";
 
 /**
- * Analytics de creator: aba "Vídeos" (Get Video Performances — gated, `creator.video.write`
- * inativo) e aba "Live" (7 endpoints de live room, `creator.data.live.read.public` ativo).
- * Ver docs/TIKTOK_AFFILIATE_CREATOR_API.md, seção "Analytics de conteúdo (creator scope)".
+ * Analytics de creator: "Ranking" (cruza retorno dos pedidos com receita de Get Video
+ * Performances — gated, `creator.video.write` inativo), "Vídeo específico" (consulta
+ * manual por ID) e "Live" (7 endpoints de live room, `creator.data.live.read.public`
+ * ativo). Ver docs/TIKTOK_AFFILIATE_CREATOR_API.md, seção "Analytics de conteúdo".
  */
 
 // =============== Helpers compartilhados ===============
@@ -81,8 +102,6 @@ function parseLines(raw: string): string[] {
     .filter(Boolean);
 }
 
-/** Alguns valores mock vêm com símbolo de moeda embutido — limpa antes de parsear. */
-
 /** formatCurrency com fallback — nunca derruba a tela se vier um código de moeda inválido do fixture. */
 function money(amount: number, currency?: string): string {
   try {
@@ -92,19 +111,25 @@ function money(amount: number, currency?: string): string {
   }
 }
 
-/** avg_watching_duration vem em segundos — formata "m:ss". */
+/** avg_watching_duration vem em segundos — formata humano "Xm Ys" (ex.: "3m 20s"). */
 function formatDuration(seconds?: number): string {
   if (seconds == null || !Number.isFinite(seconds) || seconds < 0) return "—";
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
-  return `${m}:${String(s).padStart(2, "0")}`;
+  return `${m}m ${s}s`;
 }
 
-/** Humaniza nomes de fonte de tráfego (ex.: "card_click" → "Card click") — a doc não lista
- *  um enum fechado de valores possíveis, então só normalizamos, sem inventar tradução. */
+/** Humaniza nomes de fonte de tráfego / status (ex.: "card_click" → "Card click") — a doc
+ *  não lista um enum fechado, então só normalizamos, sem inventar tradução. */
 function humanize(raw?: string): string {
   if (!raw) return "—";
   return raw.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** Início/fim de um vídeo formatados como intervalo de data (ou data única quando iguais). */
+function formatPeriodRange(minStart?: number, maxEnd?: number): string {
+  if (minStart == null || maxEnd == null) return "—";
+  return minStart === maxEnd ? formatDate(minStart) : `${formatDate(minStart)} – ${formatDate(maxEnd)}`;
 }
 
 function EmptyState({ icon: Icon, text }: { icon: LucideIcon; text: string }) {
@@ -302,13 +327,42 @@ const INTERACTIVE_TREND_COLORS: Record<string, string> = {
 // =============== Página ===============
 
 export default function AnalyticsPage() {
-  const [tab, setTab] = useState<"videos" | "live">("videos");
+  const [tab, setTab] = useState<"ranking" | "videos" | "live">("ranking");
+
+  // Período único da página — o mesmo seletor do Painel/Ganhos, para as três abas
+  // falarem do mesmo recorte de tempo: KPIs do ranking, consulta manual de vídeo e,
+  // na aba Live, qual live entra na lista de "lives recentes" (os 7 endpoints de KPI
+  // de UMA live não aceitam filtro de data — o período só decide qual live escolher).
+  const [periodKey, setPeriodKey] = useState<string>("month");
+  const [monthOffset, setMonthOffset] = useState(0);
+  const now = useMemo(() => Math.floor(Date.now() / 1000), []);
+  const resolved = useMemo(() => {
+    const period: Period =
+      periodKey === "month"
+        ? { kind: "month", offset: monthOffset }
+        : { kind: "rolling", days: ROLLING_DAYS[periodKey] ?? 30 };
+    return resolvePeriod(period, now);
+  }, [periodKey, monthOffset, now]);
+  const range = resolved.current;
 
   return (
     <div className="space-y-gap">
-      <PageHeader title="Analytics de creator" subtitle="Performance por vídeo e por sala de live (creator scope)." />
+      <PageHeader
+        title="Analytics de creator"
+        subtitle="Quais vídeos trazem mais receita, qual deu mais retorno, e como está a sua live."
+      />
 
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="segmented w-fit" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "ranking"}
+            onClick={() => setTab("ranking")}
+            className="segmented-item flex items-center gap-2"
+          >
+            <Trophy className="h-4 w-4" /> Ranking
+          </button>
           <button
             type="button"
             role="tab"
@@ -316,7 +370,7 @@ export default function AnalyticsPage() {
             onClick={() => setTab("videos")}
             className="segmented-item flex items-center gap-2"
           >
-            <Video className="h-4 w-4" /> Vídeos
+            <Video className="h-4 w-4" /> Vídeo específico
           </button>
           <button
             type="button"
@@ -329,80 +383,295 @@ export default function AnalyticsPage() {
           </button>
         </div>
 
-      {tab === "videos" ? <VideosTab /> : <LiveTab />}
+        <PeriodPicker
+          periodKey={periodKey}
+          onPeriodKey={setPeriodKey}
+          monthOffset={monthOffset}
+          onMonthOffset={setMonthOffset}
+          monthLabel={resolved.kpiLabel}
+        />
+      </div>
+
+      {tab === "ranking" ? (
+        <RankingTab range={range} subject={resolved.subject} />
+      ) : tab === "videos" ? (
+        <ManualVideoTab range={range} subject={resolved.subject} />
+      ) : (
+        <LiveTab range={range} subject={resolved.subject} />
+      )}
     </div>
   );
 }
 
-// =============== Aba 1: Vídeos ===============
+// =============== Aba 1: Ranking (receita x retorno por vídeo) ===============
 
-const VIDEO_PERIODS = [
-  { days: 7, label: "Últimos 7 dias" },
-  { days: 30, label: "Últimos 30 dias" },
-  { days: 90, label: "Últimos 90 dias" },
-] as const;
+const RANK_ICON: Record<string, LucideIcon> = {
+  gmv: TrendingUp,
+  commission: Trophy,
+};
 
-function videoPeriodRange(days: number) {
-  const now = Math.floor(Date.now() / 1000);
-  return { startTimeGe: now - days * 24 * 3600, endTimeLe: now };
+function HighlightCard({
+  icon: Icon,
+  label,
+  row,
+  metric,
+  accent,
+}: {
+  icon: LucideIcon;
+  label: string;
+  row?: ContentVideoRow;
+  metric: "gmv" | "commission";
+  accent: "primary" | "success" | "warning" | "info";
+}) {
+  const ACCENT_TEXT: Record<string, string> = {
+    primary: "text-primary",
+    success: "text-success",
+    warning: "text-warning",
+    info: "text-info",
+  };
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className={`flex items-center gap-1.5 text-xs font-semibold ${ACCENT_TEXT[accent]}`}>
+          <Icon className="h-3.5 w-3.5" /> {label}
+        </div>
+        {!row ? (
+          <p className="mt-2 text-sm text-muted-foreground">Sem dados suficientes.</p>
+        ) : (
+          <>
+            <p className="mt-2 truncate text-sm font-semibold" title={row.label}>
+              {row.label}
+            </p>
+            <p className="num mt-0.5 text-lg font-extrabold tracking-[-0.3px]">
+              {metric === "gmv" ? money(row.gmv, row.gmvCurrency) : money(row.commission, row.commissionCurrency)}
+            </p>
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+              {row.shopName ?? `Vídeo ${row.id}`}
+            </p>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
+
+function RankingTab({ range, subject }: { range: GanhosFilters; subject: string }) {
+  const { rows, isLoading, error, gmvError } = useVideoContentPerformance(range);
+  const [sortBy, setSortBy] = useState<"gmv" | "commission">("gmv");
+  // GMV (Get Video Performances) exige `creator.video.write`, hoje inativo em live. Sem ele
+  // a RECEITA fica indisponível, mas o RETORNO (comissão, dos pedidos) segue funcionando —
+  // então degradamos: some as colunas de GMV e ordena por retorno, em vez de travar a aba.
+  const gmvUnavailable = !!gmvError;
+  const effectiveSort: "gmv" | "commission" = gmvUnavailable ? "commission" : sortBy;
+
+  const kpis = useMemo(() => {
+    const gmv = rows.reduce((s, r) => s + r.gmv, 0);
+    const commission = rows.reduce((s, r) => s + r.commission, 0);
+    const pending = rows.reduce((s, r) => s + r.pendingCommission, 0);
+    const itemsSold = rows.reduce((s, r) => s + r.itemsSold, 0);
+    const withCtr = rows.filter((r) => r.hasPerformance);
+    const avgCtr = withCtr.length ? withCtr.reduce((s, r) => s + r.ctr, 0) / withCtr.length : 0;
+    const gmvCurrency = rows.find((r) => r.gmv > 0)?.gmvCurrency ?? "BRL";
+    const commissionCurrency = rows.find((r) => r.commission > 0)?.commissionCurrency ?? gmvCurrency;
+    return { gmv, commission, pending, itemsSold, avgCtr, gmvCurrency, commissionCurrency };
+  }, [rows]);
+
+  // "Maior/menor receita" só considera vídeos com retorno de Get Video Performances —
+  // um vídeo sem esse dado não tem GMV pra comparar (ver `hasPerformance`).
+  const byGmv = useMemo(
+    () => rows.filter((r) => r.hasPerformance).sort((a, b) => b.gmv - a.gmv),
+    [rows]
+  );
+  const byCommission = useMemo(() => [...rows].sort((a, b) => b.commission - a.commission), [rows]);
+  const sorted = useMemo(
+    () => (effectiveSort === "gmv" ? [...rows].sort((a, b) => b.gmv - a.gmv) : byCommission),
+    [rows, effectiveSort, byCommission]
+  );
+
+  const topRevenue = byGmv[0];
+  const bottomRevenue = byGmv.length > 1 ? byGmv[byGmv.length - 1] : undefined;
+  const topReturn = byCommission[0];
+  const bottomReturn = byCommission.length > 1 ? byCommission[byCommission.length - 1] : undefined;
+
+  return (
+    <div className="space-y-6">
+      <p className="text-sm text-muted-foreground">
+        Vídeos identificados a partir dos seus pedidos de afiliado em {subject}. Receita (GMV) vem de{" "}
+        <strong className="font-medium text-foreground">Get Video Performances</strong>; retorno (comissão) vem de{" "}
+        <strong className="font-medium text-foreground">Search Creator Affiliate Orders</strong>.
+      </p>
+
+      {error ? (
+        <ErrorBanner text={`Não foi possível montar o ranking: ${(error as Error).message}`} />
+      ) : isLoading ? (
+        <>
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <StatCard key={i} label="—" value="" loading />
+            ))}
+          </section>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 w-full" />
+            ))}
+          </div>
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-14 w-full" />
+            ))}
+          </div>
+        </>
+      ) : rows.length === 0 ? (
+        <EmptyState icon={Trophy} text="Nenhum vídeo com pedido de afiliado nesse período." />
+      ) : (
+        <>
+          {gmvUnavailable && (
+            <Card className="border-warning/30 bg-warning/5">
+              <CardContent className="flex items-start gap-3 p-4 text-sm">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                <span>
+                  A <strong className="font-medium text-foreground">receita (GMV)</strong> por vídeo está
+                  indisponível — exige o escopo <code>creator.video.write</code>, ainda inativo no app. O{" "}
+                  <strong className="font-medium text-foreground">retorno (comissão)</strong> abaixo vem dos seus
+                  pedidos e já está valendo; o GMV aparece assim que o escopo for aprovado.
+                </span>
+              </CardContent>
+            </Card>
+          )}
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              label="Receita (GMV)"
+              value={gmvUnavailable ? "—" : money(kpis.gmv, kpis.gmvCurrency)}
+              icon={Wallet}
+              accent="primary"
+            />
+            <StatCard
+              label="Retorno (comissão)"
+              value={money(kpis.commission, kpis.commissionCurrency)}
+              icon={Trophy}
+              accent="success"
+              hint={kpis.pending > 0 ? `${money(kpis.pending, kpis.commissionCurrency)} ainda pendente` : "Tudo já liquidado"}
+            />
+            <StatCard
+              label="Itens vendidos"
+              value={gmvUnavailable ? "—" : formatNumber(kpis.itemsSold)}
+              icon={PackageCheck}
+              accent="info"
+            />
+            <StatCard
+              label="CTR médio"
+              value={gmvUnavailable ? "—" : formatPercent(kpis.avgCtr, 1)}
+              icon={MousePointerClick}
+              accent="warning"
+            />
+          </section>
+
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <HighlightCard icon={TrendingUp} label="Maior receita" row={topRevenue} metric="gmv" accent="primary" />
+            <HighlightCard icon={TrendingDown} label="Menor receita" row={bottomRevenue} metric="gmv" accent="warning" />
+            <HighlightCard icon={Trophy} label="Maior retorno" row={topReturn} metric="commission" accent="success" />
+            <HighlightCard icon={ArrowDownRight} label="Menor retorno" row={bottomReturn} metric="commission" accent="warning" />
+          </section>
+
+          <Card>
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle className="text-base">Ranking de vídeos</CardTitle>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {effectiveSort === "gmv" ? "Do maior para o menor GMV" : "Da maior para a menor comissão"}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant={effectiveSort === "gmv" ? "toggle-on" : "toggle"}
+                  onClick={() => setSortBy("gmv")}
+                  disabled={gmvUnavailable}
+                  title={gmvUnavailable ? "Receita/GMV indisponível — exige creator.video.write" : undefined}
+                >
+                  Por receita
+                </Button>
+                <Button
+                  size="sm"
+                  variant={effectiveSort === "commission" ? "toggle-on" : "toggle"}
+                  onClick={() => setSortBy("commission")}
+                >
+                  Por retorno
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+                      <th className="pb-2 pr-4 font-medium">#</th>
+                      <th className="pb-2 pr-4 font-medium">Vídeo</th>
+                      <th className="pb-2 pr-4 text-right font-medium">GMV (receita)</th>
+                      <th className="pb-2 pr-4 text-right font-medium">Comissão (retorno)</th>
+                      <th className="pb-2 pr-4 text-right font-medium">Pedidos</th>
+                      <th className="pb-2 pr-4 text-right font-medium">Itens vendidos</th>
+                      <th className="pb-2 text-right font-medium">CTR</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {sorted.map((row, i) => {
+                      const RankIcon = RANK_ICON[effectiveSort];
+                      return (
+                        <tr key={row.id}>
+                          <td className="py-3 pr-4 text-xs text-muted-foreground">
+                            {i === 0 ? <RankIcon className="h-4 w-4 text-primary" /> : i + 1}
+                          </td>
+                          <td className="max-w-[220px] py-3 pr-4">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+                                <Film className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-medium" title={row.label}>
+                                  {row.label}
+                                </p>
+                                <p className="truncate text-xs text-muted-foreground">
+                                  {row.shopName ?? `Vídeo ${row.id}`}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="whitespace-nowrap py-3 pr-4 text-right font-semibold">
+                            {row.hasPerformance ? money(row.gmv, row.gmvCurrency) : "—"}
+                          </td>
+                          <td className="whitespace-nowrap py-3 pr-4 text-right">
+                            <p className="font-semibold text-success">{money(row.commission, row.commissionCurrency)}</p>
+                            {row.pendingCommission > 0 && (
+                              <p className="flex items-center justify-end gap-1 text-xs text-warning">
+                                <Clock className="h-3 w-3" /> {money(row.pendingCommission, row.commissionCurrency)} pendente
+                              </p>
+                            )}
+                          </td>
+                          <td className="whitespace-nowrap py-3 pr-4 text-right">{formatNumber(row.ordersFromAffiliate)}</td>
+                          <td className="whitespace-nowrap py-3 pr-4 text-right">
+                            {row.hasPerformance ? formatNumber(row.itemsSold) : "—"}
+                          </td>
+                          <td className="whitespace-nowrap py-3 text-right">
+                            {row.hasPerformance ? formatPercent(row.ctr, 1) : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
+    </div>
+  );
+}
+
+// =============== Aba 2: Vídeo específico (consulta manual por ID) ===============
 
 const DEFAULT_VIDEO_ID = "7271486684427046149";
-
-interface VideoRow {
-  id: string;
-  period: string;
-  gmv: number;
-  currency: string;
-  orders: number;
-  itemsSold: number;
-  ctr: number;
-  anchor: number;
-}
-
-/** Soma/agrega as métricas diárias (`performances[]`) de um vídeo num único total do período. */
-function aggregateVideo(v: NonNullable<GetVideoPerformancesData["videos"]>[number]): VideoRow {
-  const perfs = v.performances ?? [];
-  let gmv = 0;
-  let orders = 0;
-  let itemsSold = 0;
-  let ctrSum = 0;
-  let anchorSum = 0;
-  let currency = "BRL";
-  let minStart: number | undefined;
-  let maxEnd: number | undefined;
-  for (const p of perfs) {
-    const m = p.metrics;
-    gmv += parseAmount(m?.gmv?.amount);
-    if (m?.gmv?.currency) currency = m.gmv.currency;
-    orders += m?.order_count ?? 0;
-    itemsSold += m?.item_sold_count ?? 0;
-    ctrSum += parseFloat(m?.click_through_rate ?? "0") || 0;
-    anchorSum += parseFloat(m?.anchor_display_rate ?? "0") || 0;
-    const s = p.time_range?.start_time;
-    const e = p.time_range?.end_time;
-    if (s != null) minStart = minStart == null ? s : Math.min(minStart, s);
-    if (e != null) maxEnd = maxEnd == null ? e : Math.max(maxEnd, e);
-  }
-  const n = perfs.length || 1;
-  const period =
-    minStart != null && maxEnd != null
-      ? minStart === maxEnd
-        ? formatDate(minStart)
-        : `${formatDate(minStart)} – ${formatDate(maxEnd)}`
-      : "—";
-  return { id: v.id ?? "—", period, gmv, currency, orders, itemsSold, ctr: ctrSum / n, anchor: anchorSum / n };
-}
-
-function aggregateVideoKpis(rows: VideoRow[]) {
-  const gmv = rows.reduce((s, r) => s + r.gmv, 0);
-  const orders = rows.reduce((s, r) => s + r.orders, 0);
-  const itemsSold = rows.reduce((s, r) => s + r.itemsSold, 0);
-  const avgCtr = rows.length ? rows.reduce((s, r) => s + r.ctr, 0) / rows.length : 0;
-  const avgAnchor = rows.length ? rows.reduce((s, r) => s + r.anchor, 0) / rows.length : 0;
-  const currency = rows[0]?.currency ?? "BRL";
-  return { gmv, orders, itemsSold, avgCtr, avgAnchor, currency };
-}
 
 function VideoGatingBanner() {
   return (
@@ -423,15 +692,16 @@ function VideoGatingBanner() {
   );
 }
 
-function VideosTab() {
+function ManualVideoTab({ range, subject }: { range: GanhosFilters; subject: string }) {
   const [idsInput, setIdsInput] = useState(USE_MOCK ? DEFAULT_VIDEO_ID : "");
   const [appliedIds, setAppliedIds] = useState<string[]>(USE_MOCK ? [DEFAULT_VIDEO_ID] : []);
-  const [days, setDays] = useState<7 | 30 | 90>(30);
 
-  const range = useMemo(() => videoPeriodRange(days), [days]);
-  const filters: VideoPerformancesFilters = useMemo(() => ({ videoIds: appliedIds, ...range }), [appliedIds, range]);
+  const filters: VideoPerformancesFilters = useMemo(
+    () => ({ videoIds: appliedIds, startTimeGe: range.createTimeGe, endTimeLe: range.createTimeLt }),
+    [appliedIds, range]
+  );
   const { data, isLoading, error } = useVideoPerformances(filters);
-  const rows = useMemo(() => (data?.videos ?? []).map(aggregateVideo), [data]);
+  const rows = useMemo(() => (data?.videos ?? []).map(aggregateVideoPerformance), [data]);
   const kpis = useMemo(() => aggregateVideoKpis(rows), [rows]);
 
   const handleSubmit = (e: FormEvent) => {
@@ -455,11 +725,11 @@ function VideosTab() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Video className="h-4 w-4" /> Performance dos vídeos
+            <Video className="h-4 w-4" /> Performance de um vídeo específico
           </CardTitle>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Get Video Performances (202403) — GMV, pedidos, itens vendidos e engajamento por vídeo. A API não retorna
-            título nem thumbnail (só as métricas por video_id).
+            Get Video Performances (202403) — GMV, pedidos, itens vendidos e engajamento, em {subject}. A API não
+            retorna título nem thumbnail (só as métricas por video_id).
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -477,23 +747,7 @@ function VideosTab() {
               />
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <span className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-                <Calendar className="h-4 w-4" /> Período
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {VIDEO_PERIODS.map((p) => (
-                  <Button
-                    key={p.days}
-                    type="button"
-                    size="sm"
-                    variant={days === p.days ? "toggle-on" : "toggle"}
-                    onClick={() => setDays(p.days)}
-                  >
-                    {p.label}
-                  </Button>
-                ))}
-              </div>
-              <Button type="submit" className="ml-auto gap-2">
+              <Button type="submit" className="gap-2">
                 <Search className="h-4 w-4" /> Consultar
               </Button>
             </div>
@@ -554,7 +808,7 @@ function VideosTab() {
                             </div>
                             <div className="min-w-0">
                               <p className="whitespace-nowrap text-sm font-medium">Vídeo {row.id}</p>
-                              <p className="text-xs text-muted-foreground">{row.period}</p>
+                              <p className="text-xs text-muted-foreground">{formatPeriodRange(row.minStart, row.maxEnd)}</p>
                             </div>
                           </div>
                         </td>
@@ -576,15 +830,66 @@ function VideosTab() {
   );
 }
 
-// =============== Aba 2: Live ===============
+// =============== Aba 3: Live ===============
 
-function LiveTab() {
+/** Get Live Room Info (202309) — a live "atual" da conta, para abrir o dashboard num clique
+ *  em vez do creator ter que descobrir/colar o próprio live_room_id. */
+function LiveRoomInfoCard({
+  onView,
+  isActive,
+}: {
+  onView: (id: string) => void;
+  isActive: (id: string) => boolean;
+}) {
+  const { data, isLoading, error } = useLiveRoomInfo();
+
+  if (isLoading) return <Skeleton className="h-[74px] w-full" />;
+  // É uma conveniência para auto-preencher o ID — se falhar ou não houver live agora,
+  // o fluxo manual abaixo (ID digitado ou lives recentes) já cobre o caso sem ruído extra.
+  if (error || !data?.id) return null;
+
+  const isOngoing = /ONGOING|LIVE/i.test(data.status ?? "");
+  return (
+    <Card className="border-primary/30 bg-primary/5">
+      <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <span className="tint text-primary">
+            <Radio className="h-[19px] w-[19px] stroke-[1.6]" />
+          </span>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-semibold">{data.title || "Sua live"}</p>
+              <Badge variant={isOngoing ? "success" : "secondary"}>{humanize(data.status)}</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              ID {data.id}
+              {data.start_time ? ` · iniciada em ${formatDateTime(data.start_time)}` : ""}
+            </p>
+          </div>
+        </div>
+        <Button
+          size="sm"
+          variant={isActive(data.id) ? "toggle-on" : "default"}
+          className="shrink-0 gap-1.5"
+          onClick={() => onView(data.id as string)}
+        >
+          <Search className="h-3.5 w-3.5" /> Ver analytics desta live
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function LiveTab({ range, subject }: { range: GanhosFilters; subject: string }) {
   const [idInput, setIdInput] = useState(USE_MOCK ? "7093488394589768494" : "");
   const [liveRoomId, setLiveRoomId] = useState(USE_MOCK ? idInput : "");
 
   // A API não expõe "listar minhas lives"; os IDs saem do content_id dos pedidos
   // com content_type LIVE. Sem isso o creator não teria como saber o próprio ID.
-  const { liveRoomIds, isLoading: loadingRooms } = useRecentLiveRooms();
+  // O período é o mesmo `PeriodPicker` do topo da página — os 7 endpoints de KPIs da
+  // live escolhida (abaixo) não aceitam filtro de data (são de UMA sessão só), então o
+  // período só se aplica aqui: em decidir QUAL live vira candidata a ser analisada.
+  const { liveRoomIds, isLoading: loadingRooms } = useRecentLiveRooms(range);
 
   const pick = (id: string) => {
     setIdInput(id);
@@ -610,6 +915,8 @@ function LiveTab() {
         </CardContent>
       </Card>
 
+      <LiveRoomInfoCard onView={pick} isActive={(id) => liveRoomId === id} />
+
       <Card>
         <CardContent className="p-4">
           <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -629,7 +936,8 @@ function LiveTab() {
               ) : liveRoomIds.length > 0 ? (
                 <>
                   <p className="mb-2 text-sm text-muted-foreground">
-                    Suas lives recentes (identificadas pelos pedidos gerados nelas):
+                    Suas lives em <strong className="font-medium text-foreground">{subject}</strong> (identificadas
+                    pelos pedidos gerados nelas) — use o seletor de período acima para ver outra janela:
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {liveRoomIds.map((r) => (
@@ -651,7 +959,7 @@ function LiveTab() {
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Nenhuma live encontrada nos pedidos dos últimos 90 dias. Cole o ID manualmente.
+                  Nenhuma live encontrada nos pedidos de {subject}. Troque o período acima ou cole o ID manualmente.
                 </p>
               )}
             </div>

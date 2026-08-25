@@ -2,7 +2,8 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { callEndpoint, type EndpointKey } from "@/services/creatorClient";
-import { useAffiliateOrders } from "@/hooks/useGanhos";
+import { useAffiliateOrders, useAllAffiliateOrders, salesBaseOf, type GanhosFilters } from "@/hooks/useGanhos";
+import { parseAmount } from "@/lib/formatters";
 import type {
   GetVideoPerformancesData,
   GetLiveRoomCoreStatsData,
@@ -12,6 +13,7 @@ import type {
   GetLiveRoomInteractiveTrendsData,
   GetLiveRoomProductStatsData,
   GetLiveRoomUserPortraitsData,
+  GetLiveRoomInfoData,
 } from "@/types/creator-api.generated";
 
 /**
@@ -80,6 +82,211 @@ export function useVideoPerformances(filters: VideoPerformancesFilters) {
   });
 }
 
+export interface VideoPerformanceTotals {
+  id: string;
+  gmv: number;
+  currency: string;
+  orders: number;
+  itemsSold: number;
+  ctr: number;
+  anchor: number;
+  /** Início/fim cobertos pelos pontos somados — a página formata como data. */
+  minStart?: number;
+  maxEnd?: number;
+}
+
+/** Soma/agrega as métricas diárias (`performances[]`) de um vídeo num único total do período. */
+export function aggregateVideoPerformance(
+  v: NonNullable<GetVideoPerformancesData["videos"]>[number]
+): VideoPerformanceTotals {
+  const perfs = v.performances ?? [];
+  let gmv = 0;
+  let orders = 0;
+  let itemsSold = 0;
+  let ctrSum = 0;
+  let anchorSum = 0;
+  let currency = "BRL";
+  let minStart: number | undefined;
+  let maxEnd: number | undefined;
+  for (const p of perfs) {
+    const m = p.metrics;
+    gmv += parseAmount(m?.gmv?.amount);
+    if (m?.gmv?.currency) currency = m.gmv.currency;
+    orders += m?.order_count ?? 0;
+    itemsSold += m?.item_sold_count ?? 0;
+    ctrSum += parseFloat(m?.click_through_rate ?? "0") || 0;
+    anchorSum += parseFloat(m?.anchor_display_rate ?? "0") || 0;
+    const s = p.time_range?.start_time;
+    const e = p.time_range?.end_time;
+    if (s != null) minStart = minStart == null ? s : Math.min(minStart, s);
+    if (e != null) maxEnd = maxEnd == null ? e : Math.max(maxEnd, e);
+  }
+  const n = perfs.length || 1;
+  return { id: v.id ?? "—", gmv, currency, orders, itemsSold, ctr: ctrSum / n, anchor: anchorSum / n, minStart, maxEnd };
+}
+
+/** KPIs agregados de um conjunto de vídeos já somados por `aggregateVideoPerformance`. */
+export function aggregateVideoKpis(rows: VideoPerformanceTotals[]) {
+  const gmv = rows.reduce((s, r) => s + r.gmv, 0);
+  const orders = rows.reduce((s, r) => s + r.orders, 0);
+  const itemsSold = rows.reduce((s, r) => s + r.itemsSold, 0);
+  const avgCtr = rows.length ? rows.reduce((s, r) => s + r.ctr, 0) / rows.length : 0;
+  const avgAnchor = rows.length ? rows.reduce((s, r) => s + r.anchor, 0) / rows.length : 0;
+  const currency = rows[0]?.currency ?? "BRL";
+  return { gmv, orders, itemsSold, avgCtr, avgAnchor, currency };
+}
+
+// =============== Ranking: receita x retorno por vídeo ===============
+
+export interface ContentVideoRow {
+  /** content_id do SKU em Search Creator Affiliate Orders — o MESMO identificador usado
+   *  como video_id em Get Video Performances (é o que liga as duas fontes). */
+  id: string;
+  /**
+   * Rótulo amigável do vídeo. Get Video Performances não devolve título nem thumbnail
+   * (só métricas por id) — usamos o produto mais associado a esse content_id nos pedidos
+   * de afiliado como nome de exibição; cai para "Vídeo {id}" quando não há pedido algum
+   * (vídeo consultado manualmente, sem venda no período).
+   */
+  label: string;
+  shopName?: string;
+  /** Receita: GMV do vídeo no período — soma de `metrics.gmv` (Get Video Performances). */
+  gmv: number;
+  gmvCurrency: string;
+  /** `order_count`/`item_sold_count` somados (Get Video Performances — granularidade diária). */
+  ordersFromPerf: number;
+  itemsSold: number;
+  /** Média de `click_through_rate` no período (Get Video Performances). */
+  ctr: number;
+  /**
+   * Retorno: comissão do vídeo no período — soma, por SKU com esse `content_id` e
+   * `content_type === "VIDEO"` (Search Creator Affiliate Orders), de `actual_commission`
+   * quando o pedido está SETTLED, senão `estimated_commission` (mesma regra de
+   * resolução usada em Ganhos/Painel).
+   */
+  commission: number;
+  commissionCurrency: string;
+  /** Fatia da comissão acima ainda não liquidada (pedidos fora de SETTLED). */
+  pendingCommission: number;
+  /** Nº de pedidos de afiliado (linhas de SKU) que geraram a comissão acima. */
+  ordersFromAffiliate: number;
+  /** Teve retorno de Get Video Performances? Quando falso, só há dado de comissão (orders). */
+  hasPerformance: boolean;
+}
+
+interface VideoOrdersAgg {
+  commission: number;
+  pendingCommission: number;
+  salesBase: number;
+  ordersCount: number;
+  currency: string;
+  shopName?: string;
+  productNames: Map<string, number>;
+}
+
+/**
+ * Cruza "quanto esse vídeo pagou de comissão" (Search Creator Affiliate Orders) com
+ * "quanto de GMV esse vídeo gerou" (Get Video Performances) — a base do ranking de
+ * receita x retorno em Analytics.
+ *
+ * Por que os dois: nenhum endpoint sozinho responde as duas perguntas. Orders traz
+ * comissão, nome do produto e da loja, mas não GMV oficial nem CTR de vídeo — e
+ * Get Video Performances traz GMV/CTR por vídeo, mas nenhuma informação de comissão
+ * (ver docs/TIKTOK_AFFILIATE_CREATOR_API.md). O elo entre os dois é `content_id`
+ * (orders, quando `content_type === "VIDEO"`) == `id` (video performances).
+ *
+ * Os video_ids consultados vêm 100% dos PRÓPRIOS pedidos do período — o creator não
+ * precisa descobrir/colar IDs na mão para ver o ranking.
+ */
+export function useVideoContentPerformance(range: GanhosFilters) {
+  const orders = useAllAffiliateOrders(range);
+
+  const ordersAgg = useMemo(() => {
+    const map = new Map<string, VideoOrdersAgg>();
+    for (const o of orders.data?.orders ?? []) {
+      const isSettled = o.status === "SETTLED";
+      for (const s of o.skus ?? []) {
+        if (s.content_type !== "VIDEO" || !s.content_id) continue;
+        const row: VideoOrdersAgg = map.get(s.content_id) ?? {
+          commission: 0,
+          pendingCommission: 0,
+          salesBase: 0,
+          ordersCount: 0,
+          currency: "BRL",
+          productNames: new Map<string, number>(),
+        };
+        const actual = parseAmount(s.actual_commission?.amount);
+        const estimate = parseAmount(s.estimated_commission?.amount);
+        const resolved = isSettled ? actual || estimate : estimate;
+        row.commission += resolved;
+        if (!isSettled) row.pendingCommission += resolved;
+        row.salesBase += salesBaseOf(s, o.status);
+        row.ordersCount += 1;
+        if (s.price?.currency) row.currency = s.price.currency;
+        if (s.shop_name) row.shopName = s.shop_name;
+        if (s.product_name) row.productNames.set(s.product_name, (row.productNames.get(s.product_name) ?? 0) + 1);
+        map.set(s.content_id, row);
+      }
+    }
+    return map;
+  }, [orders.data]);
+
+  const videoIds = useMemo(() => [...ordersAgg.keys()], [ordersAgg]);
+
+  const perf = useVideoPerformances({
+    videoIds,
+    startTimeGe: range.createTimeGe,
+    endTimeLe: range.createTimeLt,
+  });
+
+  const rows = useMemo<ContentVideoRow[]>(() => {
+    const perfMap = new Map<string, VideoPerformanceTotals>();
+    for (const v of perf.data?.videos ?? []) {
+      if (!v.id) continue;
+      perfMap.set(v.id, aggregateVideoPerformance(v));
+    }
+    const ids = new Set([...ordersAgg.keys(), ...perfMap.keys()]);
+    return [...ids].map((id) => {
+      const agg = ordersAgg.get(id);
+      const p = perfMap.get(id);
+      const topProduct = agg?.productNames.size
+        ? [...agg.productNames.entries()].sort((a, b) => b[1] - a[1])[0][0]
+        : undefined;
+      return {
+        id,
+        label: topProduct ?? `Vídeo ${id}`,
+        shopName: agg?.shopName,
+        gmv: p?.gmv ?? 0,
+        gmvCurrency: p?.currency ?? agg?.currency ?? "BRL",
+        ordersFromPerf: p?.orders ?? 0,
+        itemsSold: p?.itemsSold ?? 0,
+        ctr: p?.ctr ?? 0,
+        commission: agg?.commission ?? 0,
+        commissionCurrency: agg?.currency ?? "BRL",
+        pendingCommission: agg?.pendingCommission ?? 0,
+        ordersFromAffiliate: agg?.ordersCount ?? 0,
+        hasPerformance: !!p,
+      };
+    });
+  }, [ordersAgg, perf.data]);
+
+  // Mesma cautela de "sem resposta != zero" usada em Ganhos/Painel.
+  const ordersNoData = orders.isPending && !orders.isError;
+  const perfPending = videoIds.length > 0 && perf.isPending && !perf.isError;
+
+  return {
+    rows,
+    videoIds,
+    isLoading: orders.isLoading || ordersNoData || (videoIds.length > 0 && perf.isLoading) || perfPending,
+    // Só bloqueia a aba inteira se os PEDIDOS falharem — sem eles não há retorno nem vídeos.
+    error: orders.error,
+    // Falha isolada do Get Video Performances (GMV) — escopo `creator.video.write`, hoje
+    // inativo em live. NÃO derruba a aba: o retorno (comissão) vem dos pedidos e segue
+    // válido; a receita/GMV fica "—" com um aviso até o escopo ser ativado.
+    gmvError: perf.error,
+  };
+}
+
 // =============== Live room (7 endpoints, todos GET com só {live_room_id} no path) ===============
 
 /** Helper interno — os 7 endpoints de live room compartilham a mesma forma (GET, um único
@@ -95,6 +302,30 @@ function useLiveRoomQuery<T>(endpoint: EndpointKey, metric: string, liveRoomId: 
       return r.data as T;
     },
     enabled: !!user && !!liveRoomId.trim(),
+    staleTime: 60 * 1000,
+    retry: 1,
+  });
+}
+
+/**
+ * Get Live Room Info (202309) — a sala de live "atual" da conta autenticada
+ * (id/status/title/start_time), sem precisar de nenhum parâmetro de busca.
+ *
+ * Existe para alimentar os 7 endpoints acima sem o creator ter que descobrir e colar o
+ * próprio `live_room_id` na mão: chama-se este endpoint primeiro, usa-se `data.id` como
+ * `live_room_id` dos demais. Quando não há live em andamento (ou fora do mock), a tela
+ * cai de volta no fluxo manual (ID digitado ou lives recentes vindas dos pedidos).
+ */
+export function useLiveRoomInfo() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: [...analyticsKeys.all, "live-room-info", user?.id] as const,
+    queryFn: async ({ signal }) => {
+      const r = await callEndpoint<GetLiveRoomInfoData>("getLiveRoomInfo", {}, signal);
+      if (!r.ok) throw new Error(r.error || "Falha ao carregar a live atual");
+      return r.data as GetLiveRoomInfoData;
+    },
+    enabled: !!user,
     staleTime: 60 * 1000,
     retry: 1,
   });
@@ -155,14 +386,14 @@ export function useLiveRoomUserPortraits(liveRoomId: string) {
  * `content_id` É o `live_room_id` aceito pelos 7 endpoints de /analytics/202502/live_rooms.
  * Sem isso o usuário teria que descobrir o ID por fora, o que torna a aba inutilizável.
  *
+ * O período vem de fora (mesmo `range` do PeriodPicker da página) em vez de uma janela
+ * fixa: os 7 endpoints de live room não aceitam filtro de data (cada um é de UMA sessão,
+ * via `live_room_id`), então o único lugar onde "período" faz sentido na aba Live é aqui,
+ * em ESCOLHER qual live analisar — não dentro da análise de uma live já escolhida.
+ *
  * Retorna os IDs distintos, do mais recente para o mais antigo.
  */
-export function useRecentLiveRooms(days = 90, max = 8) {
-  const range = useMemo(() => {
-    const now = Math.floor(Date.now() / 1000);
-    return { createTimeGe: now - days * 86400, createTimeLt: now };
-  }, [days]);
-
+export function useRecentLiveRooms(range: GanhosFilters, max = 8) {
   const orders = useAffiliateOrders({ ...range, pageSize: 50 });
 
   const liveRoomIds = useMemo(() => {

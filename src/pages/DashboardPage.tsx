@@ -76,6 +76,8 @@ type Order = NonNullable<
 interface Totals {
   gross: number;
   commission: number;
+  /** Fatia de `commission` já liquidada (pedido SETTLED) — o resto é estimativa pendente. */
+  settled: number;
   currency: string;
   skuCount: number;
   orderCount: number;
@@ -85,19 +87,24 @@ interface Totals {
 function totalsOf(orders: Order[]): Totals {
   let gross = 0;
   let commission = 0;
+  let settled = 0;
   let skuCount = 0;
   let currency = "BRL";
   for (const o of orders) {
+    const isSettled = o.status === "SETTLED";
     for (const s of o.skus ?? []) {
       skuCount++;
       gross += salesBaseOf(s, o.status);
-      commission += commissionOf(s, o.status);
+      const c = commissionOf(s, o.status);
+      commission += c;
+      if (isSettled) settled += c;
       if (s.price?.currency) currency = s.price.currency;
     }
   }
   return {
     gross,
     commission,
+    settled,
     currency,
     skuCount,
     orderCount: orders.length,
@@ -338,6 +345,21 @@ function compactAmount(value: number, dense = false): string {
   const commissionDelta = delta(kpis.commission, prevKpis.commission);
   const grossDelta = delta(kpis.gross, prevKpis.gross);
   const orderDelta = delta(kpis.orderCount, prevKpis.orderCount);
+
+  /**
+   * Gestão financeira na frase de abertura: quanto da comissão do período já foi
+   * liquidado e quanto ainda depende do prazo de devolução (ver painel lateral
+   * "Resultados" e a tela de Ganhos, que detalha isso por pedido).
+   */
+  const pendingCommission = Math.max(0, kpis.commission - kpis.settled);
+  const commissionSplitLabel =
+    kpis.commission <= 0
+      ? "."
+      : pendingCommission <= 0.005
+        ? " — já liquidada."
+        : kpis.settled > 0.005
+          ? ` (${money(kpis.settled, kpis.currency)} liquidada, ${money(pendingCommission, kpis.currency)} pendente).`
+          : " — ainda pendente de liquidação.";
   const ticketDelta = delta(kpis.avgTicket, prevKpis.avgTicket);
 
   const todayLabel = new Intl.DateTimeFormat("pt-BR", {
@@ -377,7 +399,7 @@ function compactAmount(value: number, dense = false): string {
                 <strong className="font-semibold text-foreground">
                   {money(kpis.commission, kpis.currency)}
                 </strong>{" "}
-                em comissão.
+                em comissão{commissionSplitLabel}
               </>
             ) : (
               `Nenhum pedido em ${resolved.subject}. Assim que uma venda entrar, ela aparece aqui.`

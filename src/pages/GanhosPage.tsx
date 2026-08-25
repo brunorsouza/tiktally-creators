@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, BadgeCheck, Package, ChevronRight, type LucideIcon, Radio, ShoppingBag, Store, Ticket, TrendingUp, Video, Wallet, Search } from "lucide-react";
+import { AlertCircle, BadgeCheck, Clock, Package, ChevronRight, type LucideIcon, Radio, ShoppingBag, Store, Ticket, TrendingUp, Video, Wallet, Search } from "lucide-react";
 import { PeriodPicker } from "@/components/PeriodPicker";
 import { ROLLING_DAYS, resolvePeriod, type Period } from "@/lib/period";
 import { PageHeader } from "@/components/PageHeader";
@@ -156,7 +156,10 @@ export default function GanhosPage() {
     }
     const orderCount = affiliateOrders.length;
     const avgTicket = orderCount ? gmv / orderCount : 0;
-    return { gmv, estimated, settled, orderCount, itemCount, avgTicket, currency };
+    // `estimated` já é a comissão TOTAL resolvida (liquidada + pendente estimada — ver
+    // `resolveCommission`); a fatia ainda não liquidada é o que sobra depois do settled.
+    const pending = Math.max(0, estimated - settled);
+    return { gmv, estimated, settled, pending, orderCount, itemCount, avgTicket, currency };
   }, [affiliateOrders]);
 
   const traceRows: OrderRow[] = useMemo(
@@ -264,6 +267,14 @@ export default function GanhosPage() {
           accent="success"
           loading={affiliate.isLoading || affiliateNoData}
           hint="Só pedidos já liquidados"
+        />
+        <StatCard
+          label="Comissão pendente"
+          value={money(kpis.pending, kpis.currency)}
+          icon={Clock}
+          accent="warning"
+          loading={affiliate.isLoading || affiliateNoData}
+          hint="Pedidos ainda não liquidados (ORDERED/To-SETTLE)"
         />
         <StatCard
           label="Nº de pedidos"
