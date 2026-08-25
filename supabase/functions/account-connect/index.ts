@@ -1,7 +1,7 @@
-// POST creator-token-exchange — troca o `code` do OAuth de creator pelo
+// POST account-connect — troca o `code` do OAuth de creator pelo
 // creator access_token e grava em `creator_tokens`.
 //
-// Mesmo endpoint do TikTally-seller (account-connect): GET
+// Mesmo endpoint e mesmo nome do TikTally-seller: GET
 // https://auth.tiktok-shops.com/api/v2/token/get?app_key&app_secret&auth_code&grant_type=authorized_code
 // A resposta traz access_token / refresh_token / access_token_expire_in / open_id / granted_scopes.
 

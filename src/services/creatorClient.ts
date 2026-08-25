@@ -5,7 +5,7 @@ import { supabase, FUNCTIONS_BASE_URL } from "@/integrations/supabase/client";
 /**
  * Client único de chamada aos endpoints de creator.
  * - USE_MOCK (default true): devolve os fixtures gerados da doc — dá pra testar sem backend.
- * - USE_MOCK=false: chama o edge dispatcher `creator-api`, que assina e bate na TikTok.
+ * - USE_MOCK=false: chama o edge dispatcher `affiliate-proxy`, que assina e bate na TikTok.
  * Troca com a env VITE_USE_MOCK ("false" liga o modo live).
  */
 export const USE_MOCK = import.meta.env.VITE_USE_MOCK !== "false";
@@ -121,7 +121,7 @@ export async function callEndpoint<T = unknown>(
   }
 
   try {
-    const res = await fetch(`${FUNCTIONS_BASE_URL}/creator-api`, {
+    const res = await fetch(`${FUNCTIONS_BASE_URL}/affiliate-proxy`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

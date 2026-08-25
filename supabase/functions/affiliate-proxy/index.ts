@@ -1,4 +1,6 @@
-// Dispatcher único dos endpoints de creator.
+// Dispatcher único dos endpoints de creator (nome no padrão do TikTally Seller:
+// domínio-ação, como `ads-proxy`; o nome aparece na aba de rede do navegador e
+// por isso não cita qual API externa é chamada).
 // O front (que tem o manifesto ENDPOINTS) manda { method, path (já com path params
 // resolvidos), hasBody, query?, body? }. Aqui validamos que o path é de um domínio
 // permitido da Creator API, resolvemos o token de creator do usuário, assinamos e

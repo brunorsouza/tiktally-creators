@@ -46,7 +46,7 @@ Deploy das functions:
 ```bash
 supabase functions deploy creator-get-profile
 supabase functions deploy creator-search-orders
-supabase functions deploy creator-token-exchange
+supabase functions deploy account-connect
 ```
 
 ## 4. ⚠️ TikTok App — escopos de creator (BLOQUEADOR)
@@ -71,7 +71,7 @@ Referência completa dos endpoints: [`TIKTOK_AFFILIATE_CREATOR_API.md`](./TIKTOK
 O fluxo está esqueletado:
 - `src/pages/ConnectPage.tsx` monta a URL de authorize.
 - `src/pages/AuthCallbackPage.tsx` recebe o `code`.
-- `supabase/functions/creator-token-exchange/` troca o `code` pelo token — **TODO**: preencher o
+- `supabase/functions/account-connect/` troca o `code` pelo token — **TODO**: preencher o
   endpoint real de token exchange (`user_type=1`) conforme a config do app, e o upsert em
   `creator_tokens`.
 

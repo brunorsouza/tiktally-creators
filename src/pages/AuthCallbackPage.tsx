@@ -29,7 +29,7 @@ export default function AuthCallbackPage() {
       return;
     }
 
-    callEdge("creator-token-exchange", { code })
+    callEdge("account-connect", { code })
       .then(() => {
         toast.success("Conta de creator conectada!");
         navigate("/", { replace: true });

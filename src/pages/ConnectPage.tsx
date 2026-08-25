@@ -15,7 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
  * services.tiktokshop.com, aparece o login do VENDEDOR — não é o que queremos.
  *
  * Fluxo: creator aprova o link → TikTok volta no redirect registrado do app
- * (?code=...) → edge `creator-token-exchange` troca por access_token (deve vir
+ * (?code=...) → edge `account-connect` troca por access_token (deve vir
  * user_type=1) e grava em `creator_tokens`.
  */
 function buildAuthorizeUrl(): string {

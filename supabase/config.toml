@@ -2,14 +2,12 @@
 # project_id vira o nome do stack local; troque pelo ref real ao linkar (`supabase link`).
 project_id = "tiktally-creator"
 
-[functions.creator-api]
+# Nomes seguem o padrão do TikTally Seller: domínio-ação, sem citar o fornecedor.
+# O nome da função aparece na aba de rede do navegador, então ele não deve
+# descrever qual API externa está sendo chamada.
+
+[functions.affiliate-proxy]
 verify_jwt = false  # dispatcher de todos os endpoints; JWT validado em creatorAuth.ts
 
-[functions.creator-get-profile]
-verify_jwt = false  # validamos o JWT manualmente em creatorAuth.ts
-
-[functions.creator-search-orders]
-verify_jwt = false
-
-[functions.creator-token-exchange]
-verify_jwt = false
+[functions.account-connect]
+verify_jwt = false  # recebe o code do OAuth; JWT validado dentro da função
