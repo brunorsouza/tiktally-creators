@@ -209,7 +209,7 @@ export function melhorJanelaDe(horas: HoraBucket[], tamanho = JANELA_HORAS): Jan
  * Por que percentil 95 e não o máximo: uma única venda gorda achataria todo o resto no
  * nível 1. Acima da referência a escala satura no nível 5.
  */
-function aplicarNiveis(celulas: CelulaGrade[]): void {
+function aplicarNiveis(celulas: { comissao: number; nivel: number }[]): void {
   const valores = celulas.filter((c) => c.comissao > 0).map((c) => c.comissao).sort((a, b) => a - b);
   if (!valores.length) return;
 
@@ -343,3 +343,75 @@ export const LEITURA: Record<ContentFilter, { titulo: string; explicacao: string
     recomenda: false,
   },
 };
+
+// =============== Blocos do dia (grade 7 × 4) ===============
+
+/**
+ * A grade de 28 células (7 dias × 4 blocos) em vez de 168 (7 × 24).
+ *
+ * É o recorte que a amostra de um creator real sustenta: com 33 pedidos, 168 células dão
+ * 0,2 pedido por célula (desenho é ruído puro), enquanto 28 células dão ~1,2 — ainda
+ * pouco, mas já é tendência legível, e a tela diz isso em vez de esconder. A grade cheia
+ * de 24h continua existindo atrás de um link, para quem tem volume (MIN_PEDIDOS_GRADE).
+ */
+export const BLOCOS = [
+  { key: "noite", label: "Noite", faixa: "18h–00h", inicio: 18, fim: 24 },
+  { key: "tarde", label: "Tarde", faixa: "12h–18h", inicio: 12, fim: 18 },
+  { key: "manha", label: "Manhã", faixa: "06h–12h", inicio: 6, fim: 12 },
+  { key: "madrugada", label: "Madrugada", faixa: "00h–06h", inicio: 0, fim: 6 },
+] as const;
+
+/** Índice de `BLOCOS` para cada hora do dia. */
+function blocoDaHora(hora: number): number {
+  return BLOCOS.findIndex((b) => hora >= b.inicio && hora < b.fim);
+}
+
+export interface CelulaBloco {
+  /** 0 = domingo … 6 = sábado. */
+  dia: number;
+  /** Índice em `BLOCOS` (0 = Noite … 3 = Madrugada). */
+  bloco: number;
+  pedidos: number;
+  comissao: number;
+  nivel: number;
+}
+
+/** Ordem de exibição da semana: segunda primeiro (a semana de trabalho do creator). */
+export const DIAS_ORDEM = [1, 2, 3, 4, 5, 6, 0] as const;
+
+/** Com menos que isto nem a grade de 28 células se sustenta — mesmo piso da recomendação. */
+export const MIN_PEDIDOS_BLOCOS = MIN_PEDIDOS_RECOMENDACAO;
+
+/** Dobra a grade de 168 células nas 28 de dia × bloco. */
+export function resumirBlocos(grade: CelulaGrade[]): CelulaBloco[] {
+  const out: CelulaBloco[] = [];
+  for (let dia = 0; dia < 7; dia++) {
+    for (let bloco = 0; bloco < BLOCOS.length; bloco++) {
+      out.push({ dia, bloco, pedidos: 0, comissao: 0, nivel: 0 });
+    }
+  }
+  for (const c of grade) {
+    const b = blocoDaHora(c.hora);
+    if (b < 0) continue;
+    const alvo = out[c.dia * BLOCOS.length + b];
+    alvo.pedidos += c.pedidos;
+    alvo.comissao += c.comissao;
+  }
+  aplicarNiveis(out);
+  return out;
+}
+
+/** Célula de `resumirBlocos` para um par (dia, bloco). */
+export function celulaBloco(blocos: CelulaBloco[], dia: number, bloco: number): CelulaBloco {
+  return blocos[dia * BLOCOS.length + bloco];
+}
+
+export const DIAS_LONGOS = [
+  "domingo",
+  "segunda",
+  "terça",
+  "quarta",
+  "quinta",
+  "sexta",
+  "sábado",
+] as const;

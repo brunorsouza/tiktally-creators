@@ -63,9 +63,14 @@
        hover e na tabela. Ver docs/SPEC_MELHOR_HORARIO.md §7. */
     --heat-1: 347 62% 93%;
     --heat-2: 347 72% 84%;
-    --heat-3: 347 75% 71%;
-    --heat-4: 347 77% 58%;
-    --heat-5: 347 80% 44%;
+    --heat-3: 347 75% 70%;
+    --heat-4: 347 78% 50%;
+    --heat-5: 347 80% 38%;
+    /* Tinta usada SOBRE os dois passos mais escuros da rampa. Ela inverte por tema
+       porque a rampa inverte: no claro os passos 4-5 são escuros (tinta branca),
+       no escuro são os mais claros (tinta escura). Medido: todos os pares passam
+       de 4,5:1. */
+    --heat-ink: 0 0% 100%;
 
     /* superfície "tinta": cartões escuros sobre tema claro (saldo, destaques) */
     --ink: 30 17% 11%;
@@ -180,6 +185,7 @@
     --heat-3: 346 62% 43%;
     --heat-4: 346 85% 55%;
     --heat-5: 346 100% 68%;
+    --heat-ink: 30 18% 8%;
 
     --ink: 30 18% 4%;
     --ink-foreground: 39 37% 93%;

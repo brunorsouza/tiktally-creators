@@ -3,11 +3,20 @@ import { parseAmount } from "@/lib/formatters";
 import { useAllAffiliateOrders, type GanhosFilters } from "@/hooks/useGanhos";
 import {
   fusoDoDispositivo,
+  resumirBlocos,
   resumirHorarios,
+  type CelulaBloco,
   type ContentFilter,
   type ResumoHorarios,
   type Venda,
 } from "@/lib/horarios";
+import {
+  acoesDe,
+  calcularEstatisticas,
+  notaDoVale,
+  type Acao,
+  type EstatisticasHorarios,
+} from "@/lib/horariosInsights";
 
 /**
  * Melhor Horário — aba "Horários" de Analytics. Ver docs/SPEC_MELHOR_HORARIO.md.
@@ -53,12 +62,28 @@ export function useHorarios(range: GanhosFilters, filtro: ContentFilter, timeZon
     [vendas, tz, filtro]
   );
 
+  /** Grade de 28 células (7 dias × 4 blocos) — o recorte que amostras reais sustentam. */
+  const blocos: CelulaBloco[] = useMemo(() => resumirBlocos(resumo.grade), [resumo.grade]);
+
+  const stats: EstatisticasHorarios = useMemo(
+    () => calcularEstatisticas(resumo, blocos),
+    [resumo, blocos]
+  );
+
+  /** Ações e a nota do vale — cada uma com o próprio piso de evidência (horariosInsights). */
+  const acoes: Acao[] = useMemo(() => acoesDe(resumo, stats, filtro), [resumo, stats, filtro]);
+  const vale = useMemo(() => notaDoVale(resumo, stats), [resumo, stats]);
+
   // Mesma cautela de "sem resposta != zero" usada em Ganhos/Painel: enquanto a query não
   // resolveu, a tela mostra carregando em vez de afirmar que não há venda nenhuma.
   const semResposta = orders.isPending && !orders.isError;
 
   return {
     resumo,
+    blocos,
+    stats,
+    acoes,
+    vale,
     currency,
     isLoading: orders.isLoading || semResposta,
     error: orders.error,

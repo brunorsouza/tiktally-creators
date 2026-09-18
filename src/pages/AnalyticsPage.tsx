@@ -27,6 +27,10 @@ import {
   TrendingDown,
   ArrowDownRight,
   Clock,
+  CalendarClock,
+  Sparkles,
+  CircleSlash2,
+  Download,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -71,16 +75,33 @@ import {
 import type { GanhosFilters } from "@/hooks/useGanhos";
 import { useHorarios } from "@/hooks/useHorarios";
 import {
+  BLOCOS,
   CONFIANCA_LABEL,
   CONTENT_FILTERS,
+  DIAS_CURTOS,
+  DIAS_ORDEM,
   LEITURA,
+  MIN_PEDIDOS_BLOCOS,
   MIN_PEDIDOS_GRADE,
   MIN_PEDIDOS_RECOMENDACAO,
+  celulaBloco,
+  rotuloHora,
   rotuloJanela,
+  type CelulaBloco,
   type Confianca,
   type ContentFilter,
+  type HoraBucket,
+  type ResumoHorarios,
 } from "@/lib/horarios";
-import { BarrasPorHora, GradeSemanal, TabelaHorarios } from "@/components/HorariosChart";
+import { fracaoEmPalavras, rotuloCelula, type Acao } from "@/lib/horariosInsights";
+import {
+  BarrasPorHora,
+  GradeBlocos,
+  GradeSemanal,
+  TabelaHorarios,
+  TopHoras,
+  type MetricaHora,
+} from "@/components/HorariosChart";
 import { cn } from "@/lib/utils";
 import { ROLLING_DAYS, resolvePeriod, type Period } from "@/lib/period";
 import { USE_MOCK } from "@/services/creatorClient";
@@ -1554,6 +1575,9 @@ function UserPortraitsSection({ liveRoomId }: { liveRoomId: string }) {
 // durante a transmissão (hora do pedido ≈ hora da live, recomendar horário é legítimo);
 // em VÍDEO o pedido chega dias depois do post (hora do pedido não diz nada sobre quando
 // postar). Por isso o texto muda junto com o filtro, e só LIVE recomenda.
+//
+// As ações sugeridas vivem em lib/horariosInsights.ts, cada uma com o próprio piso de
+// evidência: o painel some em vez de aconselhar a partir de 1 pedido.
 
 const FILTRO_LABEL: Record<ContentFilter, string> = {
   tudo: "Tudo",
@@ -1568,166 +1592,513 @@ const CONFIANCA_CHIP: Record<Confianca, string> = {
   alta: "chip-success",
 };
 
+const ACAO_ICON: Record<Acao["id"], LucideIcon> = {
+  live: CalendarClock,
+  video: Video,
+  teste: Sparkles,
+};
+
+/** Um dos quatro números da linha de KPIs do cartão principal. */
+function KpiJanela({
+  label,
+  valor,
+  nota,
+  notaPositiva,
+}: {
+  label: string;
+  valor: string;
+  nota?: string;
+  notaPositiva?: boolean;
+}) {
+  return (
+    <div className="min-w-0 sm:px-4 sm:first:pl-0 sm:last:pr-0">
+      <p className="text-[12.5px] font-medium text-muted-foreground">{label}</p>
+      <p className="num mt-1 text-[22px] font-extrabold leading-none tracking-[-0.6px] [overflow-wrap:anywhere]">
+        {valor}
+      </p>
+      {nota && (
+        <p className={cn("mt-1 text-[11.5px]", notaPositiva ? "text-success" : "text-faint")}>
+          {notaPositiva && "↗ "}
+          {nota}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Baixa o recorte como CSV — horas do dia e a grade de blocos, na mesma planilha. */
+function exportarCsv(
+  resumo: ResumoHorarios,
+  blocos: CelulaBloco[],
+  filtro: ContentFilter,
+  subject: string
+) {
+  const linhas: string[][] = [
+    ["TikTally Creator — Horários"],
+    ["Período", subject],
+    ["Origem", FILTRO_LABEL[filtro]],
+    ["Fuso", resumo.timeZone],
+    ["Pedidos", String(resumo.totalPedidos)],
+    [],
+    ["Hora", "Pedidos", "Comissão", "Por pedido"],
+    ...resumo.horas.map((h) => [
+      rotuloHora(h.hora),
+      String(h.pedidos),
+      h.comissao.toFixed(2),
+      h.pedidos > 0 ? (h.comissao / h.pedidos).toFixed(2) : "",
+    ]),
+    [],
+    ["Dia", "Bloco", "Pedidos", "Comissão"],
+    ...DIAS_ORDEM.flatMap((dia) =>
+      BLOCOS.map((b, i) => {
+        const c = celulaBloco(blocos, dia, i);
+        return [DIAS_CURTOS[dia], `${b.label} (${b.faixa})`, String(c.pedidos), c.comissao.toFixed(2)];
+      })
+    ),
+  ];
+
+  // ";" e BOM: é o que faz o Excel em pt-BR abrir o arquivo já com as colunas separadas
+  // e os acentos corretos — sem isso o creator vê tudo numa coluna só.
+  const csv = "﻿" + linhas.map((l) => l.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";")).join("\n");
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `tiktally-horarios-${filtro}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string }) {
   const [filtro, setFiltro] = useState<ContentFilter>("tudo");
-  const [verGrade, setVerGrade] = useState(false);
+  const [metrica, setMetrica] = useState<MetricaHora>("comissao");
+  const [verGrade24h, setVerGrade24h] = useState(false);
   const [verTabela, setVerTabela] = useState(false);
 
-  const { resumo, currency, isLoading, error, truncated } = useHorarios(range, filtro);
+  const { resumo, blocos, stats, acoes, vale, currency, isLoading, error, truncated } = useHorarios(
+    range,
+    filtro
+  );
   const leitura = LEITURA[filtro];
   const janela = resumo.melhorJanela;
+
+  /** "hora que vende muito" e "hora de ticket alto" costumam ser horas diferentes — e
+   *  essa é a leitura menos óbvia da tela, então ela vira frase quando de fato difere. */
+  const contraste = useMemo(() => {
+    const ativas = resumo.horas.filter((h) => h.pedidos > 0);
+    if (ativas.length < 2) return null;
+    const volume = ativas.reduce((a, b) => (b.pedidos > a.pedidos ? b : a));
+    const ticket = ativas
+      .filter((h) => h.pedidos >= 2)
+      .reduce<HoraBucket | null>((a, b) => (!a || b.comissao / b.pedidos > a.comissao / a.pedidos ? b : a), null);
+    if (!ticket || ticket.hora === volume.hora) return null;
+    return { volume, ticket };
+  }, [resumo.horas]);
 
   if (error) {
     return <ErrorBanner text={error instanceof Error ? error.message : String(error)} />;
   }
 
+  const fracao = janela ? fracaoEmPalavras(janela.share) : null;
+
   return (
     <div className="space-y-gap">
+      {/* barra de contexto: origem + volume do recorte + fuso + exportar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="segmented w-fit" role="tablist" aria-label="Origem da venda">
-          {CONTENT_FILTERS.map((f) => (
-            <button
-              key={f}
-              type="button"
-              role="tab"
-              aria-selected={filtro === f}
-              onClick={() => setFiltro(f)}
-              className="segmented-item"
-            >
-              {FILTRO_LABEL[f]}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="segmented w-fit" role="tablist" aria-label="Origem da venda">
+            {CONTENT_FILTERS.map((f) => (
+              <button
+                key={f}
+                type="button"
+                role="tab"
+                aria-selected={filtro === f}
+                onClick={() => setFiltro(f)}
+                className="segmented-item"
+              >
+                {FILTRO_LABEL[f]}
+              </button>
+            ))}
+          </div>
+          {!isLoading && (
+            <p className="text-[13px] text-muted-foreground">
+              {formatNumber(resumo.totalPedidos)} {resumo.totalPedidos === 1 ? "pedido" : "pedidos"} ·{" "}
+              {money(resumo.totalComissao, currency)} em comissão
+            </p>
+          )}
         </div>
-        <p className="text-xs text-faint">
-          Horários no fuso <span className="font-semibold">{resumo.timeZone}</span>
-        </p>
-      </div>
-
-      {/* Headline — a resposta, ou o motivo de não haver resposta. */}
-      <Card>
-        <CardContent className="p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-[13px] font-semibold text-muted-foreground">{leitura.titulo}</p>
-              {isLoading ? (
-                <Skeleton className="mt-2 h-[34px] w-56" />
-              ) : janela ? (
-                <p className="num mt-1.5 text-[34px] font-extrabold leading-none tracking-[-1px]">
-                  {rotuloJanela(janela)}
-                </p>
-              ) : (
-                <p className="mt-1.5 flex items-center gap-2 text-[17px] font-bold">
-                  <ShieldAlert className="h-5 w-5 shrink-0 text-warning" />
-                  Ainda não dá para dizer
-                </p>
-              )}
-            </div>
-            <span className={CONFIANCA_CHIP[resumo.confianca]}>{CONFIANCA_LABEL[resumo.confianca]}</span>
-          </div>
-
-          {!isLoading && janela && (
-            <p className="mt-2.5 text-sm text-muted-foreground">
-              {formatPercent(janela.share)} da sua comissão caiu nessas 3 horas —{" "}
-              {money(janela.comissao, currency)} em {formatNumber(janela.pedidos)}{" "}
-              {/* Separador, e não "em {subject}" nem "({subject})": o subject varia entre
-                  "últimos 90 dias" (que não aceita "em") e "setembro (até hoje)" (que já
-                  vem com parênteses) — só o ponto médio funciona nos dois. */}
-              {janela.pedidos === 1 ? "pedido" : "pedidos"} · {subject}.
-            </p>
-          )}
-
-          {!isLoading && !janela && (
-            <p className="mt-2.5 text-sm text-muted-foreground">
-              São {formatNumber(resumo.totalPedidos)} pedidos neste recorte e o mínimo para uma leitura
-              honesta é {MIN_PEDIDOS_RECOMENDACAO}. Com amostra menor, o "melhor horário" é sorte, não
-              padrão — então preferimos não cravar um número. Amplie o período ou volte depois de mais
-              vendas.
-            </p>
-          )}
-
-          {/* A ressalva de leitura fica SEMPRE visível, inclusive quando há recomendação. */}
-          <div
-            className={cn(
-              "mt-4 rounded-lg border p-3 text-[13px] leading-relaxed",
-              leitura.recomenda ? "bg-muted/40 text-muted-foreground" : "border-warning/30 bg-warning/[.06]"
-            )}
+        <div className="flex items-center gap-2.5">
+          <span className="flex items-center gap-1.5 text-xs text-faint">
+            <Clock className="h-3.5 w-3.5" /> {resumo.timeZone}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isLoading || resumo.totalPedidos === 0}
+            onClick={() => exportarCsv(resumo, blocos, filtro, subject)}
           >
-            {leitura.explicacao}
-          </div>
-        </CardContent>
-      </Card>
+            <Download className="mr-1.5 h-3.5 w-3.5" /> Exportar
+          </Button>
+        </div>
+      </div>
 
       {truncated && (
         <Card className="border-warning/30 bg-warning/[.06]">
           <CardContent className="flex items-start gap-3 p-4 text-sm">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
             <span>
-              O período estourou o teto de 2.000 pedidos — os horários abaixo cobrem só parte dele.
-              Use um período mais curto para um recorte completo.
+              O período estourou o teto de 2.000 pedidos — os horários abaixo cobrem só parte dele. Use um
+              período mais curto para um recorte completo.
             </span>
           </CardContent>
         </Card>
       )}
 
-      {/* Visão primária: 24 baldes de hora. */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Clock className="h-4 w-4 text-primary" /> Comissão por hora do dia
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <Skeleton className="h-[220px] w-full" />
-          ) : resumo.totalPedidos === 0 ? (
-            <EmptyState
-              icon={Clock}
-              text={
-                USE_MOCK
-                  ? "Nenhum pedido neste recorte. Em mock, rode com VITE_MOCK_DENSE=true para ver a aba com volume realista."
-                  : "Nenhum pedido neste recorte. Escolha outro período ou outra origem."
-              }
-            />
-          ) : (
-            <>
-              <BarrasPorHora horas={resumo.horas} janela={janela} currency={currency} />
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => setVerTabela((v) => !v)}>
-                  {verTabela ? "Ocultar tabela" : "Ver como tabela"}
-                </Button>
-                {resumo.gradeDisponivel ? (
-                  <Button variant="outline" size="sm" onClick={() => setVerGrade((v) => !v)}>
-                    {verGrade ? "Ocultar grade por dia" : "Ver grade dia × hora"}
-                  </Button>
-                ) : (
-                  <span className="text-xs text-faint">
-                    Grade dia × hora a partir de {formatNumber(MIN_PEDIDOS_GRADE)} pedidos (você tem{" "}
-                    {formatNumber(resumo.totalPedidos)}) — são 168 células, e abaixo disso o desenho é ruído.
-                  </span>
-                )}
-              </div>
-              {verTabela && (
-                <div className="mt-4">
-                  <TabelaHorarios horas={resumo.horas} currency={currency} total={resumo.totalComissao} />
-                </div>
+      {/* `[&>*]:min-w-0`: item de grid nasce com `min-width:auto`, então o cartão da grade
+          de blocos era esticado pelo `min-w-[580px]` de dentro e o `overflow-x-auto` nunca
+          entrava em ação — a PÁGINA é que rolava de lado no celular. */}
+      <div className="grid gap-gap [&>*]:min-w-0 lg:grid-cols-[minmax(0,1.85fr)_minmax(0,1fr)]">
+        {/* ============ Cartão principal: a janela ============ */}
+        <Card>
+          <CardContent className="p-5 sm:p-6">
+            <p className="text-[11px] font-bold uppercase tracking-[1.2px] text-faint">Sua janela de ouro</p>
+
+            <div className="mt-1.5 flex flex-wrap items-center gap-3">
+              {isLoading ? (
+                <Skeleton className="h-[46px] w-56" />
+              ) : janela ? (
+                <p className="num text-[44px] font-extrabold leading-none tracking-[-1.6px]">
+                  {rotuloHora(janela.inicio)} – {rotuloHora(janela.fim)}
+                </p>
+              ) : (
+                <p className="flex items-center gap-2 text-[20px] font-bold">
+                  <ShieldAlert className="h-5 w-5 shrink-0 text-warning" />
+                  Ainda não dá para dizer
+                </p>
               )}
-            </>
-          )}
+              {!isLoading && <span className={CONFIANCA_CHIP[resumo.confianca]}>{CONFIANCA_LABEL[resumo.confianca]}</span>}
+            </div>
+
+            {!isLoading && janela && (
+              <p className="mt-2.5 text-[15px] leading-relaxed text-muted-foreground">
+                {/* Sem "{subject}" aqui: ele varia entre "setembro" e "últimos 90 dias", e
+                    nenhuma preposição serve aos dois. O período já está no seletor, no
+                    subtítulo do gráfico e nas notas dos KPIs. */}
+                Três horas concentram{" "}
+                <span className="font-semibold text-foreground">
+                  {fracao ?? formatPercent(janela.share)}
+                </span>{" "}
+                de tudo o que você ganhou no período
+                {stats.celulaQuente && (
+                  <>
+                    {" "}
+                    {/* "bloco mais quente", e não "pico": o KPI ao lado mostra o DIA mais
+                        forte, que pode ser outro — são unidades diferentes, e chamar os
+                        dois de pico faz a tela parecer contraditória. */}
+                    — e o bloco mais quente é{" "}
+                    <span className="font-semibold text-foreground">{rotuloCelula(stats.celulaQuente)}</span>
+                  </>
+                )}
+                .
+              </p>
+            )}
+
+            {!isLoading && !janela && (
+              <p className="mt-2.5 text-[15px] leading-relaxed text-muted-foreground">
+                São {formatNumber(resumo.totalPedidos)} pedidos neste recorte e o mínimo para uma leitura
+                honesta é {MIN_PEDIDOS_RECOMENDACAO}. Com amostra menor, o "melhor horário" é sorte, não
+                padrão — então preferimos não cravar um número.
+              </p>
+            )}
+
+            {!isLoading && janela && (
+              <>
+                {/* Grid, e não flex: com `flex-1 min-w-0` os quatro KPIs encolhiam em vez
+                    de quebrar, e a 375px os números se sobrepunham. */}
+                <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4 border-t pt-4 sm:grid-cols-4 sm:gap-0 sm:divide-x">
+                  <KpiJanela
+                    label="Comissão na janela"
+                    valor={money(janela.comissao, currency)}
+                    nota={`${formatPercent(janela.share)} do período`}
+                  />
+                  <KpiJanela
+                    label="Pedidos"
+                    valor={formatNumber(janela.pedidos)}
+                    nota={`de ${formatNumber(resumo.totalPedidos)} no período`}
+                  />
+                  <KpiJanela
+                    label="Comissão por pedido"
+                    valor={money(stats.ticketJanela, currency)}
+                    nota={
+                      stats.upliftTicket > 0.02
+                        ? `${formatPercent(stats.upliftTicket, 0)} acima do resto do dia`
+                        : "em linha com o resto do dia"
+                    }
+                    notaPositiva={stats.upliftTicket > 0.02}
+                  />
+                  <KpiJanela
+                    label="Dia mais forte"
+                    valor={stats.diaMaisForte ? DIAS_CURTOS[stats.diaMaisForte.dia] : "—"}
+                    nota={
+                      stats.diaMaisForte?.melhorHora
+                        ? `${money(stats.diaMaisForte.melhorHora.comissao, currency)} só às ${rotuloHora(
+                            stats.diaMaisForte.melhorHora.hora
+                          )}`
+                        : undefined
+                    }
+                  />
+                </div>
+
+                {/* Barra de amostra: o quanto dá para confiar, como medida e não como adjetivo. */}
+                <div className="mt-4 flex flex-col gap-3 rounded-lg border bg-muted/30 p-3.5 sm:flex-row sm:items-center">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="text-[12.5px] font-medium text-muted-foreground">Amostra até aqui</span>
+                      <span className="num text-[12.5px] font-bold">
+                        {formatNumber(resumo.totalPedidos)} de ~{formatNumber(MIN_PEDIDOS_GRADE)} pedidos
+                      </span>
+                    </div>
+                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                      <div
+                        className={cn(
+                          "h-full rounded-full",
+                          resumo.gradeDisponivel ? "bg-success" : "bg-warning"
+                        )}
+                        style={{
+                          width: `${Math.min(100, (resumo.totalPedidos / MIN_PEDIDOS_GRADE) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[12.5px] leading-snug text-muted-foreground sm:w-[46%] sm:border-l sm:pl-4">
+                    {resumo.gradeDisponivel
+                      ? "Volume suficiente para a grade cheia de 24h × 7 dias."
+                      : `Com esse volume a janela ainda pode se mover. Perto de ${formatNumber(
+                          MIN_PEDIDOS_GRADE
+                        )} pedidos liberamos a grade cheia de 24h × 7 dias.`}
+                  </p>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ============ Painel de ações ============ */}
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="text-[15px] font-bold">O que fazer com isso</p>
+              {!isLoading && (
+                <span className="text-[11.5px] text-faint">
+                  {acoes.length} {acoes.length === 1 ? "ação" : "ações"}
+                </span>
+              )}
+            </div>
+
+            {isLoading ? (
+              <div className="mt-4 space-y-3">
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+              </div>
+            ) : acoes.length === 0 ? (
+              <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
+                Nenhuma ação com lastro suficiente neste recorte. Cada sugestão aqui tem um piso de
+                evidência — sem ele, preferimos não sugerir.
+              </p>
+            ) : (
+              <ul className="mt-3.5 space-y-2.5">
+                {acoes.map((a) => {
+                  const Icon = ACAO_ICON[a.id];
+                  return (
+                    <li key={a.id} className="flex gap-3 rounded-lg border bg-muted/30 p-3">
+                      <span className="tint h-8 w-8 shrink-0 text-primary">
+                        <Icon className="h-[15px] w-[15px] stroke-[1.7]" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-[13.5px] font-bold leading-snug">{a.titulo}</p>
+                        <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">{a.texto}</p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            {!isLoading && vale && (
+              <p className="mt-3.5 flex gap-2 text-[12.5px] leading-relaxed text-muted-foreground">
+                <CircleSlash2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-faint" />
+                <span>{vale.texto}</span>
+              </p>
+            )}
+
+            {/* A ressalva de leitura fica SEMPRE visível — é ela que impede a tela de
+                transformar "quando o público compra" em "quando postar". */}
+            <div
+              className={cn(
+                "mt-4 rounded-lg border p-3 text-[12.5px] leading-relaxed",
+                leitura.recomenda ? "bg-muted/40 text-muted-foreground" : "border-warning/30 bg-warning/[.06]"
+              )}
+            >
+              {leitura.explicacao}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ============ Barras por hora ============ */}
+      <Card>
+        <CardContent className="p-5 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[15px] font-bold">
+                {metrica === "comissao" ? "Comissão por hora do dia" : "Pedidos por hora do dia"}
+              </p>
+              <p className="mt-0.5 text-[12.5px] text-muted-foreground">
+                {subject} · {leitura.titulo.toLowerCase()} · passe o mouse para ver pedidos e ticket
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="segmented" role="tablist" aria-label="Métrica">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={metrica === "comissao"}
+                  onClick={() => setMetrica("comissao")}
+                  className="segmented-item"
+                >
+                  R$
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={metrica === "pedidos"}
+                  onClick={() => setMetrica("pedidos")}
+                  className="segmented-item"
+                >
+                  Pedidos
+                </button>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setVerTabela((v) => !v)}>
+                {verTabela ? "Ocultar tabela" : "Ver como tabela"}
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            {isLoading ? (
+              <Skeleton className="h-[260px] w-full" />
+            ) : resumo.totalPedidos === 0 ? (
+              <EmptyState
+                icon={Clock}
+                text={
+                  USE_MOCK
+                    ? "Nenhum pedido neste recorte. Em mock, rode com VITE_MOCK_DENSE=true para ver a aba com volume realista."
+                    : "Nenhum pedido neste recorte. Escolha outro período ou outra origem."
+                }
+              />
+            ) : (
+              <>
+                <BarrasPorHora
+                  horas={resumo.horas}
+                  janela={janela}
+                  currency={currency}
+                  metrica={metrica}
+                  media={stats.mediaHorasAtivas}
+                />
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-[11.5px]">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-muted-foreground">
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-2.5 w-2.5 rounded-[3px] bg-primary" />
+                      {janela ? `Janela de pico (${rotuloJanela(janela)})` : "Horas do dia"}
+                    </span>
+                    {janela && (
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-2.5 w-2.5 rounded-[3px] bg-primary/45" /> Demais horas
+                      </span>
+                    )}
+                    {metrica === "comissao" && (
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-px w-4 border-t border-dashed border-muted-foreground" /> Média por
+                        hora ativa
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-faint">Horas sem pedido aparecem como traço, não como buraco.</span>
+                </div>
+                {verTabela && (
+                  <div className="mt-4">
+                    <TabelaHorarios horas={resumo.horas} currency={currency} total={resumo.totalComissao} />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </CardContent>
       </Card>
 
-      {/* Visão secundária: grade 7×24, só com amostra grande. */}
-      {!isLoading && resumo.gradeDisponivel && verGrade && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Radar className="h-4 w-4 text-primary" /> Dia da semana × hora
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <GradeSemanal grade={resumo.grade} currency={currency} />
-          </CardContent>
-        </Card>
+      {/* ============ Grade de blocos + top horas ============ */}
+      {!isLoading && resumo.totalPedidos >= MIN_PEDIDOS_BLOCOS && (
+        <div className="grid gap-gap [&>*]:min-w-0 lg:grid-cols-[minmax(0,1.85fr)_minmax(0,1fr)]">
+          <Card>
+            <CardContent className="p-5 sm:p-6">
+              <div className="mb-4">
+                <p className="text-[15px] font-bold">Dia da semana × bloco do dia</p>
+                <p className="mt-0.5 text-[12.5px] text-muted-foreground">
+                  28 células em vez de 168 — é o recorte que os seus {formatNumber(resumo.totalPedidos)}{" "}
+                  pedidos sustentam
+                </p>
+              </div>
+
+              <GradeBlocos blocos={blocos} currency={currency} destaque={stats.celulaQuente} />
+
+              <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 text-[11.5px]">
+                <span className="text-faint">
+                  Valores em reais de comissão. Leia como tendência: são{" "}
+                  {formatNumber(resumo.totalPedidos)} pedidos espalhados por 28 células.
+                </span>
+                {resumo.gradeDisponivel && (
+                  <button
+                    type="button"
+                    onClick={() => setVerGrade24h((v) => !v)}
+                    className="font-semibold text-primary hover:underline"
+                  >
+                    {verGrade24h ? "Ocultar a grade de 24h" : "Ver a grade de 24h ↗"}
+                  </button>
+                )}
+              </div>
+
+              {verGrade24h && resumo.gradeDisponivel && (
+                <div className="mt-5 border-t pt-5">
+                  <GradeSemanal grade={resumo.grade} currency={currency} />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-5">
+              <p className="text-[15px] font-bold">Suas 5 melhores horas</p>
+              <p className="mt-0.5 text-[12.5px] text-muted-foreground">Ordenado por comissão no período</p>
+
+              <div className="mt-4">
+                <TopHoras horas={stats.topHoras} currency={currency} />
+              </div>
+
+              {contraste && (
+                <div className="mt-4 rounded-lg border bg-muted/30 p-3">
+                  <p className="text-[13px] font-bold">Nem toda hora boa é hora cheia</p>
+                  <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
+                    Às {rotuloHora(contraste.volume.hora)} você fez{" "}
+                    {formatNumber(contraste.volume.pedidos)} pedidos e tirou{" "}
+                    {money(contraste.volume.comissao / contraste.volume.pedidos, currency)} de cada. Às{" "}
+                    {rotuloHora(contraste.ticket.hora)} foram {formatNumber(contraste.ticket.pedidos)} a{" "}
+                    {money(contraste.ticket.comissao / contraste.ticket.pedidos, currency)}. Volume e ticket
+                    não moram no mesmo horário.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );

@@ -97,6 +97,7 @@ export default {
           3: "hsl(var(--heat-3))",
           4: "hsl(var(--heat-4))",
           5: "hsl(var(--heat-5))",
+          ink: "hsl(var(--heat-ink))",
         },
         // trilho/sidebar do shell — mais escuro que o card no dark
         panel: "hsl(var(--panel))",

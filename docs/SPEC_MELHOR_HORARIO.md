@@ -146,40 +146,82 @@ de 2000 pedidos de `useAllAffiliateOrders`, um creator típico de 300 pedidos/90
 
 | Pedidos no período | Confiança | Comportamento |
 |---|---|---|
-| < 30 | **insuficiente** | **não mostra recomendação nenhuma** — só o aviso |
+| < 30 | **insuficiente** | **não mostra recomendação nenhuma, nem ações, nem vale** — só o aviso |
 | 30–99 | baixa | mostra, rotulada como exploratória |
 | 100–299 | média | mostra |
 | ≥ 300 | alta | mostra |
-| < 200 | — | **grade 7×24 fica indisponível** (só a visão por hora) |
+| ≥ 30 | — | libera a **grade de 28 células** (7 dias × 4 blocos) |
+| ≥ 200 | — | libera a **grade cheia de 7×24** (168 células) |
 
 Sem isso, o app diria com confiança a um creator de 12 pedidos que ele deve postar às 3h
 da manhã. Esse é o modo de falha real desse tipo de feature.
+
+### 6.5 Piso de evidência por afirmação
+
+O guard-rail de amostra é global; cada frase que o app **afirma** tem ainda o seu próprio
+piso, em `lib/horariosInsights.ts`. Sem o piso, a frase não existe — não há versão
+"fraquinha" de um conselho tirado de 1 pedido.
+
+| Afirmação | Piso | Por quê |
+|---|---|---|
+| Qualquer ação | confiança ≠ `insuficiente` | Se não dá para nomear a janela, não dá para mandar marcar live. Sem isso a tela se contradizia: "ainda não dá para dizer" ao lado de "marque a live para quinta às 12h". |
+| "Marque a próxima live para…" | célula com ≥ 3 pedidos | Uma célula de 1 pedido não é padrão semanal. |
+| "Teste \<bloco\>" | ≥ 2 pedidos, volume ≤ 60% da média por célula **e** ticket acima do geral | Ranquear por comissão total devolveria ruído: bloco pouco trabalhado tem comissão baixa por definição. O sinal é **ticket alto com pouco volume**. |
+| "**Evite** \<faixa\>" | ≥ 100 pedidos | Abaixo disso o verbo **descreve** ("foi o seu vale") em vez de prescrever. O mesmo número não vira ordem sem lastro. |
+
+Duas regras de redação saíram da revisão visual, e valem para o que vier depois:
+
+- **A janela fria é o vão entre os picos, não a cauda do dia.** Buscá-la entre a primeira e
+  a última hora com _qualquer_ venda devolve sempre a madrugada — e "evite as 3h" não é
+  conselho para quem dorme nesse horário. O intervalo candidato vai da primeira à última
+  hora **acima da média**.
+- **O vale é comparativo, não absoluto.** "R$ 781 é o buraco do seu dia" soa falso num
+  creator grande; o que informa é render **37% do que as mesmas 3 horas rendem no pico**.
 
 ---
 
 ## 7. Telas / UX
 
 **Aba "Horários"** em `/analytics` (4ª aba, ao lado de Ranking / Vídeo específico / Live).
+Layout conforme o redesenho de 2026-09-18.
 
-1. **Filtro de conteúdo** — segmented `Tudo · Live · Vídeo` (§4). Muda o texto da headline.
-2. **Headline** — "Melhor janela: **19h–21h**", com chip de confiança e o fuso usado.
-   Em `insuficiente`, vira um aviso explicando quantos pedidos faltam.
-3. **Gráfico por hora (24 colunas)** — visão primária, sempre presente. Uma única cor
-   (a magnitude já está no comprimento da barra); a janela recomendada fica destacada e
-   rotulada. Hover com hora, comissão e nº de pedidos.
-4. **Grade dia×hora (7×24)** — secundária, atrás de um toggle, só com ≥200 pedidos.
-   Rampa sequencial de um tom só (rosa da marca), 5 níveis + vazio. Hover por célula.
-5. **Tabela** — mesma informação em texto (acessibilidade e conferência).
+1. **Barra de contexto** — segmented `Tudo · Live · Vídeo` (§4) + volume do recorte
+   ("463 pedidos · R$ 6.290,69 em comissão") + fuso + **Exportar** (CSV com as 24 horas e
+   as 28 células; `;` e BOM para o Excel pt-BR abrir certo).
+2. **Cartão "Sua janela de ouro"** (2/3) — a janela em número grande, chip de confiança,
+   uma frase de leitura, quatro KPIs (comissão na janela, pedidos, comissão por pedido com
+   o _uplift_ vs. resto do dia, dia mais forte) e a **barra de amostra**, que mostra o
+   quanto dá para confiar como medida, não como adjetivo. Em `insuficiente` o cartão vira
+   "Ainda não dá para dizer" e os KPIs somem.
+3. **Painel "O que fazer com isso"** (1/3) — as ações derivadas (§6.5), a nota do vale e a
+   **ressalva de leitura**, que muda com o filtro e fica âmbar em "Vídeo".
+4. **Gráfico por hora (24 colunas)** — visão primária. Toggle `R$ · Pedidos`, faixa da
+   janela de pico rotulada, linha da média das horas ativas, rótulo só nas duas maiores
+   barras, e **hora sem pedido vira traço na linha de base, não buraco** — ausência de
+   venda e ausência de dado não podem ler igual.
+5. **Grade dia × bloco (7 × 4 = 28 células)** (2/3) — a semana no recorte que a amostra
+   sustenta, com o **valor em R$ dentro da célula** e a mais quente contornada. A grade
+   cheia de 7×24 fica atrás do link "Ver a grade de 24h", com ≥200 pedidos.
+6. **"Suas 5 melhores horas"** (1/3) — comissão, volume e ticket lado a lado, mais a
+   leitura de que volume e ticket costumam morar em horários diferentes.
+7. **Tabela** — mesma informação em texto (acessibilidade e conferência).
 
 ### Notas de visualização
 
 - Barras: **uma cor** para todas. Colorir barra por valor re-codifica o que o comprimento
-  já mostra (anti-padrão).
+  já mostra (anti-padrão). A cor cheia marca só a janela — é destaque da resposta, não
+  codificação do dado. Sem janela recomendada, nada é destacado.
 - Heatmap: rampa **sequencial de um tom**, claro→escuro, com paridade light/dark validada
   (monotonia de luminosidade e gap entre passos). O passo mais claro **recua para a
-  superfície** de propósito — é o "quase zero" de um heatmap; a leitura fina fica no hover
-  e na tabela.
-- Nenhum número dentro das células/barras — só no destaque e no hover.
+  superfície** de propósito — é o "quase zero" de um heatmap; a leitura fina fica no valor
+  dentro da célula, no hover e na tabela.
+- O nível da célula é **magnitude ancorada no percentil 95**, nunca quintil: quintil
+  garante que 20% das células saiam no nível máximo, tenham elas magnitude relevante ou
+  não — é fabricar sinal.
+- A tinta sobre os dois passos extremos inverte **por tema** (`--heat-ink`), porque a rampa
+  inverte: no claro os passos 4-5 são escuros, no escuro são os mais claros. Todos os pares
+  medidos acima de 4,5:1.
+- Números dentro das células só na grade de 28 (onde cabem); na de 168, nunca.
 
 ---
 
