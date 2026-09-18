@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAllAffiliateOrders, salesBaseOf, type GanhosFilters } from "@/hooks/useGanhos";
-import { isNotConnected } from "@/services/creatorClient";
+import { isNotConnected, isReauthRequired } from "@/services/creatorClient";
 import { PeriodPicker } from "@/components/PeriodPicker";
 import { DAY, ROLLING_DAYS, resolvePeriod, type Period } from "@/lib/period";
 import { useOpenCollaborationByIds } from "@/hooks/useDescoberta";
@@ -341,7 +341,12 @@ function compactAmount(value: number, dense = false): string {
   // Só é "não conectado" quando a API diz isso. Escopo ausente, região bloqueada ou
   // erro da TikTok são outras causas e merecem outra mensagem.
   const notConnected = isNotConnected(error);
-  const failureMessage = !notConnected && error instanceof Error ? error.message : null;
+  // Conta conectada cuja autorização venceu de vez: mesmo destino do
+  // "não conectado" (o botão de reconectar), mas sem chamar o creator de
+  // desconectado — e sem cair no aviso genérico de falha, que só o confundiria.
+  const needsReauth = isReauthRequired(error);
+  const connectionIssue = notConnected || needsReauth;
+  const failureMessage = !connectionIssue && error instanceof Error ? error.message : null;
   const commissionDelta = delta(kpis.commission, prevKpis.commission);
   const grossDelta = delta(kpis.gross, prevKpis.gross);
   const orderDelta = delta(kpis.orderCount, prevKpis.orderCount);
@@ -390,7 +395,7 @@ function compactAmount(value: number, dense = false): string {
           {greeting()}
           {name ? `, ${name}` : ""}
         </h1>
-        {!busy && !notConnected && (
+        {!busy && !connectionIssue && (
           <p className="mt-2.5 max-w-[560px] text-pretty text-base leading-[1.55] text-muted-foreground">
             {kpis.orderCount > 0 ? (
               <>
@@ -426,20 +431,26 @@ function compactAmount(value: number, dense = false): string {
         </Card>
       )}
 
-      {notConnected && (
+      {connectionIssue && (
         <Card className="mb-gap border-primary/30 bg-primary/5">
           <CardContent className="flex flex-col items-start gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <PlugZap className="h-5 w-5 shrink-0 text-primary" />
               <div>
-                <p className="font-semibold">Conecte sua conta de creator</p>
+                <p className="font-semibold">
+                  {needsReauth
+                    ? "Renove a autorização do TikTok"
+                    : "Conecte sua conta de creator"}
+                </p>
                 <p className="text-sm text-muted-foreground">
-                  Ainda não conseguimos ler seus dados do TikTok Shop.
+                  {needsReauth
+                    ? "A autorização da sua conta expirou. Reconecte para voltar a carregar seus ganhos."
+                    : "Ainda não conseguimos ler seus dados do TikTok Shop."}
                 </p>
               </div>
             </div>
             <Button asChild>
-              <Link to="/conectar">Conectar TikTok</Link>
+              <Link to="/conectar">{needsReauth ? "Reconectar TikTok" : "Conectar TikTok"}</Link>
             </Button>
           </CardContent>
         </Card>
@@ -620,11 +631,13 @@ function compactAmount(value: number, dense = false): string {
               </div>
             ) : orders.length === 0 ? (
               <p className="py-10 text-center text-sm text-muted-foreground">
-                {notConnected
-                  ? "Conecte o TikTok para ver seus pedidos aqui."
-                  : failureMessage
-                    ? "Não foi possível carregar os pedidos."
-                    : "Nenhum pedido no período."}
+                {needsReauth
+                  ? "Reconecte o TikTok para ver seus pedidos aqui."
+                  : notConnected
+                    ? "Conecte o TikTok para ver seus pedidos aqui."
+                    : failureMessage
+                      ? "Não foi possível carregar os pedidos."
+                      : "Nenhum pedido no período."}
               </p>
             ) : (
               <div>

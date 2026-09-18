@@ -1,5 +1,6 @@
 import { ENDPOINTS, type EndpointKey } from "@/api/endpoints.generated";
 import { FIXTURES } from "@/mocks/fixtures.generated";
+import { mockOverride } from "@/mocks/dense";
 import { supabase, FUNCTIONS_BASE_URL } from "@/integrations/supabase/client";
 
 /**
@@ -35,6 +36,7 @@ export interface CallResult<T = unknown> {
  */
 export type CreatorErrorKind =
   | "not_connected"
+  | "reauth_required"
   | "session_expired"
   | "missing_scope"
   | "unauthorized_region"
@@ -43,9 +45,21 @@ export type CreatorErrorKind =
 export const NOT_CONNECTED_MESSAGE =
   "Conta de creator não conectada. Conecte o TikTok para ver seus dados.";
 
+export const REAUTH_REQUIRED_MESSAGE =
+  "A autorização do TikTok expirou. Reconecte sua conta para voltar a carregar seus dados.";
+
 /** Um erro já lançado por um hook veio de "conta não conectada"? */
 export function isNotConnected(err: unknown): boolean {
   return err instanceof Error && err.message === NOT_CONNECTED_MESSAGE;
+}
+
+/**
+ * O erro é "a autorização morreu, reconecte"? Diferente de `isNotConnected`:
+ * aqui a conta ESTÁ conectada, mas o refresh_token venceu (ou a TikTok o
+ * revogou), então nem a renovação automática salva — só um novo OAuth.
+ */
+export function isReauthRequired(err: unknown): boolean {
+  return err instanceof Error && err.message === REAUTH_REQUIRED_MESSAGE;
 }
 
 /** Códigos de erro da TikTok observados em produção. */
@@ -60,7 +74,13 @@ function tiktokCode(raw?: string): number | null {
 }
 
 export function classifyError(raw?: string, status?: number): CreatorErrorKind {
-  if (raw === "CREATOR_NOT_CONNECTED" || status === 409) return "not_connected";
+  if (raw === "CREATOR_REAUTH_REQUIRED") return "reauth_required";
+  if (raw === "CREATOR_NOT_CONNECTED") return "not_connected";
+  // Credencial vencida vindo crua da TikTok: o servidor renova sozinho, então
+  // chegar aqui significa que a renovação não deu conta — trata como reconectar
+  // em vez de despejar o texto em inglês da TikTok na tela do creator.
+  if (raw && /expired credentials|header has expired/i.test(raw)) return "reauth_required";
+  if (status === 409) return "not_connected";
   if (raw && /Sess[aã]o expirada|Invalid session|Missing Authorization/i.test(raw)) return "session_expired";
   const code = tiktokCode(raw);
   if (code === TIKTOK_MISSING_SCOPE) return "missing_scope";
@@ -74,6 +94,8 @@ export function friendlyError(kind: CreatorErrorKind, raw: string | undefined, k
   switch (kind) {
     case "not_connected":
       return NOT_CONNECTED_MESSAGE;
+    case "reauth_required":
+      return REAUTH_REQUIRED_MESSAGE;
     case "session_expired":
       return "Sessão expirada. Faça login novamente.";
     case "missing_scope":
@@ -101,7 +123,10 @@ export async function callEndpoint<T = unknown>(
 
   if (USE_MOCK) {
     await new Promise((r) => setTimeout(r, 200)); // simula latência de rede
-    return { ok: true, data: FIXTURES[key] as T, source: "mock" };
+    // VITE_MOCK_DENSE=true troca o fixture estático por uma série de 90 dias com volume
+    // realista (ver src/mocks/dense.ts). Desligado — o default — devolve null e nada muda.
+    const denso = mockOverride(key, params);
+    return { ok: true, data: (denso ?? FIXTURES[key]) as T, source: "mock" };
   }
 
   const { data: sess } = await supabase.auth.getSession();

@@ -44,10 +44,14 @@ SUPABASE_SERVICE_ROLE_KEY   # já existe por padrão no ambiente das functions
 Deploy das functions:
 
 ```bash
-supabase functions deploy creator-get-profile
-supabase functions deploy creator-search-orders
-supabase functions deploy account-connect
+supabase functions deploy affiliate-proxy      # dispatcher dos endpoints de creator
+supabase functions deploy account-connect      # OAuth: code → token
+supabase functions deploy account-connection   # status / disconnect
 ```
+
+O `affiliate-proxy` e o `account-connect` importam de `supabase/functions/_shared/`; deploy pela
+CLI sobe esses arquivos junto. Deploy pelo MCP do Supabase não resolve import de irmão — nesse
+caminho os arquivos de `_shared/` têm de ir achatados ao lado do `index.ts`.
 
 ## 4. ⚠️ TikTok App — escopos de creator (BLOQUEADOR)
 
@@ -66,14 +70,29 @@ Este é o ponto que precisa ser **validado antes** de investir na feature:
 
 Referência completa dos endpoints: [`TIKTOK_AFFILIATE_CREATOR_API.md`](./TIKTOK_AFFILIATE_CREATOR_API.md).
 
-## 5. OAuth de creator (fase 1 — a completar)
+## 5. OAuth de creator
 
-O fluxo está esqueletado:
+O fluxo:
 - `src/pages/ConnectPage.tsx` monta a URL de authorize.
 - `src/pages/AuthCallbackPage.tsx` recebe o `code`.
-- `supabase/functions/account-connect/` troca o `code` pelo token — **TODO**: preencher o
-  endpoint real de token exchange (`user_type=1`) conforme a config do app, e o upsert em
-  `creator_tokens`.
+- `supabase/functions/account-connect/` troca o `code` pelo token (exige `user_type=1`, senão
+  rejeita) e faz o upsert em `creator_tokens`.
+
+### Validade dos tokens
+
+O `access_token` da TikTok dura ~7 dias e o `refresh_token` ~365. O
+`_shared/creatorAuth.ts` renova o access_token sozinho — de forma proativa a partir de 10 min
+do vencimento, e sob demanda se a TikTok recusar o token mesmo assim. Nada disso aparece para
+o creator.
+
+Como a TikTok **rotaciona o refresh_token a cada uso**, duas renovações simultâneas
+invalidariam uma à outra e derrubariam a conta. Quem renova é decidido pela função
+`claim_creator_token_refresh` (migration `0002`), um `UPDATE..RETURNING` que serve de lock:
+uma requisição leva a linha, as outras aproveitam o resultado.
+
+Só quando o `refresh_token` morre (vencido ou revogado) é que o creator precisa agir — aí o
+backend responde `CREATOR_REAUTH_REQUIRED`, o status expõe `needs_reauth: true` e as telas
+pedem a reconexão.
 
 ## 6. Rodar
 

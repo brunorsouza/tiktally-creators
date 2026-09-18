@@ -55,6 +55,18 @@
     --info: 224 55% 45%;
     --info-foreground: 0 0% 100%;
 
+    /* rampa sequencial do heatmap de horários — UM tom só (o rosa da marca),
+       claro→escuro, com o passo 5 ancorado na --primary. Codifica MAGNITUDE, não
+       identidade: nunca use estes tokens para diferenciar séries.
+       O passo 1 recua de propósito quase até a superfície (é o "quase zero" de um
+       heatmap) — não o escureça para "melhorar contraste": a leitura fina mora no
+       hover e na tabela. Ver docs/SPEC_MELHOR_HORARIO.md §7. */
+    --heat-1: 347 62% 93%;
+    --heat-2: 347 72% 84%;
+    --heat-3: 347 75% 71%;
+    --heat-4: 347 77% 58%;
+    --heat-5: 347 80% 44%;
+
     /* superfície "tinta": cartões escuros sobre tema claro (saldo, destaques) */
     --ink: 30 17% 11%;
     --ink-foreground: 39 44% 94%;
@@ -159,6 +171,15 @@
     --warning-foreground: 30 11% 7%;
     --info: 224 100% 74%;
     --info-foreground: 30 11% 7%;
+
+    /* rampa do heatmap no dark — NÃO é o inverso automático da clara: são passos
+       próprios, re-escolhidos contra o card escuro (27 16% 11%) mantendo a
+       monotonia de luminosidade e o gap entre passos. */
+    --heat-1: 346 24% 22%;
+    --heat-2: 346 42% 32%;
+    --heat-3: 346 62% 43%;
+    --heat-4: 346 85% 55%;
+    --heat-5: 346 100% 68%;
 
     --ink: 30 18% 4%;
     --ink-foreground: 39 37% 93%;

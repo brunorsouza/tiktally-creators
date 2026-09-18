@@ -62,7 +62,7 @@ export function quoteBigIntegers(json: string): string {
 }
 
 export interface CallTikTokOptions {
-  method: "GET" | "POST" | "DELETE";
+  method: "GET" | "POST" | "PUT" | "DELETE";
   path: string;
   accessToken: string; // creator access_token (user_type=1)
   appKey: string;
@@ -70,6 +70,36 @@ export interface CallTikTokOptions {
   query?: Record<string, string | number | undefined>;
   body?: Record<string, unknown>;
   baseUrl?: string;
+}
+
+/**
+ * Erro da TikTok com o `code` preservado. A mensagem mantém o formato antigo
+ * ("TikTok API error (code): msg") porque o frontend classifica os erros por
+ * ela; o campo `code` evita que quem está no servidor precise fazer regex.
+ */
+export class TikTokApiError extends Error {
+  readonly code: number;
+  readonly tiktokMessage: string;
+  constructor(code: number, message: string) {
+    super(`TikTok API error (${code}): ${message}`);
+    this.name = "TikTokApiError";
+    this.code = code;
+    this.tiktokMessage = message;
+  }
+}
+
+/** Código da TikTok para credencial de acesso vencida. */
+export const TIKTOK_EXPIRED_CREDENTIALS = 105002;
+
+/**
+ * A falha foi "o access_token venceu"? Vale tanto pelo code quanto pelo texto:
+ * a mensagem ("Expired credentials. The 'access_token' or 'x-tts-access-token'
+ * header has expired.") é estável e cobre os códigos que a TikTok não documenta.
+ */
+export function isExpiredCredentials(err: unknown): boolean {
+  if (err instanceof TikTokApiError && err.code === TIKTOK_EXPIRED_CREDENTIALS) return true;
+  const msg = err instanceof Error ? err.message : String(err);
+  return /expired credentials|(access[_-]?token|x-tts-access-token)[^.]*\bhas expired\b/i.test(msg);
 }
 
 /** Wrapper único: monta query, assina, parseia, valida `code:0`. */
@@ -110,7 +140,7 @@ export async function callTikTok<T = unknown>(opts: CallTikTokOptions): Promise<
     throw new Error(`TikTok API returned non-JSON: ${text.slice(0, 300)}`);
   }
   if (result.code !== 0) {
-    throw new Error(`TikTok API error (${result.code}): ${result.message || "Unknown"}`);
+    throw new TikTokApiError(result.code, result.message || "Unknown");
   }
   return (result.data ?? ({} as T)) as T;
 }

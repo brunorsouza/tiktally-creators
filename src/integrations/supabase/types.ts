@@ -54,6 +54,8 @@ export type Database = {
           creator_user_open_id: string | null
           expires_at: string | null
           id: string
+          refresh_expires_at: string | null
+          refresh_lock_at: string | null
           refresh_token: string | null
           region: string | null
           scopes: string | null
@@ -66,6 +68,8 @@ export type Database = {
           creator_user_open_id?: string | null
           expires_at?: string | null
           id?: string
+          refresh_expires_at?: string | null
+          refresh_lock_at?: string | null
           refresh_token?: string | null
           region?: string | null
           scopes?: string | null
@@ -78,6 +82,8 @@ export type Database = {
           creator_user_open_id?: string | null
           expires_at?: string | null
           id?: string
+          refresh_expires_at?: string | null
+          refresh_lock_at?: string | null
           refresh_token?: string | null
           region?: string | null
           scopes?: string | null
@@ -91,7 +97,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      claim_creator_token_refresh: {
+        Args: { p_stale_seconds?: number; p_user_id: string }
+        Returns: {
+          refresh_expires_at: string
+          refresh_token: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

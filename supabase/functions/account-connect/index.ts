@@ -88,6 +88,12 @@ Deno.serve(async (req) => {
         expires_at: d.access_token_expire_in
           ? new Date(d.access_token_expire_in * 1000).toISOString()
           : null,
+        // Sem isto não há como distinguir "access_token venceu, dá pra renovar"
+        // de "a autorização acabou, precisa reconectar".
+        refresh_expires_at: d.refresh_token_expire_in
+          ? new Date(d.refresh_token_expire_in * 1000).toISOString()
+          : null,
+        refresh_lock_at: null, // conexão nova zera qualquer lock de refresh velho
         scopes: (d.granted_scopes || []).join(","),
         region: d.seller_base_region ?? "BR",
       },

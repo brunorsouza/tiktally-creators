@@ -69,6 +69,19 @@ import {
   useRecentLiveRooms,
 } from "@/hooks/useAnalytics";
 import type { GanhosFilters } from "@/hooks/useGanhos";
+import { useHorarios } from "@/hooks/useHorarios";
+import {
+  CONFIANCA_LABEL,
+  CONTENT_FILTERS,
+  LEITURA,
+  MIN_PEDIDOS_GRADE,
+  MIN_PEDIDOS_RECOMENDACAO,
+  rotuloJanela,
+  type Confianca,
+  type ContentFilter,
+} from "@/lib/horarios";
+import { BarrasPorHora, GradeSemanal, TabelaHorarios } from "@/components/HorariosChart";
+import { cn } from "@/lib/utils";
 import { ROLLING_DAYS, resolvePeriod, type Period } from "@/lib/period";
 import { USE_MOCK } from "@/services/creatorClient";
 import {
@@ -327,7 +340,7 @@ const INTERACTIVE_TREND_COLORS: Record<string, string> = {
 // =============== Página ===============
 
 export default function AnalyticsPage() {
-  const [tab, setTab] = useState<"ranking" | "videos" | "live">("ranking");
+  const [tab, setTab] = useState<"ranking" | "videos" | "live" | "horarios">("ranking");
 
   // Período único da página — o mesmo seletor do Painel/Ganhos, para as três abas
   // falarem do mesmo recorte de tempo: KPIs do ranking, consulta manual de vídeo e,
@@ -381,6 +394,15 @@ export default function AnalyticsPage() {
           >
             <Radio className="h-4 w-4" /> Live
           </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "horarios"}
+            onClick={() => setTab("horarios")}
+            className="segmented-item flex items-center gap-2"
+          >
+            <Clock className="h-4 w-4" /> Horários
+          </button>
         </div>
 
         <PeriodPicker
@@ -396,6 +418,8 @@ export default function AnalyticsPage() {
         <RankingTab range={range} subject={resolved.subject} />
       ) : tab === "videos" ? (
         <ManualVideoTab range={range} subject={resolved.subject} />
+      ) : tab === "horarios" ? (
+        <HorariosTab range={range} subject={resolved.subject} />
       ) : (
         <LiveTab range={range} subject={resolved.subject} />
       )}
@@ -1520,5 +1544,188 @@ function UserPortraitsSection({ liveRoomId }: { liveRoomId: string }) {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// =============== Aba 4: Horários (melhor horário) ===============
+//
+// Ver docs/SPEC_MELHOR_HORARIO.md. O núcleo desta aba não é o gráfico: é a leitura.
+// O mesmo cálculo significa coisas diferentes por `content_type` — em LIVE o pedido nasce
+// durante a transmissão (hora do pedido ≈ hora da live, recomendar horário é legítimo);
+// em VÍDEO o pedido chega dias depois do post (hora do pedido não diz nada sobre quando
+// postar). Por isso o texto muda junto com o filtro, e só LIVE recomenda.
+
+const FILTRO_LABEL: Record<ContentFilter, string> = {
+  tudo: "Tudo",
+  live: "Live",
+  video: "Vídeo",
+};
+
+const CONFIANCA_CHIP: Record<Confianca, string> = {
+  insuficiente: "chip-warning",
+  baixa: "chip-neutral",
+  media: "chip-neutral",
+  alta: "chip-success",
+};
+
+function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string }) {
+  const [filtro, setFiltro] = useState<ContentFilter>("tudo");
+  const [verGrade, setVerGrade] = useState(false);
+  const [verTabela, setVerTabela] = useState(false);
+
+  const { resumo, currency, isLoading, error, truncated } = useHorarios(range, filtro);
+  const leitura = LEITURA[filtro];
+  const janela = resumo.melhorJanela;
+
+  if (error) {
+    return <ErrorBanner text={error instanceof Error ? error.message : String(error)} />;
+  }
+
+  return (
+    <div className="space-y-gap">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="segmented w-fit" role="tablist" aria-label="Origem da venda">
+          {CONTENT_FILTERS.map((f) => (
+            <button
+              key={f}
+              type="button"
+              role="tab"
+              aria-selected={filtro === f}
+              onClick={() => setFiltro(f)}
+              className="segmented-item"
+            >
+              {FILTRO_LABEL[f]}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-faint">
+          Horários no fuso <span className="font-semibold">{resumo.timeZone}</span>
+        </p>
+      </div>
+
+      {/* Headline — a resposta, ou o motivo de não haver resposta. */}
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold text-muted-foreground">{leitura.titulo}</p>
+              {isLoading ? (
+                <Skeleton className="mt-2 h-[34px] w-56" />
+              ) : janela ? (
+                <p className="num mt-1.5 text-[34px] font-extrabold leading-none tracking-[-1px]">
+                  {rotuloJanela(janela)}
+                </p>
+              ) : (
+                <p className="mt-1.5 flex items-center gap-2 text-[17px] font-bold">
+                  <ShieldAlert className="h-5 w-5 shrink-0 text-warning" />
+                  Ainda não dá para dizer
+                </p>
+              )}
+            </div>
+            <span className={CONFIANCA_CHIP[resumo.confianca]}>{CONFIANCA_LABEL[resumo.confianca]}</span>
+          </div>
+
+          {!isLoading && janela && (
+            <p className="mt-2.5 text-sm text-muted-foreground">
+              {formatPercent(janela.share)} da sua comissão caiu nessas 3 horas —{" "}
+              {money(janela.comissao, currency)} em {formatNumber(janela.pedidos)}{" "}
+              {janela.pedidos === 1 ? "pedido" : "pedidos"} ({subject}).
+            </p>
+          )}
+
+          {!isLoading && !janela && (
+            <p className="mt-2.5 text-sm text-muted-foreground">
+              São {formatNumber(resumo.totalPedidos)} pedidos neste recorte e o mínimo para uma leitura
+              honesta é {MIN_PEDIDOS_RECOMENDACAO}. Com amostra menor, o "melhor horário" é sorte, não
+              padrão — então preferimos não cravar um número. Amplie o período ou volte depois de mais
+              vendas.
+            </p>
+          )}
+
+          {/* A ressalva de leitura fica SEMPRE visível, inclusive quando há recomendação. */}
+          <div
+            className={cn(
+              "mt-4 rounded-lg border p-3 text-[13px] leading-relaxed",
+              leitura.recomenda ? "bg-muted/40 text-muted-foreground" : "border-warning/30 bg-warning/[.06]"
+            )}
+          >
+            {leitura.explicacao}
+          </div>
+        </CardContent>
+      </Card>
+
+      {truncated && (
+        <Card className="border-warning/30 bg-warning/[.06]">
+          <CardContent className="flex items-start gap-3 p-4 text-sm">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+            <span>
+              O período estourou o teto de 2.000 pedidos — os horários abaixo cobrem só parte dele.
+              Use um período mais curto para um recorte completo.
+            </span>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Visão primária: 24 baldes de hora. */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Clock className="h-4 w-4 text-primary" /> Comissão por hora do dia
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <Skeleton className="h-[220px] w-full" />
+          ) : resumo.totalPedidos === 0 ? (
+            <EmptyState
+              icon={Clock}
+              text={
+                USE_MOCK
+                  ? "Nenhum pedido neste recorte. Em mock, rode com VITE_MOCK_DENSE=true para ver a aba com volume realista."
+                  : "Nenhum pedido neste recorte. Escolha outro período ou outra origem."
+              }
+            />
+          ) : (
+            <>
+              <BarrasPorHora horas={resumo.horas} janela={janela} currency={currency} />
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setVerTabela((v) => !v)}>
+                  {verTabela ? "Ocultar tabela" : "Ver como tabela"}
+                </Button>
+                {resumo.gradeDisponivel ? (
+                  <Button variant="outline" size="sm" onClick={() => setVerGrade((v) => !v)}>
+                    {verGrade ? "Ocultar grade por dia" : "Ver grade dia × hora"}
+                  </Button>
+                ) : (
+                  <span className="text-xs text-faint">
+                    Grade dia × hora a partir de {formatNumber(MIN_PEDIDOS_GRADE)} pedidos (você tem{" "}
+                    {formatNumber(resumo.totalPedidos)}) — são 168 células, e abaixo disso o desenho é ruído.
+                  </span>
+                )}
+              </div>
+              {verTabela && (
+                <div className="mt-4">
+                  <TabelaHorarios horas={resumo.horas} currency={currency} total={resumo.totalComissao} />
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Visão secundária: grade 7×24, só com amostra grande. */}
+      {!isLoading && resumo.gradeDisponivel && verGrade && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Radar className="h-4 w-4 text-primary" /> Dia da semana × hora
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <GradeSemanal grade={resumo.grade} currency={currency} />
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }

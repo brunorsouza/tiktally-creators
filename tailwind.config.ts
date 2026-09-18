@@ -90,6 +90,14 @@ export default {
           pink: "hsl(var(--brand-pink))",
           cyan: "hsl(var(--brand-cyan))",
         },
+        // rampa sequencial (magnitude) do heatmap de horários — um tom só, claro→escuro
+        heat: {
+          1: "hsl(var(--heat-1))",
+          2: "hsl(var(--heat-2))",
+          3: "hsl(var(--heat-3))",
+          4: "hsl(var(--heat-4))",
+          5: "hsl(var(--heat-5))",
+        },
         // trilho/sidebar do shell — mais escuro que o card no dark
         panel: "hsl(var(--panel))",
         // 3º nível de texto: legendas, metadados, unidades
