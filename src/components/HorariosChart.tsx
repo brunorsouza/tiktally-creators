@@ -32,16 +32,19 @@ function money(valor: number, currency: string): string {
 
 // =============== Barras por hora (visão primária) ===============
 
+/** `payload` vem tipado como `Payload<ValueType, NameType>[]` pelo Recharts (com
+ *  `payload?: any` dentro), então o tipo aqui precisa ser largo o bastante para o
+ *  spread de `content={...}` casar — a estreitada para `HoraBucket` é feita aqui. */
 function BarraTooltip({
   active,
   payload,
   currency,
 }: {
   active?: boolean;
-  payload?: { payload: HoraBucket }[];
+  payload?: readonly { payload?: unknown }[];
   currency: string;
 }) {
-  const b = active ? payload?.[0]?.payload : undefined;
+  const b = active ? (payload?.[0]?.payload as HoraBucket | undefined) : undefined;
   if (!b) return null;
   return (
     <div className="rounded-lg border bg-card px-3 py-2 text-xs shadow-sm">
