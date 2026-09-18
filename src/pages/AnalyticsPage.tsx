@@ -1629,7 +1629,10 @@ function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string
             <p className="mt-2.5 text-sm text-muted-foreground">
               {formatPercent(janela.share)} da sua comissão caiu nessas 3 horas —{" "}
               {money(janela.comissao, currency)} em {formatNumber(janela.pedidos)}{" "}
-              {janela.pedidos === 1 ? "pedido" : "pedidos"} ({subject}).
+              {/* Separador, e não "em {subject}" nem "({subject})": o subject varia entre
+                  "últimos 90 dias" (que não aceita "em") e "setembro (até hoje)" (que já
+                  vem com parênteses) — só o ponto médio funciona nos dois. */}
+              {janela.pedidos === 1 ? "pedido" : "pedidos"} · {subject}.
             </p>
           )}
 
