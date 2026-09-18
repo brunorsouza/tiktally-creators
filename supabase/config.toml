@@ -11,3 +11,6 @@ verify_jwt = false  # dispatcher de todos os endpoints; JWT validado em creatorA
 
 [functions.account-connect]
 verify_jwt = false  # recebe o code do OAuth; JWT validado dentro da função
+
+[functions.capture-lead]
+verify_jwt = false  # formulário público de lead; a escrita usa service-role dentro da função

@@ -7,6 +7,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Layout } from "@/components/Layout";
 
 import AuthPage from "@/pages/AuthPage";
+import FeiraPage from "@/pages/FeiraPage";
 import AuthCallbackPage from "@/pages/AuthCallbackPage";
 import DashboardPage from "@/pages/DashboardPage";
 import ConnectPage from "@/pages/ConnectPage";
@@ -44,6 +45,8 @@ function App() {
             <Routes>
               {/* Públicas */}
               <Route path="/auth" element={<AuthPage />} />
+              {/* Destino do QR Code do banner de estande. Sem sessão: quem chega aqui não tem conta. */}
+              <Route path="/feira" element={<FeiraPage />} />
 
               {/* Protegidas */}
               <Route
