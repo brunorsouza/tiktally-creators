@@ -77,6 +77,7 @@ import { useHorarios } from "@/hooks/useHorarios";
 import {
   BLOCOS,
   CONFIANCA_LABEL,
+  JANELA_HORAS,
   CONTENT_FILTERS,
   DIAS_CURTOS,
   DIAS_ORDEM,
@@ -93,7 +94,12 @@ import {
   type HoraBucket,
   type ResumoHorarios,
 } from "@/lib/horarios";
-import { fracaoEmPalavras, rotuloCelula, type Acao } from "@/lib/horariosInsights";
+import {
+  fracaoEmPalavras,
+  rotuloCelula,
+  type Acao,
+  type EstatisticasHorarios,
+} from "@/lib/horariosInsights";
 import {
   BarrasPorHora,
   GradeBlocos,
@@ -1592,6 +1598,30 @@ const CONFIANCA_CHIP: Record<Confianca, string> = {
   alta: "chip-success",
 };
 
+/** Descreve o recorte no subtítulo do gráfico. Separado de `LEITURA.titulo`, que é um
+ *  título ("Melhor horário para transmitir") e lia mal no meio de uma linha de contexto. */
+const DESCRICAO_FILTRO: Record<ContentFilter, string> = {
+  tudo: "todas as origens somadas",
+  live: "só as vendas que vieram de live",
+  video: "só as vendas que vieram de vídeo",
+};
+
+/**
+ * Comparação do valor por pedido dentro e fora da janela.
+ *
+ * Três casos, e os três precisam de texto próprio: sem "resto do dia" (todo o período caiu
+ * dentro da janela) não há o que comparar, e quando a janela rende MENOS por pedido a frase
+ * tem que dizer isso. Antes, qualquer diferença até 2% caía em "em linha com o resto do
+ * dia", inclusive uma janela 30% PIOR que o resto.
+ */
+function notaTicket(stats: EstatisticasHorarios): string {
+  if (stats.ticketFora <= 0) return "todas as vendas do período caíram nessa janela";
+  if (stats.upliftTicket > 0.05) return `${formatPercent(stats.upliftTicket, 0)} acima do resto do dia`;
+  if (stats.upliftTicket < -0.05)
+    return `${formatPercent(Math.abs(stats.upliftTicket), 0)} abaixo do resto do dia`;
+  return "em linha com o resto do dia";
+}
+
 const ACAO_ICON: Record<Acao["id"], LucideIcon> = {
   live: CalendarClock,
   video: Video,
@@ -1688,7 +1718,7 @@ function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string
     if (ativas.length < 2) return null;
     const volume = ativas.reduce((a, b) => (b.pedidos > a.pedidos ? b : a));
     const ticket = ativas
-      .filter((h) => h.pedidos >= 2)
+      .filter((h) => h.pedidos >= 3)
       .reduce<HoraBucket | null>((a, b) => (!a || b.comissao / b.pedidos > a.comissao / a.pedidos ? b : a), null);
     if (!ticket || ticket.hora === volume.hora) return null;
     return { volume, ticket };
@@ -1746,8 +1776,8 @@ function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string
           <CardContent className="flex items-start gap-3 p-4 text-sm">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
             <span>
-              O período estourou o teto de 2.000 pedidos. Os horários abaixo cobrem só parte dele. Use um
-              período mais curto para um recorte completo.
+              Este período tem mais pedidos do que conseguimos carregar de uma vez, então os horários
+              abaixo cobrem só parte dele. Escolha um período mais curto para ver tudo.
             </span>
           </CardContent>
         </Card>
@@ -1783,7 +1813,7 @@ function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string
                 {/* Sem "{subject}" aqui: ele varia entre "setembro" e "últimos 90 dias", e
                     nenhuma preposição serve aos dois. O período já está no seletor, no
                     subtítulo do gráfico e nas notas dos KPIs. */}
-                Três horas concentram{" "}
+                Essas {JANELA_HORAS} horas concentram{" "}
                 <span className="font-semibold text-foreground">
                   {fracao ?? formatPercent(janela.share)}
                 </span>{" "}
@@ -1793,7 +1823,7 @@ function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string
                     {/* "bloco mais quente", e não "pico": o KPI ao lado mostra o DIA mais
                         forte, que pode ser outro: são unidades diferentes, e chamar os
                         dois de pico faz a tela parecer contraditória. */}
-                    , e o bloco mais quente é{" "}
+                    , e a sua melhor faixa é{" "}
                     <span className="font-semibold text-foreground">{rotuloCelula(stats.celulaQuente)}</span>
                   </>
                 )}
@@ -1803,8 +1833,8 @@ function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string
 
             {!isLoading && !janela && (
               <p className="mt-2.5 text-[15px] leading-relaxed text-muted-foreground">
-                São {formatNumber(resumo.totalPedidos)} pedidos neste recorte e o mínimo para uma leitura
-                honesta é {MIN_PEDIDOS_RECOMENDACAO}. Com amostra menor, o "melhor horário" é sorte, não
+                São {formatNumber(resumo.totalPedidos)} pedidos neste período, e o mínimo para uma leitura
+                confiável é {MIN_PEDIDOS_RECOMENDACAO}. Com menos que isso, o "melhor horário" é sorte, não
                 padrão. Então preferimos não cravar um número.
               </p>
             )}
@@ -1827,19 +1857,15 @@ function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string
                   <KpiJanela
                     label="Comissão por pedido"
                     valor={money(stats.ticketJanela, currency)}
-                    nota={
-                      stats.upliftTicket > 0.02
-                        ? `${formatPercent(stats.upliftTicket, 0)} acima do resto do dia`
-                        : "em linha com o resto do dia"
-                    }
-                    notaPositiva={stats.upliftTicket > 0.02}
+                    nota={notaTicket(stats)}
+                    notaPositiva={stats.upliftTicket > 0.05}
                   />
                   <KpiJanela
                     label="Dia mais forte"
                     valor={stats.diaMaisForte ? DIAS_CURTOS[stats.diaMaisForte.dia] : "—"}
                     nota={
                       stats.diaMaisForte?.melhorHora
-                        ? `${money(stats.diaMaisForte.melhorHora.comissao, currency)} só às ${rotuloHora(
+                        ? `${money(stats.diaMaisForte.melhorHora.comissao, currency)} vieram das ${rotuloHora(
                             stats.diaMaisForte.melhorHora.hora
                           )}`
                         : undefined
@@ -1851,9 +1877,11 @@ function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string
                 <div className="mt-4 flex flex-col gap-3 rounded-lg border bg-muted/30 p-3.5 sm:flex-row sm:items-center">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-3">
-                      <span className="text-[12.5px] font-medium text-muted-foreground">Amostra até aqui</span>
+                      <span className="text-[12.5px] font-medium text-muted-foreground">Seu histórico até aqui</span>
                       <span className="num text-[12.5px] font-bold">
-                        {formatNumber(resumo.totalPedidos)} de ~{formatNumber(MIN_PEDIDOS_GRADE)} pedidos
+                        {resumo.gradeDisponivel
+                          ? `${formatNumber(resumo.totalPedidos)} pedidos`
+                          : `${formatNumber(resumo.totalPedidos)} de ~${formatNumber(MIN_PEDIDOS_GRADE)} pedidos`}
                       </span>
                     </div>
                     <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
@@ -1870,10 +1898,10 @@ function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string
                   </div>
                   <p className="text-[12.5px] leading-snug text-muted-foreground sm:w-[46%] sm:border-l sm:pl-4">
                     {resumo.gradeDisponivel
-                      ? "Volume suficiente para a grade cheia de 24h × 7 dias."
-                      : `Com esse volume a janela ainda pode se mover. Perto de ${formatNumber(
+                      ? "Vendas suficientes para ver também o detalhe hora a hora da semana."
+                      : `Com esse volume a janela ainda pode mudar. Perto de ${formatNumber(
                           MIN_PEDIDOS_GRADE
-                        )} pedidos liberamos a grade cheia de 24h × 7 dias.`}
+                        )} pedidos abrimos também o detalhe hora a hora da semana.`}
                   </p>
                 </div>
               </>
@@ -1900,8 +1928,8 @@ function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string
               </div>
             ) : acoes.length === 0 ? (
               <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
-                Nenhuma ação com lastro suficiente neste recorte. Cada sugestão aqui tem um piso de
-                evidência. Sem ele, preferimos não sugerir.
+                Ainda não há vendas suficientes para sustentar uma sugestão. Cada uma delas precisa de um
+                mínimo de pedidos para valer. Sem isso, preferimos não sugerir.
               </p>
             ) : (
               <ul className="mt-3.5 space-y-2.5">
@@ -1952,7 +1980,7 @@ function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string
                 {metrica === "comissao" ? "Comissão por hora do dia" : "Pedidos por hora do dia"}
               </p>
               <p className="mt-0.5 text-[12.5px] text-muted-foreground">
-                {subject} · {leitura.titulo.toLowerCase()} · passe o mouse para ver pedidos e ticket
+                {subject} · {DESCRICAO_FILTRO[filtro]} · passe o mouse para ver pedidos e valor por pedido
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -1990,8 +2018,8 @@ function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string
                 icon={Clock}
                 text={
                   USE_MOCK
-                    ? "Nenhum pedido neste recorte. Em mock, rode com VITE_MOCK_DENSE=true para ver a aba com volume realista."
-                    : "Nenhum pedido neste recorte. Escolha outro período ou outra origem."
+                    ? "Nenhum pedido neste período. Em mock, rode com VITE_MOCK_DENSE=true para ver a aba com volume realista."
+                    : "Nenhum pedido neste período. Escolha outro período ou outra origem."
                 }
               />
             ) : (
@@ -2016,12 +2044,12 @@ function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string
                     )}
                     {metrica === "comissao" && (
                       <span className="flex items-center gap-1.5">
-                        <span className="h-px w-4 border-t border-dashed border-muted-foreground" /> Média por
-                        hora ativa
+                        <span className="h-px w-4 border-t border-dashed border-muted-foreground" /> Média das
+                        horas com venda
                       </span>
                     )}
                   </div>
-                  <span className="text-faint">Horas sem pedido aparecem como traço, não como buraco.</span>
+                  <span className="text-faint">Hora sem venda aparece como um traço na base.</span>
                 </div>
                 {verTabela && (
                   <div className="mt-4">
@@ -2040,10 +2068,10 @@ function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string
           <Card>
             <CardContent className="p-5 sm:p-6">
               <div className="mb-4">
-                <p className="text-[15px] font-bold">Dia da semana × bloco do dia</p>
+                <p className="text-[15px] font-bold">Dia da semana e faixa do dia</p>
                 <p className="mt-0.5 text-[12.5px] text-muted-foreground">
-                  28 células em vez de 168: é o recorte que os seus {formatNumber(resumo.totalPedidos)}{" "}
-                  pedidos sustentam
+                  Sua semana em 28 faixas de horário: é o nível de detalhe que os seus{" "}
+                  {formatNumber(resumo.totalPedidos)} pedidos sustentam
                 </p>
               </div>
 
@@ -2051,8 +2079,8 @@ function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string
 
               <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 text-[11.5px]">
                 <span className="text-faint">
-                  Valores em reais de comissão. Leia como tendência: são{" "}
-                  {formatNumber(resumo.totalPedidos)} pedidos espalhados por 28 células.
+                  Valores em comissão. Leia como tendência: são {formatNumber(resumo.totalPedidos)} pedidos
+                  espalhados por 28 faixas.
                 </span>
                 {resumo.gradeDisponivel && (
                   <button
@@ -2060,7 +2088,7 @@ function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string
                     onClick={() => setVerGrade24h((v) => !v)}
                     className="font-semibold text-primary hover:underline"
                   >
-                    {verGrade24h ? "Ocultar a grade de 24h" : "Ver a grade de 24h ↗"}
+                    {verGrade24h ? "Ocultar o detalhe hora a hora" : "Ver hora a hora ↗"}
                   </button>
                 )}
               </div>
@@ -2075,7 +2103,7 @@ function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string
 
           <Card>
             <CardContent className="p-5">
-              <p className="text-[15px] font-bold">Suas 5 melhores horas</p>
+              <p className="text-[15px] font-bold">Horas que mais renderam</p>
               <p className="mt-0.5 text-[12.5px] text-muted-foreground">Ordenado por comissão no período</p>
 
               <div className="mt-4">
@@ -2090,8 +2118,8 @@ function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string
                     {formatNumber(contraste.volume.pedidos)} pedidos e tirou{" "}
                     {money(contraste.volume.comissao / contraste.volume.pedidos, currency)} de cada. Às{" "}
                     {rotuloHora(contraste.ticket.hora)} foram {formatNumber(contraste.ticket.pedidos)} a{" "}
-                    {money(contraste.ticket.comissao / contraste.ticket.pedidos, currency)}. Volume e ticket
-                    não moram no mesmo horário.
+                    {money(contraste.ticket.comissao / contraste.ticket.pedidos, currency)}. Quantidade e
+                    valor por pedido não moram no mesmo horário.
                   </p>
                 </div>
               )}

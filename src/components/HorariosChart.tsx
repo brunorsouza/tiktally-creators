@@ -81,7 +81,7 @@ function TooltipHora({
       ) : (
         <p className="mt-0.5 text-muted-foreground">
           {money(p.comissao, currency)} · {formatNumber(p.pedidos)}{" "}
-          {p.pedidos === 1 ? "pedido" : "pedidos"} · {money(ticket, currency)}/pedido
+          {p.pedidos === 1 ? "pedido" : "pedidos"} · {money(ticket, currency)} por pedido
         </p>
       )}
     </div>
@@ -200,7 +200,7 @@ export function BarrasPorHora({
                 strokeDasharray="4 4"
                 strokeOpacity={0.7}
                 label={{
-                  value: `média das horas ativas · ${money(media, currency)}`,
+                  value: `média das horas com venda · ${money(media, currency)}`,
                   position: "insideTopLeft",
                   fill: "hsl(var(--muted-foreground))",
                   fontSize: 10,
@@ -434,7 +434,7 @@ export function GradeSemanal({ grade, currency }: { grade: CelulaGrade[]; curren
             {!hover && <span className="ml-1.5 text-faint">(pico)</span>}
           </p>
         ) : (
-          <p className="text-[13px] text-muted-foreground">Passe o mouse nas células para ver o detalhe.</p>
+          <p className="text-[13px] text-muted-foreground">Passe o mouse no gráfico para ver o detalhe.</p>
         )}
         <LegendaHeat />
       </div>
@@ -503,7 +503,7 @@ export function TabelaHorarios({
             <th className="px-3 py-2 text-right font-medium">Pedidos</th>
             <th className="px-3 py-2 text-right font-medium">Comissão</th>
             <th className="px-3 py-2 text-right font-medium">Por pedido</th>
-            <th className="px-3 py-2 text-right font-medium">Fatia</th>
+            <th className="px-3 py-2 text-right font-medium">% do total</th>
           </tr>
         </thead>
         <tbody>

@@ -3,6 +3,7 @@ import {
   DIAS_LONGOS,
   JANELA_HORAS,
   celulaBloco,
+  horasDaJanela,
   rotuloHora,
   type CelulaBloco,
   type CelulaGrade,
@@ -28,7 +29,7 @@ import {
 /** Pisos de evidência por afirmação: quantos pedidos a frase precisa para existir. */
 export const MIN_PEDIDOS_ACAO_LIVE = 3;
 export const MIN_PEDIDOS_ACAO_TESTE = 2;
-/** Prescrever "evite" exige lastro; abaixo disso a mesma célula só é descrita. */
+/** Prescrever "evite" exige lastro; abaixo disso a mesma faixa só é descrita. */
 export const MIN_PEDIDOS_PRESCRICAO = 100;
 
 export interface EstatisticasHorarios {
@@ -63,45 +64,76 @@ function ticketDe(comissao: number, pedidos: number): number {
 }
 
 /**
- * Pior janela de 3h, só DENTRO do intervalo ativo do creator.
+ * A segunda melhor janela de 3h, SEPARADA da primeira dos dois lados.
  *
- * Sem essa restrição a resposta é sempre a madrugada, e "evite as 4h da manhã" é um
- * conselho vazio para quem nunca trabalhou às 4h. O buraco que interessa é o que fica no
- * meio do dia em que a pessoa já está ativa.
+ * "Não sobrepor" não basta: 23h-01h não encosta em 20h-22h, mas é a mesma montanha, e
+ * tomá-la como segundo pico faz o vão do dia virar a madrugada de novo. Exigindo pelo
+ * menos JANELA_HORAS de folga nos dois arcos, a segunda janela é obrigada a ser outro
+ * bloco da rotina (o almoço, tipicamente), que é o que dá sentido a "o vão entre os dois".
  */
-function janelaFriaDe(horas: HoraBucket[]): Janela | undefined {
-  const ativas = horas.filter((h) => h.pedidos > 0);
-  if (ativas.length < 2) return undefined;
-
-  /*
-   * O intervalo candidato vai da primeira à última hora FORTE (acima da média das horas
-   * ativas), não da primeira à última hora com qualquer venda.
-   *
-   * Com "qualquer venda" a resposta vira a madrugada em qualquer conta que venda 24h, e
-   * "evite as 3h da manhã" não é conselho: é o horário em que a pessoa dorme. O buraco
-   * que importa é o vão ENTRE os picos: a hora morta no meio do dia de trabalho.
-   */
-  const media = ativas.reduce((s, h) => s + h.comissao, 0) / ativas.length;
-  const fortes = ativas.filter((h) => h.comissao >= media);
-  if (fortes.length < 2) return undefined;
-  const primeira = fortes[0].hora;
-  const ultima = fortes[fortes.length - 1].hora;
-  // Precisa de espaço para existir um "meio": um vão de 3h entre os dois picos extremos.
-  if (ultima - primeira < JANELA_HORAS + 1) return undefined;
-
-  const total = horas.reduce((s, h) => s + h.comissao, 0);
-  let pior: Janela | undefined;
-  for (let inicio = primeira; inicio + JANELA_HORAS - 1 <= ultima; inicio++) {
-    let comissao = 0;
-    let pedidos = 0;
-    for (let k = 0; k < JANELA_HORAS; k++) {
-      comissao += horas[inicio + k].comissao;
-      pedidos += horas[inicio + k].pedidos;
+function segundaJanelaDe(horas: HoraBucket[], primeira: Janela): Janela | undefined {
+  const ocupadas = new Set(horasDaJanela(primeira));
+  let melhor: Janela | undefined;
+  for (let inicio = 0; inicio < 24; inicio++) {
+    const hs = Array.from({ length: JANELA_HORAS }, (_, k) => (inicio + k) % 24);
+    // A sobreposição tem de ser testada por conjunto, ANTES da folga. A folga é uma
+    // subtração modular, e sobre a própria janela de ouro ela dá a volta no relógio e
+    // devolve 21h de folga: sem esta linha, a "segunda janela" era a primeira de novo,
+    // os dois arcos ficavam iguais e o vão caía sempre na madrugada.
+    if (hs.some((h) => ocupadas.has(h))) continue;
+    const fim = (inicio + JANELA_HORAS - 1) % 24;
+    const antes = (inicio - primeira.fim - 1 + 24) % 24;
+    const depois = (primeira.inicio - fim - 1 + 24) % 24;
+    if (antes < JANELA_HORAS || depois < JANELA_HORAS) continue;
+    const comissao = hs.reduce((acc, h) => acc + horas[h].comissao, 0);
+    const pedidos = hs.reduce((acc, h) => acc + horas[h].pedidos, 0);
+    if (!melhor || comissao > melhor.comissao) {
+      melhor = { inicio, fim, comissao, pedidos, share: 0 };
     }
+  }
+  return melhor;
+}
+
+/**
+ * O vão entre os dois melhores horários do creator.
+ *
+ * Duas tentativas anteriores erraram pelo mesmo motivo, e vale registrar para não voltar:
+ * procurar a pior janela "entre a primeira e a última venda" devolve sempre a madrugada, e
+ * restringir às horas acima da média também, porque numa distribuição torta a média é
+ * baixa e uma hora de 2 vendas gordas de madrugada passa como "hora forte". Nos dois casos
+ * o app mandava evitar 02h-04h, que é quando a pessoa dorme, não um buraco de operação.
+ *
+ * O recorte certo não é estatístico, é de rotina: o creator tem dois blocos bons no dia
+ * (almoço e noite, por exemplo) e o que interessa é o vão ENTRE eles. Por isso olhamos só
+ * o arco mais curto que separa a melhor janela da segunda melhor. A madrugada fica fora
+ * por construção, porque ela é o arco longo.
+ */
+function janelaFriaDe(horas: HoraBucket[], melhor?: Janela): Janela | undefined {
+  if (!melhor) return undefined;
+  const segunda = segundaJanelaDe(horas, melhor);
+  if (!segunda || segunda.pedidos === 0) return undefined;
+
+  // Os dois arcos que separam as janelas; o vão do dia é o mais curto.
+  const arcos = [
+    { inicio: (melhor.fim + 1) % 24, tamanho: (segunda.inicio - melhor.fim - 1 + 24) % 24 },
+    { inicio: (segunda.fim + 1) % 24, tamanho: (melhor.inicio - segunda.fim - 1 + 24) % 24 },
+  ]
+    .filter((a) => a.tamanho >= JANELA_HORAS)
+    .sort((a, b) => a.tamanho - b.tamanho);
+  const arco = arcos[0];
+  if (!arco) return undefined;
+
+  const total = horas.reduce((acc, h) => acc + h.comissao, 0);
+  let pior: Janela | undefined;
+  for (let passo = 0; passo <= arco.tamanho - JANELA_HORAS; passo++) {
+    const inicio = (arco.inicio + passo) % 24;
+    const hs = Array.from({ length: JANELA_HORAS }, (_, k) => (inicio + k) % 24);
+    const comissao = hs.reduce((acc, h) => acc + horas[h].comissao, 0);
+    const pedidos = hs.reduce((acc, h) => acc + horas[h].pedidos, 0);
     if (!pior || comissao < pior.comissao) {
       pior = {
         inicio,
-        fim: inicio + JANELA_HORAS - 1,
+        fim: (inicio + JANELA_HORAS - 1) % 24,
         comissao,
         pedidos,
         share: total > 0 ? comissao / total : 0,
@@ -198,7 +230,7 @@ export function calcularEstatisticas(resumo: ResumoHorarios, blocos: CelulaBloco
     celulaQuente,
     horaDaCelulaQuente,
     celulaSubaproveitada,
-    janelaFria: janelaFriaDe(horas),
+    janelaFria: janelaFriaDe(horas, melhorJanela),
     topHoras: [...ativas].sort((a, b) => b.comissao - a.comissao).slice(0, 5),
   };
 }
@@ -265,9 +297,9 @@ export function acoesDe(
       id: "live",
       titulo: `Marque a próxima live para ${DIAS_LONGOS[celula.dia]}, por volta das ${rotuloHora(h.hora)}`,
       // Sem meia-hora: a grade é horária, e "20h30" seria uma precisão que o dado não tem.
-      texto: `É a célula mais quente da sua semana: ${BRL(celula.comissao)} em ${celula.pedidos} pedidos, ${BRL(
+      texto: `É o horário mais forte da sua semana: ${BRL(celula.comissao)} em ${celula.pedidos} pedidos, sendo ${BRL(
         h.comissao
-      )} só na hora das ${rotuloHora(h.hora)}.`,
+      )} na hora das ${rotuloHora(h.hora)}.`,
     });
   }
 
@@ -276,11 +308,11 @@ export function acoesDe(
     acoes.push({
       id: "video",
       titulo: `Publique os vídeos até as ${limite}`,
-      texto: `Inferência, não medição: o dado diz quando seu público compra (${rotuloHora(
+      texto: `O que os dados mostram é quando o seu público compra (${rotuloHora(
         melhorJanela.inicio
       )}–${rotuloHora(
         melhorJanela.fim
-      )}), e o vídeo precisa já estar circulando quando a janela abre. A hora de publicação de um vídeo não vem em nenhuma API de creator.`,
+      )}). Para vender nessa hora, o vídeo já precisa estar rodando antes dela. Isso é dedução, não medição: o TikTok não informa a que horas cada vídeo foi publicado.`,
     });
   }
 
@@ -293,7 +325,7 @@ export function acoesDe(
       titulo: `Teste ${rotuloCelula(teste)}`,
       texto: `Só ${teste.pedidos} pedidos ali no período, mas a ${BRL(
         ticketCelula
-      )} cada, contra ${BRL(ticketGeral)} da sua média. Bloco de ticket alto que você quase não trabalha.`,
+      )} cada, contra ${BRL(ticketGeral)} da sua média. Rende bem por pedido e você quase não usa esse horário.`,
     });
   }
 
@@ -301,7 +333,7 @@ export function acoesDe(
 }
 
 /**
- * A nota do rodapé do painel de ações: o vale do dia.
+ * A nota do rodapé do painel de ações: o vão entre os dois melhores horários.
  *
  * O verbo muda com a amostra: abaixo de `MIN_PEDIDOS_PRESCRICAO` ela DESCREVE o que
  * aconteceu; só com lastro ela manda evitar. "Evite 14h–16h" tirado de 1 pedido no mês
@@ -311,7 +343,7 @@ export function notaDoVale(
   resumo: ResumoHorarios,
   stats: EstatisticasHorarios
 ): { prescritiva: boolean; texto: string } | null {
-  // Mesma regra das ações: sem lastro para a janela de ouro, não há vale para apontar.
+  // Mesma regra das ações: sem lastro para a janela de ouro, não há vão para apontar.
   if (resumo.confianca === "insuficiente") return null;
   const fria = stats.janelaFria;
   if (!fria) return null;
@@ -332,11 +364,14 @@ export function notaDoVale(
       : "";
 
   if (resumo.totalPedidos >= MIN_PEDIDOS_PRESCRICAO) {
-    return { prescritiva: true, texto: `Evite ${faixa}: ${quanto}${contra}.` };
+    return {
+      prescritiva: true,
+      texto: `Evite ${faixa}, o vão entre os seus dois melhores horários: ${quanto}${contra}.`,
+    };
   }
   return {
     prescritiva: false,
-    texto: `${faixa} foi o seu vale no período: ${quanto}${contra}. Com ${resumo.totalPedidos} pedidos ainda é cedo para tratar como regra.`,
+    texto: `${faixa} é o vão entre os seus dois melhores horários: ${quanto}${contra}. Com ${resumo.totalPedidos} pedidos ainda é cedo para tratar como regra.`,
   };
 }
 

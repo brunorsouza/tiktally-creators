@@ -311,7 +311,7 @@ export function horasDaJanela(j: Janela): number[] {
 export const DIAS_CURTOS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"] as const;
 
 export const CONFIANCA_LABEL: Record<Confianca, string> = {
-  insuficiente: "Amostra insuficiente",
+  insuficiente: "Dados insuficientes",
   baixa: "Confiança baixa",
   media: "Confiança média",
   alta: "Confiança alta",
@@ -327,7 +327,7 @@ export const LEITURA: Record<ContentFilter, { titulo: string; explicacao: string
   tudo: {
     titulo: "Quando suas vendas acontecem",
     explicacao:
-      "Todas as origens somadas (live, vídeo, vitrine e links). Serve como mapa de demanda da sua audiência.",
+      "Soma tudo: live, vídeo, vitrine e links. Mostra em que horas o seu público costuma comprar.",
     recomenda: false,
   },
   live: {
@@ -339,7 +339,7 @@ export const LEITURA: Record<ContentFilter, { titulo: string; explicacao: string
   video: {
     titulo: "Quando seu público compra",
     explicacao:
-      "Isto NÃO é a melhor hora para postar: pedidos de vídeo chegam por dias depois da publicação, então a hora do pedido não diz a hora do post. Nenhuma API de creator devolve a hora de publicação de um vídeo.",
+      "Isto NÃO é a melhor hora para postar: as vendas de um vídeo chegam ao longo de vários dias depois da publicação, então a hora da venda não diz a hora do post. O TikTok não informa a que horas cada vídeo foi publicado.",
     recomenda: false,
   },
 };
