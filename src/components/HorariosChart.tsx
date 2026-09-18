@@ -32,9 +32,9 @@ import { cn } from "@/lib/utils";
  * Visuais da aba Horários. Ver docs/SPEC_MELHOR_HORARIO.md §7.
  *
  * Três formas, três papéis:
- * - `BarrasPorHora` (24 colunas) — visão primária: a forma do dia.
- * - `GradeBlocos` (7 × 4 = 28 células) — a semana no recorte que a amostra sustenta.
- * - `GradeSemanal` (7 × 24 = 168) — a grade cheia, só para quem tem volume de verdade.
+ * - `BarrasPorHora` (24 colunas): visão primária: a forma do dia.
+ * - `GradeBlocos` (7 × 4 = 28 células): a semana no recorte que a amostra sustenta.
+ * - `GradeSemanal` (7 × 24 = 168): a grade cheia, só para quem tem volume de verdade.
  */
 
 function money(valor: number, currency: string): string {
@@ -45,7 +45,7 @@ function money(valor: number, currency: string): string {
   }
 }
 
-/** A métrica que as barras desenham — comissão em R$ ou contagem de pedidos. */
+/** A métrica que as barras desenham: comissão em R$ ou contagem de pedidos. */
 export type MetricaHora = "comissao" | "pedidos";
 
 // =============== Barras por hora (visão primária) ===============
@@ -95,7 +95,7 @@ function TooltipHora({
  * barra pelo próprio valor gastaria o canal de cor repetindo o que a altura já diz.
  *
  * O eixo X é numérico (e não de categoria) para a faixa da janela poder cair exatamente
- * nas bordas das barras — num eixo de categoria ela cortaria a primeira e a última ao
+ * nas bordas das barras. Num eixo de categoria ela cortaria a primeira e a última ao
  * meio.
  */
 export function BarrasPorHora({
@@ -124,7 +124,7 @@ export function BarrasPorHora({
       valor: metrica === "comissao" ? h.comissao : h.pedidos,
       traco: h.pedidos === 0 && max > 0 ? max * 0.012 : 0,
     }));
-    // Rótulo só nas duas maiores — um número em cima de toda barra vira ruído.
+    // Rótulo só nas duas maiores, porque um número em cima de toda barra vira ruído.
     const rotulados = new Set(
       [...dados]
         .filter((d) => d.valor > 0)
@@ -144,7 +144,7 @@ export function BarrasPorHora({
           <BarChart data={dados} margin={{ top: 28, right: 12, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
 
-            {/* faixa da janela recomendada — meia casa para cada lado cobre as barras inteiras */}
+            {/* faixa da janela recomendada: meia casa para cada lado cobre as barras inteiras */}
             {janela && temDestaque && (
               <ReferenceArea
                 x1={janela.inicio - 0.5}
@@ -263,8 +263,8 @@ export function BarrasPorHora({
 
 // =============== Rampa compartilhada ===============
 
-/** Nível 0 = sem venda. `bg-muted/40` fica MAIS CLARO que o passo 1 nos dois temas —
- *  se virasse `bg-muted` cheio, a célula vazia leria como mais quente que a mais fria. */
+/** Nível 0 = sem venda. `bg-muted/40` fica MAIS CLARO que o passo 1 nos dois temas.
+ *  Se virasse `bg-muted` cheio, a célula vazia leria como mais quente que a mais fria. */
 const HEAT_BG = [
   "bg-muted/40",
   "bg-heat-1",
@@ -274,7 +274,7 @@ const HEAT_BG = [
   "bg-heat-5",
 ] as const;
 
-/** Nos dois passos extremos da rampa o texto precisa inverter — e a inversão é por TEMA,
+/** Nos dois passos extremos da rampa o texto precisa inverter, e a inversão é por TEMA,
  *  não fixa: no claro os passos 4-5 são escuros (tinta branca), no escuro são os mais
  *  claros (tinta escura). Quem resolve isso é o token `--heat-ink`, que troca junto. */
 function textoDoNivel(nivel: number): string {
@@ -352,8 +352,8 @@ export function GradeBlocos({
                     )}
                     title={
                       vazia
-                        ? `${DIAS_CURTOS[dia]} · ${bloco.label} (${bloco.faixa}) — sem pedido`
-                        : `${DIAS_CURTOS[dia]} · ${bloco.label} (${bloco.faixa}) — ${money(
+                        ? `${DIAS_CURTOS[dia]} · ${bloco.label} (${bloco.faixa}): sem pedido`
+                        : `${DIAS_CURTOS[dia]} · ${bloco.label} (${bloco.faixa}): ${money(
                             c.comissao,
                             currency
                           )} em ${formatNumber(c.pedidos)} pedido(s)`
@@ -373,7 +373,7 @@ export function GradeBlocos({
 
 // =============== Top horas ===============
 
-/** As 5 horas que mais renderam, com volume e ticket ao lado — é o par que revela que
+/** As 5 horas que mais renderam, com volume e ticket ao lado: é o par que revela que
  *  "hora que vende muito" e "hora de ticket alto" nem sempre são a mesma. */
 export function TopHoras({ horas, currency }: { horas: HoraBucket[]; currency: string }) {
   const max = horas[0]?.comissao ?? 0;
@@ -427,7 +427,7 @@ export function GradeSemanal({ grade, currency }: { grade: CelulaGrade[]; curren
               {DIAS_CURTOS[foco.dia]} · {rotuloHora(foco.hora)}
             </span>
             <span className="text-muted-foreground">
-              {" — "}
+              {": "}
               {money(foco.comissao, currency)} · {formatNumber(foco.pedidos)}{" "}
               {foco.pedidos === 1 ? "pedido" : "pedidos"}
             </span>
@@ -441,7 +441,7 @@ export function GradeSemanal({ grade, currency }: { grade: CelulaGrade[]; curren
 
       <div className="overflow-x-auto">
         <div className="min-w-[620px]" onMouseLeave={() => setHover(null)}>
-          {/* régua de horas — de 3 em 3 para não colidir. O spacer repete a calha do
+          {/* régua de horas, de 3 em 3 para não colidir. O spacer repete a calha do
               rótulo do dia (w-9 + pr-1) para as colunas baterem com as células. */}
           <div className="mb-1 flex gap-[2px]">
             <span className="w-9 shrink-0 pr-1" />
@@ -466,7 +466,7 @@ export function GradeSemanal({ grade, currency }: { grade: CelulaGrade[]; curren
                       "h-[19px] flex-1 rounded-[3px] transition-opacity hover:opacity-70",
                       HEAT_BG[c.nivel]
                     )}
-                    title={`${DIAS_CURTOS[dia]} ${rotuloHora(hora)} — ${money(
+                    title={`${DIAS_CURTOS[dia]} ${rotuloHora(hora)}: ${money(
                       c.comissao,
                       currency
                     )} · ${formatNumber(c.pedidos)} pedido(s)`}
@@ -484,7 +484,7 @@ export function GradeSemanal({ grade, currency }: { grade: CelulaGrade[]; curren
 
 // =============== Tabela (mesma informação em texto) ===============
 
-/** Equivalente textual do gráfico — conferência e acessibilidade. */
+/** Equivalente textual do gráfico: conferência e acessibilidade. */
 export function TabelaHorarios({
   horas,
   currency,

@@ -19,10 +19,10 @@ import {
 } from "@/lib/horariosInsights";
 
 /**
- * Melhor Horário — aba "Horários" de Analytics. Ver docs/SPEC_MELHOR_HORARIO.md.
+ * Melhor Horário: aba "Horários" de Analytics. Ver docs/SPEC_MELHOR_HORARIO.md.
  *
  * Nenhuma chamada nova à API: deriva tudo de `useAllAffiliateOrders`, o MESMO hook (e a
- * mesma `queryKey`) que a aba Ranking já usa — ou seja, trocar de aba não refaz a busca.
+ * mesma `queryKey`) que a aba Ranking já usa, ou seja, trocar de aba não refaz a busca.
  *
  * Escopo: `creator.affiliate_collaboration.read`, 🟢 ativo no app. Diferente do Agendador
  * (travado em `creator.video.write`), esta feature roda em produção hoje.
@@ -62,7 +62,7 @@ export function useHorarios(range: GanhosFilters, filtro: ContentFilter, timeZon
     [vendas, tz, filtro]
   );
 
-  /** Grade de 28 células (7 dias × 4 blocos) — o recorte que amostras reais sustentam. */
+  /** Grade de 28 células (7 dias × 4 blocos): o recorte que amostras reais sustentam. */
   const blocos: CelulaBloco[] = useMemo(() => resumirBlocos(resumo.grade), [resumo.grade]);
 
   const stats: EstatisticasHorarios = useMemo(
@@ -70,7 +70,7 @@ export function useHorarios(range: GanhosFilters, filtro: ContentFilter, timeZon
     [resumo, blocos]
   );
 
-  /** Ações e a nota do vale — cada uma com o próprio piso de evidência (horariosInsights). */
+  /** Ações e a nota do vale, cada uma com o próprio piso de evidência (horariosInsights). */
   const acoes: Acao[] = useMemo(() => acoesDe(resumo, stats, filtro), [resumo, stats, filtro]);
   const vale = useMemo(() => notaDoVale(resumo, stats), [resumo, stats]);
 
@@ -87,7 +87,7 @@ export function useHorarios(range: GanhosFilters, filtro: ContentFilter, timeZon
     currency,
     isLoading: orders.isLoading || semResposta,
     error: orders.error,
-    /** O teto de 2000 pedidos foi atingido — o período está incompleto. */
+    /** O teto de 2000 pedidos foi atingido; o período está incompleto. */
     truncated: !!orders.data?.truncated,
   };
 }

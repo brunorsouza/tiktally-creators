@@ -14,18 +14,18 @@ import {
 
 /**
  * Leitura editorial do resumo de horários: as estatísticas derivadas e as frases que a
- * tela mostra. Separado de `horarios.ts` de propósito — lá mora a matemática, aqui mora
+ * tela mostra. Separado de `horarios.ts` de propósito: lá mora a matemática, aqui mora
  * o que o app AFIRMA a partir dela, que é onde esta feature pode mentir.
  *
  * Ver docs/SPEC_MELHOR_HORARIO.md §4 e §6.4. Duas regras valem em tudo neste arquivo:
  *
- * 1. Toda afirmação tem piso de evidência. Sem o piso a frase não aparece — não existe
+ * 1. Toda afirmação tem piso de evidência. Sem o piso a frase não aparece. Não existe
  *    versão "fraquinha" de um conselho tirado de 1 pedido.
  * 2. Em amostra baixa o verbo DESCREVE ("foi o seu vale"); só em amostra alta ele
  *    PRESCREVE ("evite"). O mesmo número não vira ordem quando não tem lastro.
  */
 
-/** Pisos de evidência por afirmação — quantos pedidos a frase precisa para existir. */
+/** Pisos de evidência por afirmação: quantos pedidos a frase precisa para existir. */
 export const MIN_PEDIDOS_ACAO_LIVE = 3;
 export const MIN_PEDIDOS_ACAO_TESTE = 2;
 /** Prescrever "evite" exige lastro; abaixo disso a mesma célula só é descrita. */
@@ -45,10 +45,10 @@ export interface EstatisticasHorarios {
   diaMaisForte?: { dia: number; comissao: number; melhorHora?: HoraBucket };
   /** Célula (dia × bloco) mais quente da semana. */
   celulaQuente?: CelulaBloco;
-  /** Melhor hora dentro da célula quente — o que vira horário sugerido de live. */
+  /** Melhor hora dentro da célula quente, que vira o horário sugerido de live. */
   horaDaCelulaQuente?: HoraBucket;
   /**
-   * Célula que rendeu bem apesar de quase não ser trabalhada — candidata a teste.
+   * Célula que rendeu bem apesar de quase não ser trabalhada, candidata a teste.
    * "Pouco trabalhada" = menos pedidos que a média das células ativas.
    */
   celulaSubaproveitada?: CelulaBloco;
@@ -63,7 +63,7 @@ function ticketDe(comissao: number, pedidos: number): number {
 }
 
 /**
- * Pior janela de 3h — só DENTRO do intervalo ativo do creator.
+ * Pior janela de 3h, só DENTRO do intervalo ativo do creator.
  *
  * Sem essa restrição a resposta é sempre a madrugada, e "evite as 4h da manhã" é um
  * conselho vazio para quem nunca trabalhou às 4h. O buraco que interessa é o que fica no
@@ -75,11 +75,11 @@ function janelaFriaDe(horas: HoraBucket[]): Janela | undefined {
 
   /*
    * O intervalo candidato vai da primeira à última hora FORTE (acima da média das horas
-   * ativas) — não da primeira à última hora com qualquer venda.
+   * ativas), não da primeira à última hora com qualquer venda.
    *
    * Com "qualquer venda" a resposta vira a madrugada em qualquer conta que venda 24h, e
    * "evite as 3h da manhã" não é conselho: é o horário em que a pessoa dorme. O buraco
-   * que importa é o vão ENTRE os picos — a hora morta no meio do dia de trabalho.
+   * que importa é o vão ENTRE os picos: a hora morta no meio do dia de trabalho.
    */
   const media = ativas.reduce((s, h) => s + h.comissao, 0) / ativas.length;
   const fortes = ativas.filter((h) => h.comissao >= media);
@@ -146,7 +146,7 @@ export function calcularEstatisticas(resumo: ResumoHorarios, blocos: CelulaBloco
     undefined
   );
 
-  // Melhor hora dentro da célula quente — é dela que sai o horário sugerido de live.
+  // Melhor hora dentro da célula quente: é dela que sai o horário sugerido de live.
   let horaDaCelulaQuente: HoraBucket | undefined;
   if (celulaQuente) {
     const faixa = BLOCOS[celulaQuente.bloco];
@@ -163,7 +163,7 @@ export function calcularEstatisticas(resumo: ResumoHorarios, blocos: CelulaBloco
   /*
    * Candidata a teste: bloco de TICKET alto que você quase não trabalha.
    *
-   * "Quase não trabalha" precisa ser bem abaixo da média, não apenas abaixo — com o corte
+   * "Quase não trabalha" precisa ser bem abaixo da média, não apenas abaixo. Com o corte
    * em `< média` uma célula de 15 pedidos numa média de 16,5 entrava como "você quase não
    * trabalha isso", o que é falso. O corte é 60% da média.
    *
@@ -205,7 +205,7 @@ export function calcularEstatisticas(resumo: ResumoHorarios, blocos: CelulaBloco
 
 // =============== Frases ===============
 
-/** "um terço" lê melhor que "32,0%" numa frase — mas só quando a fração é redonda mesmo. */
+/** "um terço" lê melhor que "32,0%" numa frase, mas só quando a fração é redonda mesmo. */
 export function fracaoEmPalavras(share: number): string | null {
   if (share >= 0.44 && share <= 0.57) return "metade";
   if (share >= 0.3 && share <= 0.38) return "um terço";
@@ -216,7 +216,7 @@ export function fracaoEmPalavras(share: number): string | null {
 
 const BLOCO_ADVERBIO = ["à noite", "à tarde", "de manhã", "de madrugada"] as const;
 
-/** "quarta à noite" — como a célula quente é falada numa frase. */
+/** "quarta à noite": como a célula quente é falada numa frase. */
 export function rotuloCelula(c: CelulaBloco): string {
   return `${DIAS_LONGOS[c.dia]} ${BLOCO_ADVERBIO[c.bloco]}`;
 }
@@ -228,13 +228,13 @@ export interface Acao {
 }
 
 /**
- * As ações sugeridas — a parte mais perigosa da tela, porque é a única que diz ao creator
+ * As ações sugeridas, a parte mais perigosa da tela, porque é a única que diz ao creator
  * o que FAZER. Cada uma só existe se passar do próprio piso de evidência.
  *
  * A ação de vídeo é a mais delicada: ela é INFERÊNCIA, não achado. O dado diz quando o
  * público compra; postar antes da janela abrir é raciocínio em cima disso, porque
  * nenhuma API de creator devolve a hora de publicação de um vídeo (spec §2). O texto
- * carrega essa distinção em vez de esconder — e sob o filtro "Vídeo" o painel ainda
+ * carrega essa distinção em vez de esconder, e sob o filtro "Vídeo" o painel ainda
  * mostra a ressalva inteira.
  */
 export function acoesDe(
@@ -248,7 +248,7 @@ export function acoesDe(
   /*
    * Piso ANTES de qualquer piso individual: se a amostra não sustenta nem nomear a janela
    * de ouro, ela não sustenta nenhum conselho. Sem esta linha a tela ficava se
-   * contradizendo — o cartão dizia "ainda não dá para dizer" e o painel ao lado mandava
+   * contradizendo: o cartão dizia "ainda não dá para dizer" e o painel ao lado mandava
    * marcar live na quinta às 12h, com base em 3 pedidos.
    */
   if (resumo.confianca === "insuficiente") return acoes;
@@ -265,7 +265,7 @@ export function acoesDe(
       id: "live",
       titulo: `Marque a próxima live para ${DIAS_LONGOS[celula.dia]}, por volta das ${rotuloHora(h.hora)}`,
       // Sem meia-hora: a grade é horária, e "20h30" seria uma precisão que o dado não tem.
-      texto: `É a célula mais quente da sua semana — ${BRL(celula.comissao)} em ${celula.pedidos} pedidos, ${BRL(
+      texto: `É a célula mais quente da sua semana: ${BRL(celula.comissao)} em ${celula.pedidos} pedidos, ${BRL(
         h.comissao
       )} só na hora das ${rotuloHora(h.hora)}.`,
     });
@@ -293,7 +293,7 @@ export function acoesDe(
       titulo: `Teste ${rotuloCelula(teste)}`,
       texto: `Só ${teste.pedidos} pedidos ali no período, mas a ${BRL(
         ticketCelula
-      )} cada — contra ${BRL(ticketGeral)} da sua média. Bloco de ticket alto que você quase não trabalha.`,
+      )} cada, contra ${BRL(ticketGeral)} da sua média. Bloco de ticket alto que você quase não trabalha.`,
     });
   }
 
@@ -301,7 +301,7 @@ export function acoesDe(
 }
 
 /**
- * A nota do rodapé do painel de ações — o vale do dia.
+ * A nota do rodapé do painel de ações: o vale do dia.
  *
  * O verbo muda com a amostra: abaixo de `MIN_PEDIDOS_PRESCRICAO` ela DESCREVE o que
  * aconteceu; só com lastro ela manda evitar. "Evite 14h–16h" tirado de 1 pedido no mês
@@ -320,13 +320,13 @@ export function notaDoVale(
 
   /*
    * A frase é COMPARATIVA, não absoluta. "R$ 781,23 é o buraco do seu dia" soa falso num
-   * creator grande — R$ 781 não é buraco de nada. O que torna a janela fria informativa é
+   * creator grande, R$ 781 não é buraco de nada. O que torna a janela fria informativa é
    * ela render uma fração do que as MESMAS três horas rendem no pico.
    */
   const janela = resumo.melhorJanela;
   const contra =
     janela && janela.comissao > 0
-      ? ` — ${Math.round((fria.comissao / janela.comissao) * 100)}% do que as mesmas 3 horas rendem em ${rotuloHora(
+      ? `, ${Math.round((fria.comissao / janela.comissao) * 100)}% do que as mesmas 3 horas rendem em ${rotuloHora(
           janela.inicio
         )}–${rotuloHora(janela.fim)}`
       : "";

@@ -1571,7 +1571,7 @@ function UserPortraitsSection({ liveRoomId }: { liveRoomId: string }) {
 // =============== Aba 4: Horários (melhor horário) ===============
 //
 // Ver docs/SPEC_MELHOR_HORARIO.md. O núcleo desta aba não é o gráfico: é a leitura.
-// O mesmo cálculo significa coisas diferentes por `content_type` — em LIVE o pedido nasce
+// O mesmo cálculo significa coisas diferentes por `content_type`: em LIVE o pedido nasce
 // durante a transmissão (hora do pedido ≈ hora da live, recomendar horário é legítimo);
 // em VÍDEO o pedido chega dias depois do post (hora do pedido não diz nada sobre quando
 // postar). Por isso o texto muda junto com o filtro, e só LIVE recomenda.
@@ -1626,7 +1626,7 @@ function KpiJanela({
   );
 }
 
-/** Baixa o recorte como CSV — horas do dia e a grade de blocos, na mesma planilha. */
+/** Baixa o recorte como CSV: horas do dia e a grade de blocos, na mesma planilha. */
 function exportarCsv(
   resumo: ResumoHorarios,
   blocos: CelulaBloco[],
@@ -1634,7 +1634,7 @@ function exportarCsv(
   subject: string
 ) {
   const linhas: string[][] = [
-    ["TikTally Creator — Horários"],
+    ["TikTally Creator · Horários"],
     ["Período", subject],
     ["Origem", FILTRO_LABEL[filtro]],
     ["Fuso", resumo.timeZone],
@@ -1658,7 +1658,7 @@ function exportarCsv(
   ];
 
   // ";" e BOM: é o que faz o Excel em pt-BR abrir o arquivo já com as colunas separadas
-  // e os acentos corretos — sem isso o creator vê tudo numa coluna só.
+  // e os acentos corretos. Sem isso o creator vê tudo numa coluna só.
   const csv = "﻿" + linhas.map((l) => l.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";")).join("\n");
   const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
   const a = document.createElement("a");
@@ -1681,7 +1681,7 @@ function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string
   const leitura = LEITURA[filtro];
   const janela = resumo.melhorJanela;
 
-  /** "hora que vende muito" e "hora de ticket alto" costumam ser horas diferentes — e
+  /** "hora que vende muito" e "hora de ticket alto" costumam ser horas diferentes, e
    *  essa é a leitura menos óbvia da tela, então ela vira frase quando de fato difere. */
   const contraste = useMemo(() => {
     const ativas = resumo.horas.filter((h) => h.pedidos > 0);
@@ -1746,7 +1746,7 @@ function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string
           <CardContent className="flex items-start gap-3 p-4 text-sm">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
             <span>
-              O período estourou o teto de 2.000 pedidos — os horários abaixo cobrem só parte dele. Use um
+              O período estourou o teto de 2.000 pedidos. Os horários abaixo cobrem só parte dele. Use um
               período mais curto para um recorte completo.
             </span>
           </CardContent>
@@ -1755,7 +1755,7 @@ function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string
 
       {/* `[&>*]:min-w-0`: item de grid nasce com `min-width:auto`, então o cartão da grade
           de blocos era esticado pelo `min-w-[580px]` de dentro e o `overflow-x-auto` nunca
-          entrava em ação — a PÁGINA é que rolava de lado no celular. */}
+          entrava em ação. A PÁGINA é que rolava de lado no celular. */}
       <div className="grid gap-gap [&>*]:min-w-0 lg:grid-cols-[minmax(0,1.85fr)_minmax(0,1fr)]">
         {/* ============ Cartão principal: a janela ============ */}
         <Card>
@@ -1790,11 +1790,10 @@ function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string
                 de tudo o que você ganhou no período
                 {stats.celulaQuente && (
                   <>
-                    {" "}
                     {/* "bloco mais quente", e não "pico": o KPI ao lado mostra o DIA mais
-                        forte, que pode ser outro — são unidades diferentes, e chamar os
+                        forte, que pode ser outro: são unidades diferentes, e chamar os
                         dois de pico faz a tela parecer contraditória. */}
-                    — e o bloco mais quente é{" "}
+                    , e o bloco mais quente é{" "}
                     <span className="font-semibold text-foreground">{rotuloCelula(stats.celulaQuente)}</span>
                   </>
                 )}
@@ -1806,7 +1805,7 @@ function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string
               <p className="mt-2.5 text-[15px] leading-relaxed text-muted-foreground">
                 São {formatNumber(resumo.totalPedidos)} pedidos neste recorte e o mínimo para uma leitura
                 honesta é {MIN_PEDIDOS_RECOMENDACAO}. Com amostra menor, o "melhor horário" é sorte, não
-                padrão — então preferimos não cravar um número.
+                padrão. Então preferimos não cravar um número.
               </p>
             )}
 
@@ -1902,7 +1901,7 @@ function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string
             ) : acoes.length === 0 ? (
               <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
                 Nenhuma ação com lastro suficiente neste recorte. Cada sugestão aqui tem um piso de
-                evidência — sem ele, preferimos não sugerir.
+                evidência. Sem ele, preferimos não sugerir.
               </p>
             ) : (
               <ul className="mt-3.5 space-y-2.5">
@@ -1930,7 +1929,7 @@ function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string
               </p>
             )}
 
-            {/* A ressalva de leitura fica SEMPRE visível — é ela que impede a tela de
+            {/* A ressalva de leitura fica SEMPRE visível: é ela que impede a tela de
                 transformar "quando o público compra" em "quando postar". */}
             <div
               className={cn(
@@ -2043,7 +2042,7 @@ function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string
               <div className="mb-4">
                 <p className="text-[15px] font-bold">Dia da semana × bloco do dia</p>
                 <p className="mt-0.5 text-[12.5px] text-muted-foreground">
-                  28 células em vez de 168 — é o recorte que os seus {formatNumber(resumo.totalPedidos)}{" "}
+                  28 células em vez de 168: é o recorte que os seus {formatNumber(resumo.totalPedidos)}{" "}
                   pedidos sustentam
                 </p>
               </div>

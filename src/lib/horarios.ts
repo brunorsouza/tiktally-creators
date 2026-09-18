@@ -1,5 +1,5 @@
 /**
- * Melhor Horário — agregação de vendas por hora do dia e por dia×hora.
+ * Melhor Horário: agregação de vendas por hora do dia e por dia×hora.
  *
  * Camada PURA (sem React, sem API): recebe vendas já extraídas dos pedidos e devolve
  * os baldes, a melhor janela e o nível de confiança. Ver docs/SPEC_MELHOR_HORARIO.md.
@@ -7,13 +7,13 @@
  * O que este módulo NÃO é: um "melhor horário para postar". Nenhuma API de creator
  * devolve a hora de publicação de um vídeo, então o que medimos aqui é a hora em que a
  * VENDA aconteceu. Para LIVE isso é praticamente a mesma coisa (o pedido nasce durante a
- * transmissão); para VÍDEO não é — os pedidos pingam por dias depois do post. Quem faz
+ * transmissão); para VÍDEO não é: os pedidos pingam por dias depois do post. Quem faz
  * essa distinção virar texto na tela é a aba Horários (spec §4).
  */
 
 /** Uma venda reduzida ao mínimo necessário para o cálculo de horário. */
 export interface Venda {
-  /** `create_time` do pedido — Unix em segundos, UTC+0 (como a API devolve). */
+  /** `create_time` do pedido, Unix em segundos, UTC+0 (como a API devolve). */
   timestamp: number;
   /** Comissão da SKU em R$, já resolvida (actual quando liquidada, senão estimada). */
   comissao: number;
@@ -29,14 +29,14 @@ export type Confianca = "insuficiente" | "baixa" | "media" | "alta";
 /**
  * Guard-rails de amostra (spec §6.4).
  *
- * Sem eles a feature mente: 24 baldes já é pouco, e a grade de 7×24 são 168 células —
+ * Sem eles a feature mente: 24 baldes já é pouco, e a grade de 7×24 são 168 células;
  * um creator de 300 pedidos tem ~1,8 pedido por célula, ou seja, ruído. Abaixo do mínimo
  * a tela mostra o aviso em vez de uma recomendação inventada.
  */
 export const MIN_PEDIDOS_RECOMENDACAO = 30;
 export const MIN_PEDIDOS_GRADE = 200;
 
-/** Recomendamos uma janela de 3h, não uma hora exata — mais robusta e mais acionável. */
+/** Recomendamos uma janela de 3h, não uma hora exata: é mais robusta e mais acionável. */
 export const JANELA_HORAS = 3;
 
 /** Níveis de cor do heatmap (0 = célula vazia). */
@@ -82,13 +82,13 @@ export interface ResumoHorarios {
   confianca: Confianca;
   /** A grade 7×24 tem amostra suficiente para ser exibida? */
   gradeDisponivel: boolean;
-  /** Ausente quando a confiança é `insuficiente` — nesse caso não recomendamos nada. */
+  /** Ausente quando a confiança é `insuficiente`; nesse caso não recomendamos nada. */
   melhorJanela?: Janela;
   /** Fuso efetivamente usado na conversão (ex.: "America/Sao_Paulo"). */
   timeZone: string;
 }
 
-/** O fuso do dispositivo do creator — exibido na tela para o número nunca ser ambíguo. */
+/** O fuso do dispositivo do creator, exibido na tela para o número nunca ser ambíguo. */
 export function fusoDoDispositivo(): string {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo";
@@ -110,8 +110,8 @@ const WEEKDAY_INDEX: Record<string, number> = {
 /**
  * Formatter memoizado por fuso.
  *
- * `create_time` é UTC+0 (explícito na doc da API) e o creator lê a tela no fuso dele —
- * sem essa conversão TODA recomendação sai 3h errada em BR, e silenciosamente: a tela
+ * `create_time` é UTC+0 (explícito na doc da API) e o creator lê a tela no fuso dele.
+ * Sem essa conversão TODA recomendação sai 3h errada em BR, e silenciosamente: a tela
  * continua parecendo perfeita. Por isso o fuso é explícito aqui e visível na UI.
  */
 const formatterCache = new Map<string, Intl.DateTimeFormat>();
@@ -199,12 +199,12 @@ export function melhorJanelaDe(horas: HoraBucket[], tamanho = JANELA_HORAS): Jan
 }
 
 /**
- * Nível de cor de cada célula — escala de MAGNITUDE, ancorada no percentil 95.
+ * Nível de cor de cada célula: escala de MAGNITUDE, ancorada no percentil 95.
  *
  * Por que não quintil (corte por posição, 20% das células em cada nível): quintil
  * *garante* que 20% das células saiam no nível máximo, tenham elas magnitude relevante
  * ou não. Numa grade de 168 células com poucos pedidos por célula, isso pinta ruído de
- * vermelho vivo — é fabricar sinal, exatamente o que esta feature existe para não fazer.
+ * vermelho vivo, que é fabricar sinal, exatamente o que esta feature existe para não fazer.
  *
  * Por que percentil 95 e não o máximo: uma única venda gorda achataria todo o resto no
  * nível 1. Acima da referência a escala satura no nível 5.
@@ -279,7 +279,7 @@ export function resumirHorarios(
     descartados,
     confianca,
     gradeDisponivel: totalPedidos >= MIN_PEDIDOS_GRADE,
-    // Abaixo do mínimo não recomendamos NADA — é o guard-rail que impede o app de mandar
+    // Abaixo do mínimo não recomendamos NADA. É o guard-rail que impede o app de mandar
     // um creator de 12 pedidos postar às 3h da manhã.
     melhorJanela: confianca === "insuficiente" ? undefined : melhorJanelaDe(horas),
     timeZone,
@@ -296,7 +296,7 @@ export function rotuloJanela(j: Janela): string {
   return `${rotuloHora(j.inicio)}–${rotuloHora(j.fim)}`;
 }
 
-/** A janela é circular, então "23h–01h" cobre 23, 0 e 1 — este helper resolve a volta. */
+/** A janela é circular, então "23h–01h" cobre 23, 0 e 1; este helper resolve a volta. */
 export function horasDaJanela(j: Janela): number[] {
   const horas: number[] = [];
   let h = j.inicio;
@@ -318,10 +318,10 @@ export const CONFIANCA_LABEL: Record<Confianca, string> = {
 };
 
 /**
- * Como a tela deve LER o recorte escolhido (spec §4) — a parte que impede a feature de
+ * Como a tela deve LER o recorte escolhido (spec §4). É a parte que impede a feature de
  * mentir. Em LIVE o pedido nasce durante a transmissão, então recomendar horário de
  * transmissão é legítimo. Em VÍDEO o pedido chega dias depois do post, então o mesmo
- * cálculo só diz quando o público compra — nunca quando postar.
+ * cálculo só diz quando o público compra, nunca quando postar.
  */
 export const LEITURA: Record<ContentFilter, { titulo: string; explicacao: string; recomenda: boolean }> = {
   tudo: {
@@ -333,7 +333,7 @@ export const LEITURA: Record<ContentFilter, { titulo: string; explicacao: string
   live: {
     titulo: "Melhor horário para transmitir",
     explicacao:
-      "Pedidos de live nascem durante a transmissão, então a hora do pedido é praticamente a hora da live — aqui a recomendação vale como horário de transmissão.",
+      "Pedidos de live nascem durante a transmissão, então a hora do pedido é praticamente a hora da live. Aqui a recomendação vale como horário de transmissão.",
     recomenda: true,
   },
   video: {
@@ -350,8 +350,8 @@ export const LEITURA: Record<ContentFilter, { titulo: string; explicacao: string
  * A grade de 28 células (7 dias × 4 blocos) em vez de 168 (7 × 24).
  *
  * É o recorte que a amostra de um creator real sustenta: com 33 pedidos, 168 células dão
- * 0,2 pedido por célula (desenho é ruído puro), enquanto 28 células dão ~1,2 — ainda
- * pouco, mas já é tendência legível, e a tela diz isso em vez de esconder. A grade cheia
+ * 0,2 pedido por célula (desenho é ruído puro), enquanto 28 células dão ~1,2. Ainda é pouco,
+ * mas já é tendência legível, e a tela diz isso em vez de esconder. A grade cheia
  * de 24h continua existindo atrás de um link, para quem tem volume (MIN_PEDIDOS_GRADE).
  */
 export const BLOCOS = [
@@ -379,7 +379,7 @@ export interface CelulaBloco {
 /** Ordem de exibição da semana: segunda primeiro (a semana de trabalho do creator). */
 export const DIAS_ORDEM = [1, 2, 3, 4, 5, 6, 0] as const;
 
-/** Com menos que isto nem a grade de 28 células se sustenta — mesmo piso da recomendação. */
+/** Com menos que isto nem a grade de 28 células se sustenta; é o mesmo piso da recomendação. */
 export const MIN_PEDIDOS_BLOCOS = MIN_PEDIDOS_RECOMENDACAO;
 
 /** Dobra a grade de 168 células nas 28 de dia × bloco. */

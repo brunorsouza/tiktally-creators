@@ -2,11 +2,11 @@ import type { SearchCreatorAffiliateOrdersData } from "@/types/creator-api.gener
 import type { EndpointKey } from "@/api/endpoints.generated";
 
 /**
- * Mock denso — OPT-IN via `VITE_MOCK_DENSE=true`.
+ * Mock denso: OPT-IN via `VITE_MOCK_DENSE=true`.
  *
  * Por que existe: o fixture gerado da doc tem 13 pedidos em ~19 dias. Dá para conferir
  * um campo, mas não dá para desenhar nem revisar a aba Horários, que precisa de volume
- * (24 baldes de hora, 168 células de dia×hora) — com 13 pedidos a tela mostra, com razão,
+ * (24 baldes de hora, 168 células de dia×hora). Com 13 pedidos a tela mostra, com razão,
  * o estado de "amostra insuficiente", e nunca se vê o resto da feature.
  *
  * Por que é opt-in e não o default: `searchCreatorAffiliateOrders` alimenta Painel,
@@ -18,7 +18,7 @@ import type { EndpointKey } from "@/api/endpoints.generated";
  */
 export const MOCK_DENSE = import.meta.env.VITE_MOCK_DENSE === "true";
 
-/** PRNG determinístico — o mesmo dev vê os mesmos números entre reloads. */
+/** PRNG determinístico: o mesmo dev vê os mesmos números entre reloads. */
 function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
@@ -30,12 +30,12 @@ function mulberry32(seed: number): () => number {
 }
 
 /**
- * Pesos de hora do dia por origem — o ponto do mock denso.
+ * Pesos de hora do dia por origem: é o ponto do mock denso.
  *
  * LIVE é concentrada (o creator transmite à noite, com um bloco menor no almoço), porque
  * o pedido de live nasce DURANTE a transmissão. VIDEO é espalhada, porque o pedido chega
  * por dias depois do post. É essa diferença que a aba Horários precisa mostrar, então o
- * mock tem que contê-la — senão o split LIVE/VÍDEO não se distingue na tela.
+ * mock tem que contê-la, senão o split LIVE/VÍDEO não se distingue na tela.
  */
 const PESOS_HORA: Record<string, number[]> = {
   //         0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23
@@ -112,7 +112,7 @@ type Pedido = NonNullable<SearchCreatorAffiliateOrdersData["orders"]>[number];
  * ~450 pedidos nos últimos 90 dias.
  *
  * Os timestamps são montados a partir da HORA LOCAL pretendida (`setHours`) e só então
- * convertidos para Unix — assim o padrão de horário aparece como desenhado em qualquer
+ * convertidos para Unix, assim o padrão de horário aparece como desenhado em qualquer
  * fuso em que o dev rode o app, que é justamente o que a tela precisa demonstrar.
  */
 function gerarPedidos(): Pedido[] {
@@ -206,7 +206,7 @@ function pedidosDensos(): Pedido[] {
 
 /**
  * Resposta de mock para um endpoint, quando o modo denso estiver ligado.
- * Devolve `null` quando não há override — aí vale o fixture gerado da doc.
+ * Devolve `null` quando não há override; aí vale o fixture gerado da doc.
  *
  * Diferente do fixture estático, aqui o recorte de data do body É respeitado, porque a
  * série cobre 90 dias: sem isso, trocar o período no seletor não mudaria nada na tela.
