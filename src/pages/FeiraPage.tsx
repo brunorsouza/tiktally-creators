@@ -222,9 +222,6 @@ export default function FeiraPage() {
               Você está na lista. Quando o TikTally Creator abrir, a gente te chama no seu WhatsApp
               para você ver o painel com os seus próprios números.
             </p>
-            <p className="mt-4 text-[14px] leading-relaxed text-faint">
-              É só isso: um aviso quando abrir. Não mandamos mais nada.
-            </p>
           </div>
         )}
       </main>
