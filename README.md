@@ -26,12 +26,13 @@ npm run dev          # dev server em http://localhost:8092
 npm run build        # build de produção
 npm run lint         # eslint
 
-npm run demo:build   # demo de feira: app real + dados fictícios + senha
-npm run demo:deploy  # publica em demo-creator.tiktally.com.br
+npm run demo:build   # gera o HTML da demo de feira (arquivo único, mockado)
 ```
 
-> **Demo de feira:** o app rodando com fixtures, atrás de Basic Auth, num
-> subdomínio próprio. Ver [`docs/DEMO_FEIRA.md`](./docs/DEMO_FEIRA.md).
+> **Demo de feira:** `demo:build` gera `dist-demo/index.html` — o app inteiro
+> num arquivo, com dados fictícios. Quem publica com senha é o repo
+> [`tiktally-creator-demo`](../tiktally-creator-demo), igual ao
+> `tiktally-demo` do seller.
 
 > Porta **8092**, fixa com `strictPort` (o túnel do callback OAuth depende de
 > porta previsível). 8080 = app seller · 8090 = backoffice seller · 8093 =

@@ -42,6 +42,6 @@ screenshots-*.zip
 supabase/.branches
 supabase/.temp
 
-# Demo de feira: usuário e senha
-.env.demo
+# HTML da demo de feira, gerado por `npm run demo:build`.
+# Quem publica é o repo tiktally-creator-demo.
 dist-demo/
