@@ -2012,48 +2012,254 @@ export const getShopProductsFixture = {
   "products": [
     {
       "id": "1729592969712207012",
-      "title": "testcase autotest Live Product",
+      "title": "Batom matte vermelho longa duração",
       "price": {
-        "amount": "56.00",
-        "currency": "USD"
+        "amount": "39.90",
+        "currency": "BRL"
       },
-      "added_status": "ADDABLE\n",
-      "brand_name": "Apple",
+      "added_status": "ADDED",
+      "brand_name": "Nuance",
       "images": [
         {
-          "url": AVATAR_DATA_URI,
-          "width": 200,
-          "height": 200
+          "url": PRODUCT_IMAGES["4"],
+          "width": 360,
+          "height": 360
         }
       ],
-      "sales_count": 33
+      "sales_count": 28470
+    },
+    {
+      "id": "1729592969712207013",
+      "title": "Paleta de sombras 18 cores",
+      "price": {
+        "amount": "79.90",
+        "currency": "BRL"
+      },
+      "added_status": "ADDABLE",
+      "brand_name": "Nuance",
+      "images": [
+        {
+          "url": PRODUCT_IMAGES["2"],
+          "width": 360,
+          "height": 360
+        }
+      ],
+      "sales_count": 15380
+    },
+    {
+      "id": "1729592969712207014",
+      "title": "Ring light de mesa com tripé 26 cm",
+      "price": {
+        "amount": "129.90",
+        "currency": "BRL"
+      },
+      "added_status": "ADDABLE",
+      "brand_name": "CreatorKit",
+      "images": [
+        {
+          "url": PRODUCT_IMAGES["110"],
+          "width": 360,
+          "height": 360
+        }
+      ],
+      "sales_count": 15230
+    },
+    {
+      "id": "1729592969712207015",
+      "title": "Bastão de selfie retrátil",
+      "price": {
+        "amount": "69.90",
+        "currency": "BRL"
+      },
+      "added_status": "ADDED",
+      "brand_name": "CreatorKit",
+      "images": [
+        {
+          "url": PRODUCT_IMAGES["111"],
+          "width": 360,
+          "height": 360
+        }
+      ],
+      "sales_count": 8930
+    },
+    {
+      "id": "1729592969712207016",
+      "title": "Tênis esportivo branco e vermelho",
+      "price": {
+        "amount": "259.90",
+        "currency": "BRL"
+      },
+      "added_status": "ADDABLE",
+      "brand_name": "Stride",
+      "images": [
+        {
+          "url": PRODUCT_IMAGES["91"],
+          "width": 360,
+          "height": 360
+        }
+      ],
+      "sales_count": 6280
+    },
+    {
+      "id": "1729592969712207017",
+      "title": "Relógio pulseira de couro marrom",
+      "price": {
+        "amount": "199.00",
+        "currency": "BRL"
+      },
+      "added_status": "ADDABLE",
+      "brand_name": "TempoTech",
+      "images": [
+        {
+          "url": PRODUCT_IMAGES["93"],
+          "width": 360,
+          "height": 360
+        }
+      ],
+      "sales_count": 7180
+    },
+    {
+      "id": "1729592969712207018",
+      "title": "Mixer de mão 3 velocidades 500W",
+      "price": {
+        "amount": "149.90",
+        "currency": "BRL"
+      },
+      "added_status": "ADDED",
+      "brand_name": "CozinhaMais",
+      "images": [
+        {
+          "url": PRODUCT_IMAGES["61"],
+          "width": 360,
+          "height": 360
+        }
+      ],
+      "sales_count": 5410
+    },
+    {
+      "id": "1729592969712207019",
+      "title": "Marmita térmica inox 3 andares",
+      "price": {
+        "amount": "99.90",
+        "currency": "BRL"
+      },
+      "added_status": "ADDABLE",
+      "brand_name": "CasaViva",
+      "images": [
+        {
+          "url": PRODUCT_IMAGES["65"],
+          "width": 360,
+          "height": 360
+        }
+      ],
+      "sales_count": 8120
     }
   ],
-  "total_count": 300,
-  "next_page_token": "b2Zmc2V0PTAK"
+  "total_count": 8,
+  "next_page_token": ""
 } as unknown as T.GetShopProductsData;
 export const searchMusicFixture = {
   "music": [
     {
-      "id": "717294069642063456",
-      "title": "Love Story",
-      "author": "Taylor Swift",
+      "id": "717294069642063450",
+      "title": "Verão na Praia",
+      "author": "Duo Maré",
       "cover_thumb": {
         "url_list": [
-          PRODUCT_IMAGES["5"] + ""
+          "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjNiNmIiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiM3YzJkNWEiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0idXJsKCNnKSIvPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjEwMCIgcj0iMjYiIGZpbGw9IiMwMDAiIG9wYWNpdHk9Ii4yOCIvPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjEwMCIgcj0iNyIgZmlsbD0iI2ZmZiIgb3BhY2l0eT0iLjkiLz48dGV4dCB4PSIxOCIgeT0iMTgyIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iNTgiIGZvbnQtd2VpZ2h0PSI4MDAiIGZpbGw9IiNmZmYiIG9wYWNpdHk9Ii45MiI+VjwvdGV4dD48L3N2Zz4="
         ]
       },
-      "duration": "235",
+      "duration": "168",
       "play_url": {
         "url_list": [
-          "https://example.com/music/play/love_story.mp3"
+          ""
+        ]
+      }
+    },
+    {
+      "id": "717294069642063451",
+      "title": "Batida da Cidade",
+      "author": "MC Rafa",
+      "cover_thumb": {
+        "url_list": [
+          "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMyNTYzZWIiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMxZTFiNGIiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0idXJsKCNnKSIvPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjEwMCIgcj0iMjYiIGZpbGw9IiMwMDAiIG9wYWNpdHk9Ii4yOCIvPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjEwMCIgcj0iNyIgZmlsbD0iI2ZmZiIgb3BhY2l0eT0iLjkiLz48dGV4dCB4PSIxOCIgeT0iMTgyIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iNTgiIGZvbnQtd2VpZ2h0PSI4MDAiIGZpbGw9IiNmZmYiIG9wYWNpdHk9Ii45MiI+QjwvdGV4dD48L3N2Zz4="
+        ]
+      },
+      "duration": "142",
+      "play_url": {
+        "url_list": [
+          ""
+        ]
+      }
+    },
+    {
+      "id": "717294069642063452",
+      "title": "Luz de Neon",
+      "author": "Aurora Livre",
+      "cover_thumb": {
+        "url_list": [
+          "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNhODU1ZjciLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMzYjA3NjQiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0idXJsKCNnKSIvPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjEwMCIgcj0iMjYiIGZpbGw9IiMwMDAiIG9wYWNpdHk9Ii4yOCIvPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjEwMCIgcj0iNyIgZmlsbD0iI2ZmZiIgb3BhY2l0eT0iLjkiLz48dGV4dCB4PSIxOCIgeT0iMTgyIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iNTgiIGZvbnQtd2VpZ2h0PSI4MDAiIGZpbGw9IiNmZmYiIG9wYWNpdHk9Ii45MiI+TDwvdGV4dD48L3N2Zz4="
+        ]
+      },
+      "duration": "195",
+      "play_url": {
+        "url_list": [
+          ""
+        ]
+      }
+    },
+    {
+      "id": "717294069642063453",
+      "title": "Manhã Leve",
+      "author": "Céu Aberto",
+      "cover_thumb": {
+        "url_list": [
+          "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmNTllMGIiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiM3YzJkMTIiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0idXJsKCNnKSIvPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjEwMCIgcj0iMjYiIGZpbGw9IiMwMDAiIG9wYWNpdHk9Ii4yOCIvPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjEwMCIgcj0iNyIgZmlsbD0iI2ZmZiIgb3BhY2l0eT0iLjkiLz48dGV4dCB4PSIxOCIgeT0iMTgyIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iNTgiIGZvbnQtd2VpZ2h0PSI4MDAiIGZpbGw9IiNmZmYiIG9wYWNpdHk9Ii45MiI+TTwvdGV4dD48L3N2Zz4="
+        ]
+      },
+      "duration": "203",
+      "play_url": {
+        "url_list": [
+          ""
+        ]
+      }
+    },
+    {
+      "id": "717294069642063454",
+      "title": "Passo Certo",
+      "author": "Grupo Trilha",
+      "cover_thumb": {
+        "url_list": [
+          "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMxMGI5ODEiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMwNjRlM2IiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0idXJsKCNnKSIvPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjEwMCIgcj0iMjYiIGZpbGw9IiMwMDAiIG9wYWNpdHk9Ii4yOCIvPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjEwMCIgcj0iNyIgZmlsbD0iI2ZmZiIgb3BhY2l0eT0iLjkiLz48dGV4dCB4PSIxOCIgeT0iMTgyIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iNTgiIGZvbnQtd2VpZ2h0PSI4MDAiIGZpbGw9IiNmZmYiIG9wYWNpdHk9Ii45MiI+UDwvdGV4dD48L3N2Zz4="
+        ]
+      },
+      "duration": "157",
+      "play_url": {
+        "url_list": [
+          ""
+        ]
+      }
+    },
+    {
+      "id": "717294069642063455",
+      "title": "Depois do Show",
+      "author": "Nina Costa",
+      "cover_thumb": {
+        "url_list": [
+          "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNlYzQ4OTkiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiM1MDA3MjQiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0idXJsKCNnKSIvPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjEwMCIgcj0iMjYiIGZpbGw9IiMwMDAiIG9wYWNpdHk9Ii4yOCIvPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjEwMCIgcj0iNyIgZmlsbD0iI2ZmZiIgb3BhY2l0eT0iLjkiLz48dGV4dCB4PSIxOCIgeT0iMTgyIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iNTgiIGZvbnQtd2VpZ2h0PSI4MDAiIGZpbGw9IiNmZmYiIG9wYWNpdHk9Ii45MiI+RDwvdGV4dD48L3N2Zz4="
+        ]
+      },
+      "duration": "221",
+      "play_url": {
+        "url_list": [
+          ""
         ]
       }
     }
   ],
-  "next_page_token": "40",
+  "next_page_token": "",
   "has_more": false,
-  "search_id": "2026021821534288157A7F308E8C81359B"
+  "search_id": "2026092118000000000DEMO"
 } as unknown as T.SearchMusicData;
 export const uploadFileInitFixture = {
   "upload_url": "https://open-api.tiktokglobalshop.com/file/202512/upload",
@@ -2079,20 +2285,15 @@ export const getShoppableVideoPrecheckResultFixture = {
   "precheck_task": {
     "id": "7493990579714164574",
     "violation_check_result": {
-      "status": "FAIL",
-      "issues": [
-        {
-          "risk": "Pirated Content",
-          "suggestions": "Your video may include unoriginal content. Creating original content is essential for standing out from the crowd."
-        }
-      ]
+      "status": "SUCCESS",
+      "issues": []
     },
     "good_quality_check_result": {
-      "status": "FAIL",
+      "status": "SUCCESS",
       "issues": [
         {
-          "code": "LOW_CONTENT_PROMOTIO",
-          "suggestions": "You can try to showcase the product from multiple perspectives."
+          "code": "MULTI_ANGLE_SUGGESTION",
+          "suggestions": "O vídeo está aprovado. Mostrar o produto em mais de um ângulo tende a aumentar a conversão."
         }
       ]
     }
@@ -2113,8 +2314,8 @@ export const postShoppablePhotosFixture = {
 export const getShoppableVideoStatusFixture = {
   "video": {
     "id": "7493990579714164574",
-    "post_status": "FAIL",
-    "post_time": 1685548800
+    "post_status": "SUCCESS",
+    "post_time": 1758153600
   }
 } as unknown as T.GetShoppableVideoStatusData;
 export const getVideoPerformancesFixture = {

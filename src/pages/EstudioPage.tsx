@@ -397,8 +397,8 @@ function ShopProductCard({ product }: { product: ShopProduct }) {
 
 /** Search Music (202602) — biblioteca de música pra usar como BGM do vídeo/foto shoppable. */
 function MusicSearchSection() {
-  const [keywordInput, setKeywordInput] = useState(USE_MOCK ? "Love Story" : "");
-  const [appliedKeyword, setAppliedKeyword] = useState(USE_MOCK ? "Love Story" : "");
+  const [keywordInput, setKeywordInput] = useState(USE_MOCK ? "verão" : "");
+  const [appliedKeyword, setAppliedKeyword] = useState(USE_MOCK ? "verão" : "");
   const [searchId, setSearchId] = useState<string | undefined>();
   const [pageToken, setPageToken] = useState<string | undefined>();
 
