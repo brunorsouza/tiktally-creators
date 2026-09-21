@@ -116,11 +116,11 @@ try {
   die(`o vite build falhou:\n${e.stdout?.toString() || ""}${e.stderr?.toString() || ""}`);
 }
 
-const assets = path.join(DIST, "assets");
-const tamanho = fs
-  .readdirSync(assets)
-  .reduce((soma, f) => soma + fs.statSync(path.join(assets, f)).size, 0);
-console.log(`  ${"bundle".padEnd(16)}${(tamanho / 1024 / 1024).toFixed(2)} MB`);
+// Com o viteSingleFile, JS e CSS são embutidos no próprio index.html: não há
+// pasta assets/. É o arquivo único que abre por duplo clique.
+const HTML = path.join(DIST, "index.html");
+const html = fs.readFileSync(HTML, "utf8");
+console.log(`  ${"index.html".padEnd(16)}${(fs.statSync(HTML).size / 1024 / 1024).toFixed(2)} MB (JS e CSS embutidos)`);
 
 // O Vite copiou o public/.htaccess (só fallback de SPA, sem senha). Sobrescreve
 // pelo portão da demo, que faz as duas coisas.
@@ -134,11 +134,7 @@ console.log(`  ${".htpasswd".padEnd(16)}usuário "${USER}"`);
 const erros = [];
 const htaccess = fs.readFileSync(path.join(DIST, ".htaccess"), "utf8");
 const htpasswd = fs.readFileSync(path.join(DIST, ".htpasswd"), "utf8");
-const bundle = fs
-  .readdirSync(assets)
-  .filter((f) => f.endsWith(".js"))
-  .map((f) => fs.readFileSync(path.join(assets, f), "utf8"))
-  .join("");
+const bundle = html;
 
 // 1. O portão está inteiro. Modo de falha: demo aberta e silenciosa.
 if (!/^Require valid-user$/m.test(htaccess)) erros.push('.htaccess sem "Require valid-user"');
@@ -150,7 +146,19 @@ if (!verify(PASSWORD, htpasswd.split(":")[1].trim())) erros.push("hash do .htpas
 // 2. O SPA responde em qualquer rota. Modo de falha: 404 ao atualizar /ganhos
 //    no meio da demonstração.
 if (!htaccess.includes("FallbackResource /index.html")) erros.push(".htaccess sem fallback de SPA");
-if (!fs.existsSync(path.join(DIST, "index.html"))) erros.push("index.html não saiu no dist-demo");
+if (!fs.existsSync(HTML)) erros.push("index.html não saiu no dist-demo");
+
+// 2b. Nenhum script EXTERNO: é isso que faz o duplo clique funcionar.
+//     Módulo ES buscado por `src` a partir de file:// é bloqueado por CORS
+//     (origem "null"), e foi o que deixou a primeira versão em branco. Módulo
+//     INLINE não é buscado pela rede, então executa do disco — por isso a
+//     checagem olha o `src`, e não o `type="module"`.
+if (/<script[^>]+src=/.test(html)) {
+  erros.push("o HTML tem <script src=...> externo — abriria em branco por duplo clique");
+}
+if (/(src|href)="\.?\/?assets\//.test(html)) {
+  erros.push("o HTML ainda referencia arquivos em assets/ — não é autocontido");
+}
 
 // 3. O mock está no bundle — o inverso do que o deploy de produção exige.
 //    Modo de falha: demo em modo live, tentando falar com a TikTok sem token,

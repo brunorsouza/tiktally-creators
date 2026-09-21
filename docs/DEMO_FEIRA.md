@@ -14,12 +14,34 @@ npm run demo:test                 # testa a implementação de apr1
 ## Onde está o HTML
 
 Em nenhum lugar até você buildar. Diferente do `tiktally-demo`, cujo
-`index.html` de 2,1 MB **é** a demo e está versionado, aqui o HTML é gerado:
-`npm run demo:build` compila o `src/` e escreve `dist-demo/index.html` mais
-~1,2 MB de bundle. `dist-demo/` é gitignorado, como todo build.
+`index.html` de 2,1 MB **é** a demo e está versionado, aqui o HTML é **gerado**:
+`npm run demo:build` compila o `src/` e escreve `dist-demo/index.html` — um
+arquivo único de ~1,2 MB, com JS e CSS embutidos. `dist-demo/` é gitignorado,
+como todo build.
 
 O que está versionado é só o portão:
 `scripts/demo/htaccess.template`, com `{{DOCROOT}}` substituído no build.
+
+### Por que arquivo único
+
+Para abrir por **duplo clique**, sem servidor e sem Wi-Fi do evento. O build
+normal emite `<script type="module" src="./assets/...">`, e módulo ES buscado
+por `src` a partir de `file://` é bloqueado por CORS (origem `null`): a tela
+abre em branco. Com tudo embutido, o script é inline — não há fetch, não há
+CORS, e o HTML roda do disco.
+
+Caminho relativo (`base: "./"`) sozinho **não** resolve isso: conserta a
+resolução dos caminhos e deixa o módulo externo continuar bloqueado. Foram as
+duas coisas juntas, mais o HashRouter, que fizeram funcionar.
+
+O `demo-build.mjs` confere isso: se voltar a existir `<script src=...>` externo
+no HTML, o build aborta em vez de te entregar uma tela branca no estande.
+
+### Fontes dependem de internet
+
+As fontes vêm do Google Fonts. Offline, o navegador cai na fonte do sistema —
+o app funciona igual, só muda a tipografia. Se a feira for sem rede nenhuma e
+isso importar, vale embutir as fontes no build.
 
 ## Não é o mesmo que o `tiktally-demo`
 

@@ -1,7 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, HashRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
+import { IS_DEMO_BUILD } from "@/services/creatorClient";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Layout } from "@/components/Layout";
@@ -24,6 +25,23 @@ import ApiTesterPage from "@/pages/ApiTesterPage";
 import PlaceholderPage from "@/pages/PlaceholderPage";
 import NotFound from "@/pages/NotFound";
 
+/**
+ * A demo de feira usa HashRouter; o app, BrowserRouter.
+ *
+ * Duas razões, e as duas são sobre abrir a demo SEM servidor — num notebook, no
+ * estande, sem depender do Wi-Fi do evento:
+ *
+ *  - de `file://`, o history API do BrowserRouter não funciona: navegar lança
+ *    SecurityError, porque não há origem pra empurrar estado.
+ *  - com a rota no fragmento (`#/ganhos`), o documento é sempre `index.html`,
+ *    então o `base: "./"` do vite.config resolve os assets igual servido pelo
+ *    Apache ou aberto do disco.
+ *
+ * O app de verdade continua com URL limpa: lá existe servidor, e o
+ * `/auth/callback` do OAuth da TikTok precisa de caminho real, não de hash.
+ */
+const Router = IS_DEMO_BUILD ? HashRouter : BrowserRouter;
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: { staleTime: 5 * 60 * 1000, retry: 1, refetchOnWindowFocus: false },
@@ -41,7 +59,7 @@ function App() {
         themes={["light", "dark", "black"]}
       >
         <AuthProvider>
-          <BrowserRouter>
+          <Router>
             <Routes>
               {/* Públicas */}
               <Route path="/auth" element={<AuthPage />} />
@@ -180,7 +198,7 @@ function App() {
 
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </BrowserRouter>
+          </Router>
           <Toaster richColors position="top-right" />
         </AuthProvider>
       </ThemeProvider>
