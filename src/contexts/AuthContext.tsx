@@ -15,12 +15,23 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 /**
- * Auth dev: enquanto `VITE_USE_MOCK` != "false", o login é LOCAL (sem Supabase) —
- * qualquer e-mail + senha de 4+ chars entra, e a sessão persiste no localStorage.
- * Serve pra testar a UI/mocks sem backend. Quando `VITE_USE_MOCK=false`, usa o
- * Supabase Auth real (signup/signin de verdade).
+ * Auth de desenvolvimento: login LOCAL, sem Supabase — qualquer e-mail + senha
+ * de 4+ chars entra, e a sessão persiste no localStorage. Serve pra testar a
+ * UI/mocks sem backend.
+ *
+ * ⚠️ Isto FORJA uma sessão. Exige `VITE_USE_MOCK=true` E estar em dev.
+ *
+ * A versão anterior era `!== "false"`, fail-OPEN: variável ausente, vazia,
+ * `FALSE` ou um typo ligavam o login falso — e nada impedia isso de ir para um
+ * build de produção, onde qualquer visitante entraria sem ter conta. O guard do
+ * deploy que existia para pegar isso nunca disparou (procurava uma string que o
+ * Vite não emite no bundle).
+ *
+ * `import.meta.env.DEV` é a trava que importa: o Vite a resolve para `false` no
+ * build, então o bundle de produção sai sem este caminho. Mesmo padrão do
+ * PREVIEW_MODE no backoffice.
  */
-const MOCK_AUTH = import.meta.env.VITE_USE_MOCK !== "false";
+const MOCK_AUTH = import.meta.env.DEV && import.meta.env.VITE_USE_MOCK === "true";
 const MOCK_KEY = "tc-mock-session";
 
 function makeMockSession(email: string, name?: string): Session {

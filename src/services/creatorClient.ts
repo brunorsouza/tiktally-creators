@@ -5,11 +5,19 @@ import { supabase, FUNCTIONS_BASE_URL } from "@/integrations/supabase/client";
 
 /**
  * Client único de chamada aos endpoints de creator.
- * - USE_MOCK (default true): devolve os fixtures gerados da doc — dá pra testar sem backend.
- * - USE_MOCK=false: chama o edge dispatcher `affiliate-proxy`, que assina e bate na TikTok.
- * Troca com a env VITE_USE_MOCK ("false" liga o modo live).
+ * - USE_MOCK: devolve os fixtures gerados da doc — dá pra testar sem backend.
+ * - senão: chama o edge dispatcher `affiliate-proxy`, que assina e bate na TikTok.
+ *
+ * Ligar exige `VITE_USE_MOCK=true` E estar em dev. Duas travas, porque a versão
+ * anterior (`!== "false"`) era fail-OPEN: variável ausente, vazia, `FALSE` ou um
+ * typo ligavam o mock — inclusive num build de produção, que então servia
+ * fixture da documentação como se fosse a comissão real do creator.
+ *
+ * `import.meta.env.DEV` é a trava que importa: o Vite a resolve para `false` no
+ * build, e o bundle de produção sai sem o caminho de mock, aconteça o que
+ * acontecer com a env. Mesmo padrão do PREVIEW_MODE no backoffice.
  */
-export const USE_MOCK = import.meta.env.VITE_USE_MOCK !== "false";
+export const USE_MOCK = import.meta.env.DEV && import.meta.env.VITE_USE_MOCK === "true";
 
 export interface CallParams {
   pathParams?: Record<string, string | number>;
