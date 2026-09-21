@@ -33,6 +33,19 @@ const POINTS = [
 
 const MIN_PASSWORD = 8;
 
+/**
+ * Cadastro público fechado.
+ *
+ * A aba continua visível, marcada "Em breve", em vez de sumir: quem chegou pelo
+ * anúncio precisa entender que a conta ainda não abriu, e uma aba que some
+ * parece bug ou site quebrado.
+ *
+ * O formulário de cadastro e o `signUp` ficam no código de propósito — religar é
+ * trocar esta linha para `true`. Enquanto estiver `false`, `mode` nunca resolve
+ * para "signup", nem pelo `?modo=cadastro` na URL.
+ */
+const SIGNUP_ENABLED = false;
+
 /** Traduz os erros mais comuns do Supabase Auth — a mensagem crua é em inglês. */
 function friendlyError(message: string): string {
   const m = message.toLowerCase();
@@ -90,7 +103,10 @@ export default function AuthPage() {
   const [params, setParams] = useSearchParams();
 
   // A aba vive na URL: /auth?modo=cadastro é linkável e sobrevive ao refresh.
-  const mode: Mode = params.get("modo") === "cadastro" ? "signup" : "signin";
+  // Com o cadastro fechado, a URL não é porta dos fundos: desabilitar só o botão
+  // deixaria o formulário acessível para quem tem o link antigo.
+  const mode: Mode =
+    SIGNUP_ENABLED && params.get("modo") === "cadastro" ? "signup" : "signin";
   const copy = COPY[mode];
 
   const [name, setName] = useState("");
@@ -184,21 +200,43 @@ export default function AuthPage() {
       <section className="grid min-w-[340px] flex-1 place-items-center px-6 py-12 lg:px-8">
         <div className="w-full max-w-[400px]">
           {/* Abas Entrar / Criar conta */}
-          <div className="mb-6 flex gap-1 rounded-2xl bg-secondary p-1" role="tablist">
+          {/* mt-3 abre espaço para a pastilha "Em breve", que sobe acima da
+              barra — sem isso ela encostaria no topo do cartão. */}
+          <div className="mb-6 mt-3 flex gap-1 rounded-2xl bg-secondary p-1" role="tablist">
             {(["signin", "signup"] as const).map((m) => {
               const on = mode === m;
+              const bloqueada = m === "signup" && !SIGNUP_ENABLED;
               return (
                 <button
                   key={m}
                   type="button"
                   role="tab"
                   aria-selected={on}
+                  disabled={bloqueada}
+                  // `disabled` já tira do fluxo de teclado e do clique; o título
+                  // é para quem passa o mouse tentando entender o porquê.
+                  title={bloqueada ? "O cadastro ainda não está aberto." : undefined}
                   onClick={() => setMode(m)}
                   className={cn(
-                    "flex-1 rounded-xl py-2.5 text-[14.5px] font-semibold transition-colors",
-                    on ? "bg-card text-foreground shadow-sm" : "text-faint hover:text-foreground"
+                    "relative flex-1 rounded-xl py-2.5 text-[14.5px] font-semibold transition-colors",
+                    bloqueada
+                      ? "cursor-not-allowed text-faint/60"
+                      : on
+                        ? "bg-card text-foreground shadow-sm"
+                        : "text-faint hover:text-foreground"
                   )}
                 >
+                  {bloqueada && (
+                    <span
+                      className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-ink px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ink-foreground shadow-sm"
+                      // A pastilha é decorativa: o estado já está no `disabled`
+                      // e no `title`, e um leitor de tela não precisa ouvir a
+                      // mesma coisa duas vezes.
+                      aria-hidden="true"
+                    >
+                      Em breve
+                    </span>
+                  )}
                   {m === "signin" ? "Entrar" : "Criar conta"}
                 </button>
               );
