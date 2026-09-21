@@ -11,7 +11,10 @@
     "deploy": "bash ./scripts/deploy.sh",
     "lint": "eslint .",
     "preview": "vite preview",
-    "tunnel": "lt --port 8092"
+    "tunnel": "lt --port 8092",
+    "demo:build": "node scripts/demo-build.mjs",
+    "demo:deploy": "bash ./scripts/demo-deploy.sh",
+    "demo:test": "node scripts/demo/htpasswd.test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

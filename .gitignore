@@ -41,3 +41,7 @@ screenshots-*.zip
 # Supabase
 supabase/.branches
 supabase/.temp
+
+# Demo de feira: usuário e senha
+.env.demo
+dist-demo/

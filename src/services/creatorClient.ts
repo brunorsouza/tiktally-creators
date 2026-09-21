@@ -16,8 +16,17 @@ import { supabase, FUNCTIONS_BASE_URL } from "@/integrations/supabase/client";
  * `import.meta.env.DEV` é a trava que importa: o Vite a resolve para `false` no
  * build, e o bundle de produção sai sem o caminho de mock, aconteça o que
  * acontecer com a env. Mesmo padrão do PREVIEW_MODE no backoffice.
+ *
+ * A exceção é o build de FEIRA (`vite build --mode demo`), que precisa rodar
+ * mockado num servidor. Ela não reabre o furo porque exige duas coisas
+ * deliberadas ao mesmo tempo — o modo nomeado na linha de comando E a env — e
+ * nenhuma delas acontece por variável faltando. Além disso o deploy de produção
+ * (`scripts/deploy.sh`) aborta se achar o caminho de mock no bundle.
  */
-export const USE_MOCK = import.meta.env.DEV && import.meta.env.VITE_USE_MOCK === "true";
+export const IS_DEMO_BUILD = import.meta.env.MODE === "demo";
+
+export const USE_MOCK =
+  (import.meta.env.DEV || IS_DEMO_BUILD) && import.meta.env.VITE_USE_MOCK === "true";
 
 export interface CallParams {
   pathParams?: Record<string, string | number>;
