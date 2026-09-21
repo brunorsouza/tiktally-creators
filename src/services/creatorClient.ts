@@ -143,7 +143,25 @@ export async function callEndpoint<T = unknown>(
     // VITE_MOCK_DENSE=true troca o fixture estático por uma série de 90 dias com volume
     // realista (ver src/mocks/dense.ts). Desligado — o default — devolve null e nada muda.
     const denso = mockOverride(key, params);
-    return { ok: true, data: (denso ?? FIXTURES[key]) as T, source: "mock" };
+    const dado = denso ?? FIXTURES[key];
+
+    // Fixture ausente vira ERRO, e não `ok: true` com data undefined.
+    //
+    // O React Query proíbe `undefined` como dado de query, então a versão
+    // anterior estourava com "data is undefined" — uma string crua de
+    // biblioteca, no meio da tela, sem dizer qual endpoint faltava. Foi o que
+    // apareceu na Descoberta, e havia outros três endpoints na mesma situação
+    // esperando alguém abrir a tela numa feira.
+    if (dado === undefined) {
+      return {
+        ok: false,
+        error: `Sem fixture de mock para "${key}". Adicione em src/mocks/fixtures.generated.ts.`,
+        kind: "api_error",
+        source: "mock",
+      };
+    }
+
+    return { ok: true, data: dado as T, source: "mock" };
   }
 
   const { data: sess } = await supabase.auth.getSession();

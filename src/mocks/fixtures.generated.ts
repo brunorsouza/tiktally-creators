@@ -1288,6 +1288,379 @@ export const generateAffiliateSharingLinkFixture = {
   errors: [],
 } as unknown as T.GenerateAffiliateSharingLinkData;
 
+/**
+ * Catálogo de produtos para promover (Creator Select Affiliate Product).
+ *
+ * Escrito à mão, não gerado da doc: a doc não traz exemplo de resposta para
+ * este endpoint, e sem fixture a aba "Produtos para promover" da Descoberta
+ * abria em erro.
+ *
+ * `main_image_url` é omitido de propósito. O `ProductImage` cai num ícone de
+ * pacote quando não há imagem, e numa feira sem Wi-Fi isso é melhor que doze
+ * imagens quebradas — uma URL de CDN da TikTok não carrega offline.
+ *
+ * `commission.rate` é centésimo de % (o app divide por 10000): 1800 = 18,00%.
+ */
+export const creatorSelectAffiliateProductFixture = {
+  "next_page_token": "",
+  "total_count": 12,
+  "products": [
+    {
+      "id": "1729432087292775301",
+      "title": "Kit Skincare Vitamina C — sérum + hidratante",
+      "brand_name": "Bella Derm",
+      "commission": {
+        "amount": "16.18",
+        "rate": 1800
+      },
+      "price": {
+        "floor_price": "89.90",
+        "ceiling_price": "129.90",
+        "currency": "BRL"
+      },
+      "review": {
+        "count": 4231,
+        "overall_score": "4.7"
+      },
+      "shop": {
+        "name": "Bella Derm Oficial",
+        "rating": "4.8"
+      },
+      "stock": {
+        "quantity": 320
+      },
+      "market_performance": {
+        "historical_sold_quantity": 12840
+      }
+    },
+    {
+      "id": "1729432087292775302",
+      "title": "Fone Bluetooth TWS com cancelamento de ruído",
+      "brand_name": "SoundPro",
+      "commission": {
+        "amount": "17.99",
+        "rate": 1200
+      },
+      "price": {
+        "floor_price": "149.9",
+        "ceiling_price": "199.9",
+        "currency": "BRL"
+      },
+      "review": {
+        "count": 2187,
+        "overall_score": "4.5"
+      },
+      "shop": {
+        "name": "SoundPro Store",
+        "rating": "4.6"
+      },
+      "stock": {
+        "quantity": 145
+      },
+      "market_performance": {
+        "historical_sold_quantity": 8930
+      }
+    },
+    {
+      "id": "1729432087292775303",
+      "title": "Secador de cabelo íons 2000W",
+      "brand_name": "GlamTech",
+      "commission": {
+        "amount": "32.85",
+        "rate": 1500
+      },
+      "price": {
+        "floor_price": "219.00",
+        "ceiling_price": "259.00",
+        "currency": "BRL"
+      },
+      "review": {
+        "count": 1502,
+        "overall_score": "4.8"
+      },
+      "shop": {
+        "name": "GlamTech BR",
+        "rating": "4.9"
+      },
+      "stock": {
+        "quantity": 88
+      },
+      "market_performance": {
+        "historical_sold_quantity": 5410
+      }
+    },
+    {
+      "id": "1729432087292775304",
+      "title": "Air Fryer 5L digital antiaderente",
+      "brand_name": "CozinhaMais",
+      "commission": {
+        "amount": "32.99",
+        "rate": 1000
+      },
+      "price": {
+        "floor_price": "329.90",
+        "ceiling_price": "389.90",
+        "currency": "BRL"
+      },
+      "review": {
+        "count": 3844,
+        "overall_score": "4.6"
+      },
+      "shop": {
+        "name": "CozinhaMais Casa",
+        "rating": "4.7"
+      },
+      "stock": {
+        "quantity": 210
+      },
+      "market_performance": {
+        "historical_sold_quantity": 15230
+      }
+    },
+    {
+      "id": "1729432087292775305",
+      "title": "Camiseta oversized algodão pima",
+      "brand_name": "Urban Fit",
+      "commission": {
+        "amount": "15.38",
+        "rate": 2200
+      },
+      "price": {
+        "floor_price": "69.90",
+        "ceiling_price": "79.90",
+        "currency": "BRL"
+      },
+      "review": {
+        "count": 964,
+        "overall_score": "4.4"
+      },
+      "shop": {
+        "name": "Urban Fit Store",
+        "rating": "4.5"
+      },
+      "stock": {
+        "quantity": 640
+      },
+      "market_performance": {
+        "historical_sold_quantity": 3120
+      }
+    },
+    {
+      "id": "1729432087292775306",
+      "title": "Base líquida alta cobertura 30ml",
+      "brand_name": "Nuance",
+      "commission": {
+        "amount": "14.98",
+        "rate": 2500
+      },
+      "price": {
+        "floor_price": "59.90",
+        "ceiling_price": "59.90",
+        "currency": "BRL"
+      },
+      "review": {
+        "count": 7210,
+        "overall_score": "4.9"
+      },
+      "shop": {
+        "name": "Nuance Beauty",
+        "rating": "4.8"
+      },
+      "stock": {
+        "quantity": 890
+      },
+      "market_performance": {
+        "historical_sold_quantity": 28470
+      }
+    },
+    {
+      "id": "1729432087292775307",
+      "title": "Tênis corrida amortecimento leve",
+      "brand_name": "Stride",
+      "commission": {
+        "amount": "28.59",
+        "rate": 1100
+      },
+      "price": {
+        "floor_price": "259.90",
+        "ceiling_price": "319.90",
+        "currency": "BRL"
+      },
+      "review": {
+        "count": 1733,
+        "overall_score": "4.5"
+      },
+      "shop": {
+        "name": "Stride Esportes",
+        "rating": "4.6"
+      },
+      "stock": {
+        "quantity": 175
+      },
+      "market_performance": {
+        "historical_sold_quantity": 6280
+      }
+    },
+    {
+      "id": "1729432087292775308",
+      "title": "Perfume feminino floral 100ml",
+      "brand_name": "Essenza",
+      "commission": {
+        "amount": "35.80",
+        "rate": 2000
+      },
+      "price": {
+        "floor_price": "179.00",
+        "ceiling_price": "199.00",
+        "currency": "BRL"
+      },
+      "review": {
+        "count": 5126,
+        "overall_score": "4.8"
+      },
+      "shop": {
+        "name": "Essenza Parfums",
+        "rating": "4.9"
+      },
+      "stock": {
+        "quantity": 410
+      },
+      "market_performance": {
+        "historical_sold_quantity": 19640
+      }
+    },
+    {
+      "id": "1729432087292775309",
+      "title": "Suporte ergonômico para notebook",
+      "brand_name": "DeskLife",
+      "commission": {
+        "amount": "11.57",
+        "rate": 1300
+      },
+      "price": {
+        "floor_price": "89.00",
+        "ceiling_price": "109.00",
+        "currency": "BRL"
+      },
+      "review": {
+        "count": 812,
+        "overall_score": "4.3"
+      },
+      "shop": {
+        "name": "DeskLife Home",
+        "rating": "4.4"
+      },
+      "stock": {
+        "quantity": 260
+      },
+      "market_performance": {
+        "historical_sold_quantity": 2940
+      }
+    },
+    {
+      "id": "1729432087292775310",
+      "title": "Shampoo reparador sem sulfato 500ml",
+      "brand_name": "Capilar+",
+      "commission": {
+        "amount": "14.23",
+        "rate": 1900
+      },
+      "price": {
+        "floor_price": "74.90",
+        "ceiling_price": "84.90",
+        "currency": "BRL"
+      },
+      "review": {
+        "count": 3305,
+        "overall_score": "4.7"
+      },
+      "shop": {
+        "name": "Capilar Mais",
+        "rating": "4.7"
+      },
+      "stock": {
+        "quantity": 520
+      },
+      "market_performance": {
+        "historical_sold_quantity": 11250
+      }
+    },
+    {
+      "id": "1729432087292775311",
+      "title": "Relógio smartwatch tela AMOLED",
+      "brand_name": "TempoTech",
+      "commission": {
+        "amount": "35.91",
+        "rate": 900
+      },
+      "price": {
+        "floor_price": "399.00",
+        "ceiling_price": "479.00",
+        "currency": "BRL"
+      },
+      "review": {
+        "count": 2044,
+        "overall_score": "4.4"
+      },
+      "shop": {
+        "name": "TempoTech Oficial",
+        "rating": "4.5"
+      },
+      "stock": {
+        "quantity": 96
+      },
+      "market_performance": {
+        "historical_sold_quantity": 7180
+      }
+    },
+    {
+      "id": "1729432087292775312",
+      "title": "Conjunto 3 potes de vidro herméticos",
+      "brand_name": "CasaViva",
+      "commission": {
+        "amount": "15.98",
+        "rate": 1600
+      },
+      "price": {
+        "floor_price": "99.90",
+        "ceiling_price": "119.90",
+        "currency": "BRL"
+      },
+      "review": {
+        "count": 1487,
+        "overall_score": "4.6"
+      },
+      "shop": {
+        "name": "CasaViva Utilidades",
+        "rating": "4.8"
+      },
+      "stock": {
+        "quantity": 380
+      },
+      "market_performance": {
+        "historical_sold_quantity": 4890
+      }
+    }
+  ]
+} as unknown as T.CreatorSelectAffiliateProductData;
+
+/**
+ * Pré-checagem de âncora de produto (Estúdio). Os dois endpoints só devolvem
+ * "pode" ou "não pode" — o app lê apenas o `ok`, então o corpo é vazio.
+ */
+export const checkAnchorPrerequisitesFixture = {} as unknown as Record<string, never>;
+
+export const checkAnchorContentFixture = {} as unknown as Record<string, never>;
+
+/**
+ * Deeplink de solicitação de amostra. No mock aponta pro próprio app da TikTok
+ * sem parâmetro de sessão: serve pra tela mostrar o botão e o fluxo, não pra
+ * abrir um pedido de verdade.
+ */
+export const creatorGetSampleRequestDeeplinkFixture = {
+  "deeplink": "https://www.tiktok.com/view/product/1729432087292775300"
+} as unknown as T.CreatorGetSampleRequestDeeplinkData;
+
 export const FIXTURES: Record<string, unknown> = {
   getCreatorProfile: getCreatorProfileFixture,
   getShowcaseProducts: getShowcaseProductsFixture,
@@ -1327,4 +1700,8 @@ export const FIXTURES: Record<string, unknown> = {
   tokoProductMapperV2: tokoProductMapperV2Fixture,
   getLiveRoomInfo: getLiveRoomInfoFixture,
   generateAffiliateSharingLink: generateAffiliateSharingLinkFixture,
+  creatorSelectAffiliateProduct: creatorSelectAffiliateProductFixture,
+  checkAnchorPrerequisites: checkAnchorPrerequisitesFixture,
+  checkAnchorContent: checkAnchorContentFixture,
+  creatorGetSampleRequestDeeplink: creatorGetSampleRequestDeeplinkFixture,
 };
