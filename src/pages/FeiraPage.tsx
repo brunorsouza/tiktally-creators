@@ -8,9 +8,14 @@ import { captureLead } from "@/services/leads";
 /**
  * FeiraPage — `/feira`, a página pública de captura de lead.
  *
- * Destino do QR Code do banner de estande. Quem escaneia deixa nome, WhatsApp e
- * e-mail; o registro vai para `pricing_leads` no Supabase do CREATOR, pela edge
- * `capture-lead`, e aparece na tela de Leads do backoffice creator.
+ * O QR do banner de evento aponta para cá, mas ela não pode DEPENDER disso: o
+ * mesmo endereço vai por mensagem, por link na bio e por quem repassa para um
+ * amigo, e é lido dias depois do evento, em qualquer lugar. Por isso nenhum
+ * texto aqui fala em estande, em "aqui" ou em "agora".
+ *
+ * Quem preenche deixa nome, WhatsApp e e-mail; o registro vai para
+ * `pricing_leads` no Supabase do CREATOR, pela edge `capture-lead`, e aparece
+ * na tela de Leads do backoffice creator.
  *
  * ## Por que não mostra preço
  * O plano `pro` do creator está no banco com os valores herdados do seller, e a
@@ -172,8 +177,8 @@ export default function FeiraPage() {
                 value={whatsapp}
                 onChange={(e) => setWhatsapp(formatPhone(e.target.value))}
                 placeholder="(11) 90000-0000"
-                // Teclado numérico no celular: quem está de pé no estande não
-                // deve ter que trocar de teclado para digitar o telefone.
+                // Teclado numérico: quem abre isso no celular não deve ter que
+                // trocar de teclado para digitar o telefone.
                 inputMode="tel"
                 autoComplete="tel"
                 maxLength={16}
@@ -214,19 +219,12 @@ export default function FeiraPage() {
               Pronto{primeiroNome ? `, ${primeiroNome}` : ""}.
             </h1>
             <p className="mt-3 text-[16px] leading-relaxed text-muted-foreground">
-              Você está na lista. Assim que o TikTally Creator abrir, a gente te chama no WhatsApp
-              para você ver o painel com os seus próprios números, não com os de exemplo.
+              Você está na lista. Quando o TikTally Creator abrir, a gente te chama no seu WhatsApp
+              para você ver o painel com os seus próprios números.
             </p>
-
-            <div className="mt-6 border-t pt-6">
-              <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-faint">
-                Enquanto isso
-              </p>
-              <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
-                Passe no estande para ver o painel funcionando com uma conta de verdade. É a melhor
-                forma de saber se ele resolve o seu caso antes de a gente abrir.
-              </p>
-            </div>
+            <p className="mt-4 text-[14px] leading-relaxed text-faint">
+              É só isso: um aviso quando abrir. Não mandamos mais nada.
+            </p>
           </div>
         )}
       </main>
