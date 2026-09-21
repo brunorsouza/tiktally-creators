@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  AlertCircle, Eye, EyeOff, Lock, Mail, ShieldCheck, User, Zap, Package, Music2,
+  AlertCircle, Eye, EyeOff, Lock, Mail, User, Zap, Package, Music2,
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { useAuth } from "@/contexts/AuthContext";
@@ -159,7 +159,11 @@ export default function AuthPage() {
   return (
     <div className="bg-paper flex min-h-screen flex-wrap">
       {/* ── Painel da marca — vira o topo no mobile ── */}
-      <section className="flex min-w-[340px] flex-[1.15] flex-col justify-between gap-10 border-b bg-panel px-7 py-10 md:border-b-0 md:border-r lg:px-[60px] lg:py-14">
+      {/* `justify-start` + `my-auto` no bloco de texto, e não `justify-between`:
+          o painel tinha três filhos (logo, texto, selo) e o selo saiu. Com dois,
+          o `between` jogava o texto no rodapé e abria um vazio no meio. Agora o
+          logo fica no topo e o texto se centra no que sobra. */}
+      <section className="flex min-w-[340px] flex-[1.15] flex-col justify-start gap-10 border-b bg-panel px-7 py-10 md:border-b-0 md:border-r lg:px-[60px] lg:py-14">
         <div className="flex items-center gap-3">
           <Logo size={38} />
           <span className="font-display text-lg font-extrabold tracking-tight">
@@ -167,7 +171,7 @@ export default function AuthPage() {
           </span>
         </div>
 
-        <div className="max-w-[480px]">
+        <div className="max-w-[480px] md:my-auto">
           <h1 className="text-balance font-display text-[34px] font-extrabold leading-[1.08] tracking-tight lg:text-[44px]">
             Todo o seu dinheiro do TikTok Shop em uma tela só.
           </h1>
@@ -188,12 +192,6 @@ export default function AuthPage() {
           </ul>
         </div>
 
-        <div className="flex max-w-[440px] items-center gap-3.5 rounded-lg bg-ink px-5 py-4 text-ink-foreground">
-          <ShieldCheck className="h-6 w-6 shrink-0 text-primary" />
-          <p className="text-[13.5px] leading-snug opacity-75">
-            Leitura via API oficial do TikTok Shop. Seu token fica no servidor, nunca no navegador.
-          </p>
-        </div>
       </section>
 
       {/* ── Formulário ── */}
