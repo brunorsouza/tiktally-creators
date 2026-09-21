@@ -114,13 +114,10 @@ export default function FeiraPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b">
-        <div className="mx-auto flex h-16 w-full max-w-[720px] items-center justify-between px-5">
+        <div className="mx-auto flex h-16 w-full max-w-[720px] items-center px-5">
           <span className="flex items-center gap-2.5">
             <Logo size={28} />
             <span className="text-[17px] font-extrabold tracking-[-0.02em]">TikTally Creator</span>
-          </span>
-          <span className="rounded-full bg-accent px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-primary">
-            Feira
           </span>
         </div>
       </header>
