@@ -1,11 +1,22 @@
 // AUTO-GERADO — mock (data) de cada endpoint.
 import type * as T from "@/types/creator-api.generated";
+import { PRODUCT_IMAGES } from "@/mocks/productImages.generated";
+
+/**
+ * Avatar do creator, SVG embutido.
+ *
+ * Não é foto de pessoa de propósito: rosto identificável de terceiro em material
+ * de feira é o pior dos casos, e a tela de Perfil só precisa de um avatar que
+ * não quebre offline.
+ */
+const AVATAR_DATA_URI =
+  "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjNiNmIiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiM3YzJkNWEiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgcng9IjYwIiBmaWxsPSJ1cmwoI2cpIi8+PHRleHQgeD0iNjAiIHk9Ijc2IiBmb250LWZhbWlseT0ic3lzdGVtLXVpLHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iNDYiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiNmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkFCPC90ZXh0Pjwvc3ZnPg==";
 
 export const getCreatorProfileFixture = {
   "avatar": {
     "width": 100,
     "height": 100,
-    "url": "https://p16-sign.tiktokcdn-us.com/tos-useast5-avt-0068-tx/d76b8cc1b598de90ad5048df46e672b3~c5_100x100.webp?x-expires=1691895600&x-signature=oAT9KOL7aCN3Did9U%2FoKEsbBDj0%3D"
+    "url": AVATAR_DATA_URI
   },
   "username": "abc123",
   "selection_region": "US",
@@ -22,44 +33,35 @@ export const getCreatorProfileFixture = {
 export const getShowcaseProductsFixture = {
   "products": [
     {
-      "id": "53219092314",
+      "id": "532190923140",
       "shop": {
-        "name": "Gift store"
+        "name": "Nuance Beauty"
       },
-      "addition": {
-        "customized_main_images": [
-          {
-            "width": 100,
-            "heigth": 100,
-            "url": "https://p16-sign.tiktokcdn-us.com/tos-useast5-avt-0068-tx/d76b8cc1b598de90ad5048df46e672b3~c5_100x100.webp?x-expires=1691895600&x-signature=oAT9KOL7aCN3Did9U%2FoKEsbBDj0%3D"
-          }
-        ]
-      },
-      "price": {
-        "original_price": {
-          "minimum_amount": "12.21",
-          "maximum_amount": "100.00",
-          "currency": "USD"
-        },
-        "seller_discount_price": {
-          "minimum_amount": "12.21",
-          "maximum_amount": "100.00",
-          "currency": "USD"
-        },
-        "platform_discount_price": {
-          "minimum_amount": "12.21",
-          "maximum_amount": "100.00",
-          "currency": "USD"
-        }
-      },
-      "title": "Chirstmas Gift",
+      "title": "Batom matte vermelho longa duração",
       "main_images": [
         {
-          "width": 100,
-          "heigth": 100,
-          "url": "https://p16-sign.tiktokcdn-us.com/tos-useast5-avt-0068-tx/d76b8cc1b598de90ad5048df46e672b3~c5_100x100.webp?x-expires=1691895600&x-signature=oAT9KOL7aCN3Did9U%2FoKEsbBDj0%3D"
+          "width": 360,
+          "heigth": 360,
+          "url": PRODUCT_IMAGES["4"]
         }
       ],
+      "price": {
+        "original_price": {
+          "minimum_amount": "49.90",
+          "maximum_amount": "49.90",
+          "currency": "BRL"
+        },
+        "seller_discount_price": {
+          "minimum_amount": "39.90",
+          "maximum_amount": "39.90",
+          "currency": "BRL"
+        },
+        "platform_discount_price": {
+          "minimum_amount": "39.90",
+          "maximum_amount": "39.90",
+          "currency": "BRL"
+        }
+      },
       "status": {
         "inventory_status": "IN_STOCK",
         "review_status": "APPROVED",
@@ -67,27 +69,340 @@ export const getShowcaseProductsFixture = {
         "added_status": "ADDED"
       },
       "source": "AFFILIATE",
-      "detail_link": "https://shop.tiktok.com/view/product/248901892031?region=US&local=en",
-      "third_party_link": "https://storename.myshopify.com/products/gold-bracelet-engraved-with-diamonds",
+      "detail_link": "https://shop.tiktok.com/view/product/532190923140?region=BR",
       "sale_regions": [
-        "US"
+        "BR"
       ],
       "commission": {
-        "rate": 3000,
-        "reward_rate": 500
+        "rate": 2500,
+        "reward_rate": 0
+      }
+    },
+    {
+      "id": "532190923141",
+      "shop": {
+        "name": "Nuance Beauty"
       },
-      "collaboration": {
-        "id": "7495383576027499219",
-        "type": "OPEN",
-        "partner": {
-          "id": "123456789",
-          "name": "Partner Name"
+      "title": "Paleta de sombras nude 12 cores",
+      "main_images": [
+        {
+          "width": 360,
+          "heigth": 360,
+          "url": PRODUCT_IMAGES["2"]
         }
+      ],
+      "price": {
+        "original_price": {
+          "minimum_amount": "99.90",
+          "maximum_amount": "99.90",
+          "currency": "BRL"
+        },
+        "seller_discount_price": {
+          "minimum_amount": "84.90",
+          "maximum_amount": "84.90",
+          "currency": "BRL"
+        },
+        "platform_discount_price": {
+          "minimum_amount": "84.90",
+          "maximum_amount": "84.90",
+          "currency": "BRL"
+        }
+      },
+      "status": {
+        "inventory_status": "IN_STOCK",
+        "review_status": "APPROVED",
+        "is_hidden": false,
+        "added_status": "ADDED"
+      },
+      "source": "AFFILIATE",
+      "detail_link": "https://shop.tiktok.com/view/product/532190923141?region=BR",
+      "sale_regions": [
+        "BR"
+      ],
+      "commission": {
+        "rate": 2200,
+        "reward_rate": 0
+      }
+    },
+    {
+      "id": "532190923142",
+      "shop": {
+        "name": "Bella Derm Oficial"
+      },
+      "title": "Pó compacto translúcido efeito matte",
+      "main_images": [
+        {
+          "width": 360,
+          "heigth": 360,
+          "url": PRODUCT_IMAGES["3"]
+        }
+      ],
+      "price": {
+        "original_price": {
+          "minimum_amount": "64.90",
+          "maximum_amount": "64.90",
+          "currency": "BRL"
+        },
+        "seller_discount_price": {
+          "minimum_amount": "54.90",
+          "maximum_amount": "54.90",
+          "currency": "BRL"
+        },
+        "platform_discount_price": {
+          "minimum_amount": "54.90",
+          "maximum_amount": "54.90",
+          "currency": "BRL"
+        }
+      },
+      "status": {
+        "inventory_status": "IN_STOCK",
+        "review_status": "APPROVED",
+        "is_hidden": false,
+        "added_status": "ADDED"
+      },
+      "source": "AFFILIATE",
+      "detail_link": "https://shop.tiktok.com/view/product/532190923142?region=BR",
+      "sale_regions": [
+        "BR"
+      ],
+      "commission": {
+        "rate": 1800,
+        "reward_rate": 0
+      }
+    },
+    {
+      "id": "532190923143",
+      "shop": {
+        "name": "CreatorKit Store"
+      },
+      "title": "Ring light de mesa com tripé 26 cm",
+      "main_images": [
+        {
+          "width": 360,
+          "heigth": 360,
+          "url": PRODUCT_IMAGES["110"]
+        }
+      ],
+      "price": {
+        "original_price": {
+          "minimum_amount": "159.90",
+          "maximum_amount": "159.90",
+          "currency": "BRL"
+        },
+        "seller_discount_price": {
+          "minimum_amount": "129.90",
+          "maximum_amount": "129.90",
+          "currency": "BRL"
+        },
+        "platform_discount_price": {
+          "minimum_amount": "129.90",
+          "maximum_amount": "129.90",
+          "currency": "BRL"
+        }
+      },
+      "status": {
+        "inventory_status": "IN_STOCK",
+        "review_status": "APPROVED",
+        "is_hidden": false,
+        "added_status": "ADDED"
+      },
+      "source": "AFFILIATE",
+      "detail_link": "https://shop.tiktok.com/view/product/532190923143?region=BR",
+      "sale_regions": [
+        "BR"
+      ],
+      "commission": {
+        "rate": 1500,
+        "reward_rate": 0
+      }
+    },
+    {
+      "id": "532190923144",
+      "shop": {
+        "name": "CreatorKit Store"
+      },
+      "title": "Bastão de selfie retrátil",
+      "main_images": [
+        {
+          "width": 360,
+          "heigth": 360,
+          "url": PRODUCT_IMAGES["111"]
+        }
+      ],
+      "price": {
+        "original_price": {
+          "minimum_amount": "89.90",
+          "maximum_amount": "89.90",
+          "currency": "BRL"
+        },
+        "seller_discount_price": {
+          "minimum_amount": "69.90",
+          "maximum_amount": "69.90",
+          "currency": "BRL"
+        },
+        "platform_discount_price": {
+          "minimum_amount": "69.90",
+          "maximum_amount": "69.90",
+          "currency": "BRL"
+        }
+      },
+      "status": {
+        "inventory_status": "IN_STOCK",
+        "review_status": "APPROVED",
+        "is_hidden": false,
+        "added_status": "ADDED"
+      },
+      "source": "AFFILIATE",
+      "detail_link": "https://shop.tiktok.com/view/product/532190923144?region=BR",
+      "sale_regions": [
+        "BR"
+      ],
+      "commission": {
+        "rate": 1600,
+        "reward_rate": 0
+      }
+    },
+    {
+      "id": "532190923145",
+      "shop": {
+        "name": "Stride Esportes"
+      },
+      "title": "Tênis esportivo branco e vermelho",
+      "main_images": [
+        {
+          "width": 360,
+          "heigth": 360,
+          "url": PRODUCT_IMAGES["91"]
+        }
+      ],
+      "price": {
+        "original_price": {
+          "minimum_amount": "319.90",
+          "maximum_amount": "319.90",
+          "currency": "BRL"
+        },
+        "seller_discount_price": {
+          "minimum_amount": "259.90",
+          "maximum_amount": "259.90",
+          "currency": "BRL"
+        },
+        "platform_discount_price": {
+          "minimum_amount": "259.90",
+          "maximum_amount": "259.90",
+          "currency": "BRL"
+        }
+      },
+      "status": {
+        "inventory_status": "IN_STOCK",
+        "review_status": "APPROVED",
+        "is_hidden": false,
+        "added_status": "ADDED"
+      },
+      "source": "AFFILIATE",
+      "detail_link": "https://shop.tiktok.com/view/product/532190923145?region=BR",
+      "sale_regions": [
+        "BR"
+      ],
+      "commission": {
+        "rate": 1100,
+        "reward_rate": 0
+      }
+    },
+    {
+      "id": "532190923146",
+      "shop": {
+        "name": "TempoTech Oficial"
+      },
+      "title": "Relógio pulseira de couro marrom",
+      "main_images": [
+        {
+          "width": 360,
+          "heigth": 360,
+          "url": PRODUCT_IMAGES["93"]
+        }
+      ],
+      "price": {
+        "original_price": {
+          "minimum_amount": "249.00",
+          "maximum_amount": "249.00",
+          "currency": "BRL"
+        },
+        "seller_discount_price": {
+          "minimum_amount": "199.00",
+          "maximum_amount": "199.00",
+          "currency": "BRL"
+        },
+        "platform_discount_price": {
+          "minimum_amount": "199.00",
+          "maximum_amount": "199.00",
+          "currency": "BRL"
+        }
+      },
+      "status": {
+        "inventory_status": "IN_STOCK",
+        "review_status": "APPROVED",
+        "is_hidden": false,
+        "added_status": "ADDED"
+      },
+      "source": "AFFILIATE",
+      "detail_link": "https://shop.tiktok.com/view/product/532190923146?region=BR",
+      "sale_regions": [
+        "BR"
+      ],
+      "commission": {
+        "rate": 1200,
+        "reward_rate": 0
+      }
+    },
+    {
+      "id": "532190923147",
+      "shop": {
+        "name": "CasaViva Utilidades"
+      },
+      "title": "Marmita térmica inox 3 andares",
+      "main_images": [
+        {
+          "width": 360,
+          "heigth": 360,
+          "url": PRODUCT_IMAGES["65"]
+        }
+      ],
+      "price": {
+        "original_price": {
+          "minimum_amount": "119.90",
+          "maximum_amount": "119.90",
+          "currency": "BRL"
+        },
+        "seller_discount_price": {
+          "minimum_amount": "99.90",
+          "maximum_amount": "99.90",
+          "currency": "BRL"
+        },
+        "platform_discount_price": {
+          "minimum_amount": "99.90",
+          "maximum_amount": "99.90",
+          "currency": "BRL"
+        }
+      },
+      "status": {
+        "inventory_status": "IN_STOCK",
+        "review_status": "APPROVED",
+        "is_hidden": false,
+        "added_status": "ADDED"
+      },
+      "source": "AFFILIATE",
+      "detail_link": "https://shop.tiktok.com/view/product/532190923147?region=BR",
+      "sale_regions": [
+        "BR"
+      ],
+      "commission": {
+        "rate": 1900,
+        "reward_rate": 0
       }
     }
   ],
-  "next_page_token": "V231as2V0PTAK",
-  "total_count": 15
+  "next_page_token": "",
+  "total_count": 8
 } as unknown as T.GetShowcaseProductsData;
 export const addShowcaseProductsFixture = {
   "errors": [
@@ -679,102 +994,803 @@ export const creatorSearchOpenCollaborationProductFixture = {
   "products": [
     {
       "shop": {
-        "name": "Test shop"
+        "name": "Nuance Beauty"
       },
-      "id": "1729432087292775344",
-      "has_inventory": false,
-      "units_sold": 12123,
-      "title": "Blue t-shirt",
-      "sale_region": "ID",
-      "main_image_url": "https://p16-oec-va.ibyteimg.com/tos-maliva-i-o3syd03w52-us/fa0387fa5a204dcfa44d5be75877a163~tplv-o3syd03w52-origin-webp.webp?from=3478900499",
-      "detail_link": "https://shop.tiktok.com/view/product/1729624807198591373?region=ID&local=en",
+      "id": "1729624807198591370",
+      "has_inventory": true,
+      "units_sold": 18420,
+      "title": "Kit 2 batons matte + lápis labial",
+      "sale_region": "BR",
+      "main_image_url": PRODUCT_IMAGES["4"],
+      "detail_link": "https://shop.tiktok.com/view/product/1729624807198591370?region=BR",
       "original_price": {
-        "currency": "USD",
-        "minimum_amount": "12.21",
-        "maximum_amount": "100.00"
+        "currency": "BRL",
+        "minimum_amount": "79.90",
+        "maximum_amount": "79.90"
       },
       "category_chains": [
         {
-          "id": "343554",
-          "local_name": "COMPUTER",
-          "is_leaf": false,
-          "parent_id": "341182"
+          "id": "60000",
+          "local_name": "Beleza",
+          "is_leaf": true,
+          "parent_id": "600000"
         }
       ],
       "commission": {
-        "rate": 3000,
-        "currency": "USD",
-        "amount": "121.32"
+        "rate": 2500,
+        "currency": "BRL",
+        "amount": "14.97"
       },
       "sales_price": {
-        "currency": "USD",
-        "minimum_amount": "34.3",
-        "maximum_amount": "55.7"
+        "currency": "BRL",
+        "minimum_amount": "59.90",
+        "maximum_amount": "59.90"
+      }
+    },
+    {
+      "shop": {
+        "name": "Nuance Beauty"
+      },
+      "id": "1729624807198591371",
+      "has_inventory": true,
+      "units_sold": 9310,
+      "title": "Paleta de sombras nude 12 cores",
+      "sale_region": "BR",
+      "main_image_url": PRODUCT_IMAGES["2"],
+      "detail_link": "https://shop.tiktok.com/view/product/1729624807198591371?region=BR",
+      "original_price": {
+        "currency": "BRL",
+        "minimum_amount": "109.90",
+        "maximum_amount": "109.90"
+      },
+      "category_chains": [
+        {
+          "id": "60001",
+          "local_name": "Beleza",
+          "is_leaf": true,
+          "parent_id": "600000"
+        }
+      ],
+      "commission": {
+        "rate": 2200,
+        "currency": "BRL",
+        "amount": "18.68"
+      },
+      "sales_price": {
+        "currency": "BRL",
+        "minimum_amount": "84.90",
+        "maximum_amount": "84.90"
+      }
+    },
+    {
+      "shop": {
+        "name": "CreatorKit Store"
+      },
+      "id": "1729624807198591372",
+      "has_inventory": true,
+      "units_sold": 12780,
+      "title": "Ring light 30 cm com tripé 2 m",
+      "sale_region": "BR",
+      "main_image_url": PRODUCT_IMAGES["110"],
+      "detail_link": "https://shop.tiktok.com/view/product/1729624807198591372?region=BR",
+      "original_price": {
+        "currency": "BRL",
+        "minimum_amount": "199.90",
+        "maximum_amount": "199.90"
+      },
+      "category_chains": [
+        {
+          "id": "60002",
+          "local_name": "Eletrônicos",
+          "is_leaf": true,
+          "parent_id": "600000"
+        }
+      ],
+      "commission": {
+        "rate": 1500,
+        "currency": "BRL",
+        "amount": "22.48"
+      },
+      "sales_price": {
+        "currency": "BRL",
+        "minimum_amount": "149.90",
+        "maximum_amount": "149.90"
+      }
+    },
+    {
+      "shop": {
+        "name": "CreatorKit Store"
+      },
+      "id": "1729624807198591373",
+      "has_inventory": true,
+      "units_sold": 7640,
+      "title": "Microfone de lapela para celular",
+      "sale_region": "BR",
+      "main_image_url": PRODUCT_IMAGES["111"],
+      "detail_link": "https://shop.tiktok.com/view/product/1729624807198591373?region=BR",
+      "original_price": {
+        "currency": "BRL",
+        "minimum_amount": "89.90",
+        "maximum_amount": "89.90"
+      },
+      "category_chains": [
+        {
+          "id": "60003",
+          "local_name": "Eletrônicos",
+          "is_leaf": true,
+          "parent_id": "600000"
+        }
+      ],
+      "commission": {
+        "rate": 1800,
+        "currency": "BRL",
+        "amount": "11.68"
+      },
+      "sales_price": {
+        "currency": "BRL",
+        "minimum_amount": "64.90",
+        "maximum_amount": "64.90"
+      }
+    },
+    {
+      "shop": {
+        "name": "Stride Esportes"
+      },
+      "id": "1729624807198591374",
+      "has_inventory": true,
+      "units_sold": 5210,
+      "title": "Tênis esportivo leve para corrida",
+      "sale_region": "BR",
+      "main_image_url": PRODUCT_IMAGES["91"],
+      "detail_link": "https://shop.tiktok.com/view/product/1729624807198591374?region=BR",
+      "original_price": {
+        "currency": "BRL",
+        "minimum_amount": "329.90",
+        "maximum_amount": "329.90"
+      },
+      "category_chains": [
+        {
+          "id": "60004",
+          "local_name": "Calçados",
+          "is_leaf": true,
+          "parent_id": "600000"
+        }
+      ],
+      "commission": {
+        "rate": 1100,
+        "currency": "BRL",
+        "amount": "28.59"
+      },
+      "sales_price": {
+        "currency": "BRL",
+        "minimum_amount": "259.90",
+        "maximum_amount": "259.90"
+      }
+    },
+    {
+      "shop": {
+        "name": "TempoTech Oficial"
+      },
+      "id": "1729624807198591375",
+      "has_inventory": true,
+      "units_sold": 3480,
+      "title": "Relógio couro legítimo 42 mm",
+      "sale_region": "BR",
+      "main_image_url": PRODUCT_IMAGES["93"],
+      "detail_link": "https://shop.tiktok.com/view/product/1729624807198591375?region=BR",
+      "original_price": {
+        "currency": "BRL",
+        "minimum_amount": "279.00",
+        "maximum_amount": "279.00"
+      },
+      "category_chains": [
+        {
+          "id": "60005",
+          "local_name": "Acessórios",
+          "is_leaf": true,
+          "parent_id": "600000"
+        }
+      ],
+      "commission": {
+        "rate": 1200,
+        "currency": "BRL",
+        "amount": "23.88"
+      },
+      "sales_price": {
+        "currency": "BRL",
+        "minimum_amount": "199.00",
+        "maximum_amount": "199.00"
+      }
+    },
+    {
+      "shop": {
+        "name": "CozinhaMais Casa"
+      },
+      "id": "1729624807198591376",
+      "has_inventory": true,
+      "units_sold": 6150,
+      "title": "Mixer de mão 500 W com 3 hastes",
+      "sale_region": "BR",
+      "main_image_url": PRODUCT_IMAGES["61"],
+      "detail_link": "https://shop.tiktok.com/view/product/1729624807198591376?region=BR",
+      "original_price": {
+        "currency": "BRL",
+        "minimum_amount": "189.90",
+        "maximum_amount": "189.90"
+      },
+      "category_chains": [
+        {
+          "id": "60006",
+          "local_name": "Casa e cozinha",
+          "is_leaf": true,
+          "parent_id": "600000"
+        }
+      ],
+      "commission": {
+        "rate": 1300,
+        "currency": "BRL",
+        "amount": "19.49"
+      },
+      "sales_price": {
+        "currency": "BRL",
+        "minimum_amount": "149.90",
+        "maximum_amount": "149.90"
+      }
+    },
+    {
+      "shop": {
+        "name": "CasaViva Utilidades"
+      },
+      "id": "1729624807198591377",
+      "has_inventory": true,
+      "units_sold": 8730,
+      "title": "Marmita térmica inox 3 andares",
+      "sale_region": "BR",
+      "main_image_url": PRODUCT_IMAGES["65"],
+      "detail_link": "https://shop.tiktok.com/view/product/1729624807198591377?region=BR",
+      "original_price": {
+        "currency": "BRL",
+        "minimum_amount": "129.90",
+        "maximum_amount": "129.90"
+      },
+      "category_chains": [
+        {
+          "id": "60007",
+          "local_name": "Casa e cozinha",
+          "is_leaf": true,
+          "parent_id": "600000"
+        }
+      ],
+      "commission": {
+        "rate": 1900,
+        "currency": "BRL",
+        "amount": "18.98"
+      },
+      "sales_price": {
+        "currency": "BRL",
+        "minimum_amount": "99.90",
+        "maximum_amount": "99.90"
       }
     }
   ],
-  "next_page_token": "b2Zmc2V0PTEw",
-  "total_count": 10000
+  "next_page_token": "b2Zmc2V0PTg=",
+  "total_count": 8
 } as unknown as T.CreatorSearchOpenCollaborationProductData;
 export const getOpenCollaborationProductListByProductIdsFixture = {
   "products": [
     {
       "shop": {
-        "name": "Test shop"
+        "name": "Nuance Beauty"
       },
-      "id": "1729432087292775344",
-      "has_inventory": false,
-      "units_sold": 12,
-      "title": "Blue t-shirt",
-      "sale_region": "ID",
-      "main_image_url": "https://p16-oec-va.ibyteimg.com/tos-maliva-i-o3syd03w52-us/fa0387fa5a204dcfa44d5be75877a163~tplv-o3syd03w52-origin-webp.webp?from=3478900499",
-      "detail_link": "https://shop.tiktok.com/view/product/1729624807198591373?region=ID&local=en",
+      "id": "1729432087292775304",
+      "has_inventory": true,
+      "units_sold": 28470,
+      "title": "Batom matte vermelho longa duração",
+      "sale_region": "BR",
+      "main_image_url": PRODUCT_IMAGES["4"],
+      "detail_link": "https://shop.tiktok.com/view/product/1729432087292775304?region=BR",
       "original_price": {
-        "currency": "USD",
-        "minimum_amount": "12.21",
-        "maximum_amount": "100.00"
+        "currency": "BRL",
+        "minimum_amount": "49.90",
+        "maximum_amount": "49.90"
       },
       "category_chains": [
         {
-          "id": "3435545",
-          "local_name": "COMPUTER",
-          "is_leaf": false,
-          "parent_id": "12345"
+          "id": "60000",
+          "local_name": "Beleza",
+          "is_leaf": true,
+          "parent_id": "600000"
         }
       ],
       "commission": {
-        "rate": 100,
-        "currency": "USD",
-        "amount": "123"
+        "rate": 2500,
+        "currency": "BRL",
+        "amount": "9.97"
       },
       "sales_price": {
-        "currency": "USD",
-        "minimum_amount": "34.3",
-        "maximum_amount": "55.7"
+        "currency": "BRL",
+        "minimum_amount": "39.90",
+        "maximum_amount": "39.90"
+      }
+    },
+    {
+      "shop": {
+        "name": "Nuance Beauty"
       },
-      "shop_ads_commission": {
-        "rate": 100
+      "id": "1729432087292775302",
+      "has_inventory": true,
+      "units_sold": 15380,
+      "title": "Paleta de sombras 18 cores com espelho",
+      "sale_region": "BR",
+      "main_image_url": PRODUCT_IMAGES["2"],
+      "detail_link": "https://shop.tiktok.com/view/product/1729432087292775302?region=BR",
+      "original_price": {
+        "currency": "BRL",
+        "minimum_amount": "99.90",
+        "maximum_amount": "99.90"
+      },
+      "category_chains": [
+        {
+          "id": "60001",
+          "local_name": "Beleza",
+          "is_leaf": true,
+          "parent_id": "600000"
+        }
+      ],
+      "commission": {
+        "rate": 2200,
+        "currency": "BRL",
+        "amount": "17.58"
+      },
+      "sales_price": {
+        "currency": "BRL",
+        "minimum_amount": "79.90",
+        "maximum_amount": "79.90"
+      }
+    },
+    {
+      "shop": {
+        "name": "Bella Derm Oficial"
+      },
+      "id": "1729432087292775303",
+      "has_inventory": true,
+      "units_sold": 11250,
+      "title": "Pó compacto translúcido efeito matte",
+      "sale_region": "BR",
+      "main_image_url": PRODUCT_IMAGES["3"],
+      "detail_link": "https://shop.tiktok.com/view/product/1729432087292775303?region=BR",
+      "original_price": {
+        "currency": "BRL",
+        "minimum_amount": "64.90",
+        "maximum_amount": "64.90"
+      },
+      "category_chains": [
+        {
+          "id": "60002",
+          "local_name": "Beleza",
+          "is_leaf": true,
+          "parent_id": "600000"
+        }
+      ],
+      "commission": {
+        "rate": 1800,
+        "currency": "BRL",
+        "amount": "9.88"
+      },
+      "sales_price": {
+        "currency": "BRL",
+        "minimum_amount": "54.90",
+        "maximum_amount": "54.90"
+      }
+    },
+    {
+      "shop": {
+        "name": "Bella Derm Oficial"
+      },
+      "id": "1729432087292775305",
+      "has_inventory": true,
+      "units_sold": 9340,
+      "title": "Esmalte vermelho efeito gel 8ml",
+      "sale_region": "BR",
+      "main_image_url": PRODUCT_IMAGES["5"],
+      "detail_link": "https://shop.tiktok.com/view/product/1729432087292775305?region=BR",
+      "original_price": {
+        "currency": "BRL",
+        "minimum_amount": "29.90",
+        "maximum_amount": "29.90"
+      },
+      "category_chains": [
+        {
+          "id": "60003",
+          "local_name": "Beleza",
+          "is_leaf": true,
+          "parent_id": "600000"
+        }
+      ],
+      "commission": {
+        "rate": 2800,
+        "currency": "BRL",
+        "amount": "6.97"
+      },
+      "sales_price": {
+        "currency": "BRL",
+        "minimum_amount": "24.90",
+        "maximum_amount": "24.90"
+      }
+    },
+    {
+      "shop": {
+        "name": "CreatorKit Store"
+      },
+      "id": "1729432087292775411",
+      "has_inventory": true,
+      "units_sold": 8930,
+      "title": "Bastão de selfie retrátil com controle",
+      "sale_region": "BR",
+      "main_image_url": PRODUCT_IMAGES["111"],
+      "detail_link": "https://shop.tiktok.com/view/product/1729432087292775411?region=BR",
+      "original_price": {
+        "currency": "BRL",
+        "minimum_amount": "89.90",
+        "maximum_amount": "89.90"
+      },
+      "category_chains": [
+        {
+          "id": "60004",
+          "local_name": "Eletrônicos",
+          "is_leaf": true,
+          "parent_id": "600000"
+        }
+      ],
+      "commission": {
+        "rate": 1600,
+        "currency": "BRL",
+        "amount": "11.18"
+      },
+      "sales_price": {
+        "currency": "BRL",
+        "minimum_amount": "69.90",
+        "maximum_amount": "69.90"
+      }
+    },
+    {
+      "shop": {
+        "name": "CreatorKit Store"
+      },
+      "id": "1729432087292775410",
+      "has_inventory": true,
+      "units_sold": 15230,
+      "title": "Ring light de mesa com tripé 26 cm",
+      "sale_region": "BR",
+      "main_image_url": PRODUCT_IMAGES["110"],
+      "detail_link": "https://shop.tiktok.com/view/product/1729432087292775410?region=BR",
+      "original_price": {
+        "currency": "BRL",
+        "minimum_amount": "159.90",
+        "maximum_amount": "159.90"
+      },
+      "category_chains": [
+        {
+          "id": "60005",
+          "local_name": "Eletrônicos",
+          "is_leaf": true,
+          "parent_id": "600000"
+        }
+      ],
+      "commission": {
+        "rate": 1500,
+        "currency": "BRL",
+        "amount": "19.48"
+      },
+      "sales_price": {
+        "currency": "BRL",
+        "minimum_amount": "129.90",
+        "maximum_amount": "129.90"
+      }
+    },
+    {
+      "shop": {
+        "name": "Stride Esportes"
+      },
+      "id": "1729432087292775391",
+      "has_inventory": true,
+      "units_sold": 6280,
+      "title": "Tênis esportivo branco e vermelho",
+      "sale_region": "BR",
+      "main_image_url": PRODUCT_IMAGES["91"],
+      "detail_link": "https://shop.tiktok.com/view/product/1729432087292775391?region=BR",
+      "original_price": {
+        "currency": "BRL",
+        "minimum_amount": "319.90",
+        "maximum_amount": "319.90"
+      },
+      "category_chains": [
+        {
+          "id": "60006",
+          "local_name": "Calçados",
+          "is_leaf": true,
+          "parent_id": "600000"
+        }
+      ],
+      "commission": {
+        "rate": 1100,
+        "currency": "BRL",
+        "amount": "28.59"
+      },
+      "sales_price": {
+        "currency": "BRL",
+        "minimum_amount": "259.90",
+        "maximum_amount": "259.90"
+      }
+    },
+    {
+      "shop": {
+        "name": "TempoTech Oficial"
+      },
+      "id": "1729432087292775393",
+      "has_inventory": true,
+      "units_sold": 7180,
+      "title": "Relógio pulseira de couro marrom",
+      "sale_region": "BR",
+      "main_image_url": PRODUCT_IMAGES["93"],
+      "detail_link": "https://shop.tiktok.com/view/product/1729432087292775393?region=BR",
+      "original_price": {
+        "currency": "BRL",
+        "minimum_amount": "249.00",
+        "maximum_amount": "249.00"
+      },
+      "category_chains": [
+        {
+          "id": "60007",
+          "local_name": "Acessórios",
+          "is_leaf": true,
+          "parent_id": "600000"
+        }
+      ],
+      "commission": {
+        "rate": 1200,
+        "currency": "BRL",
+        "amount": "23.88"
+      },
+      "sales_price": {
+        "currency": "BRL",
+        "minimum_amount": "199.00",
+        "maximum_amount": "199.00"
+      }
+    },
+    {
+      "shop": {
+        "name": "Urban Fit Store"
+      },
+      "id": "1729432087292775386",
+      "has_inventory": true,
+      "units_sold": 3120,
+      "title": "Camisa manga curta estampa floral",
+      "sale_region": "BR",
+      "main_image_url": PRODUCT_IMAGES["86"],
+      "detail_link": "https://shop.tiktok.com/view/product/1729432087292775386?region=BR",
+      "original_price": {
+        "currency": "BRL",
+        "minimum_amount": "109.90",
+        "maximum_amount": "109.90"
+      },
+      "category_chains": [
+        {
+          "id": "60008",
+          "local_name": "Moda",
+          "is_leaf": true,
+          "parent_id": "600000"
+        }
+      ],
+      "commission": {
+        "rate": 2000,
+        "currency": "BRL",
+        "amount": "17.98"
+      },
+      "sales_price": {
+        "currency": "BRL",
+        "minimum_amount": "89.90",
+        "maximum_amount": "89.90"
+      }
+    },
+    {
+      "shop": {
+        "name": "CozinhaMais Casa"
+      },
+      "id": "1729432087292775361",
+      "has_inventory": true,
+      "units_sold": 5410,
+      "title": "Mixer de mão 3 velocidades 500W",
+      "sale_region": "BR",
+      "main_image_url": PRODUCT_IMAGES["61"],
+      "detail_link": "https://shop.tiktok.com/view/product/1729432087292775361?region=BR",
+      "original_price": {
+        "currency": "BRL",
+        "minimum_amount": "179.90",
+        "maximum_amount": "179.90"
+      },
+      "category_chains": [
+        {
+          "id": "60009",
+          "local_name": "Casa e cozinha",
+          "is_leaf": true,
+          "parent_id": "600000"
+        }
+      ],
+      "commission": {
+        "rate": 1300,
+        "currency": "BRL",
+        "amount": "19.49"
+      },
+      "sales_price": {
+        "currency": "BRL",
+        "minimum_amount": "149.90",
+        "maximum_amount": "149.90"
+      }
+    },
+    {
+      "shop": {
+        "name": "CasaViva Utilidades"
+      },
+      "id": "1729432087292775347",
+      "has_inventory": true,
+      "units_sold": 4890,
+      "title": "Luminária de mesa vintage com cúpula",
+      "sale_region": "BR",
+      "main_image_url": PRODUCT_IMAGES["47"],
+      "detail_link": "https://shop.tiktok.com/view/product/1729432087292775347?region=BR",
+      "original_price": {
+        "currency": "BRL",
+        "minimum_amount": "149.90",
+        "maximum_amount": "149.90"
+      },
+      "category_chains": [
+        {
+          "id": "600010",
+          "local_name": "Casa e cozinha",
+          "is_leaf": true,
+          "parent_id": "600000"
+        }
+      ],
+      "commission": {
+        "rate": 1700,
+        "currency": "BRL",
+        "amount": "20.38"
+      },
+      "sales_price": {
+        "currency": "BRL",
+        "minimum_amount": "119.90",
+        "maximum_amount": "119.90"
+      }
+    },
+    {
+      "shop": {
+        "name": "CasaViva Utilidades"
+      },
+      "id": "1729432087292775365",
+      "has_inventory": true,
+      "units_sold": 8120,
+      "title": "Marmita térmica inox 3 andares",
+      "sale_region": "BR",
+      "main_image_url": PRODUCT_IMAGES["65"],
+      "detail_link": "https://shop.tiktok.com/view/product/1729432087292775365?region=BR",
+      "original_price": {
+        "currency": "BRL",
+        "minimum_amount": "119.90",
+        "maximum_amount": "119.90"
+      },
+      "category_chains": [
+        {
+          "id": "600011",
+          "local_name": "Casa e cozinha",
+          "is_leaf": true,
+          "parent_id": "600000"
+        }
+      ],
+      "commission": {
+        "rate": 1900,
+        "currency": "BRL",
+        "amount": "18.98"
+      },
+      "sales_price": {
+        "currency": "BRL",
+        "minimum_amount": "99.90",
+        "maximum_amount": "99.90"
       }
     }
   ]
 } as unknown as T.GetOpenCollaborationProductListByProductIdsData;
 export const searchCreatorTargetCollaborationsFixture = {
-  "total_count": 100,
-  "next_page_token": "b2Zmc2V0PTAK",
+  "total_count": 3,
+  "next_page_token": "",
   "target_collaborations": [
     {
-      "id": "789078671231123124",
-      "name": "target_collaboration",
+      "id": "789078671231123120",
+      "name": "Campanha Beleza · Setembro",
       "status": "LIVE",
       "products": [
         {
-          "id": "1729432087292775344",
-          "title": "Blue t-shirt",
-          "main_image_url": "https://p16-oec-va.ibyteimg.com/tos-maliva-i-o3syd03w52-us/fa0387fa5a204dcfa44d5be75877a163~tplv-o3syd03w52-origin-webp.webp?from=3478900499",
+          "id": "1729432087292775300",
+          "title": "Kit 2 batons matte + lápis labial",
+          "main_image_url": PRODUCT_IMAGES["4"],
           "commission": {
-            "rate": 1000,
-            "amount": "121.23",
-            "currency": "USD"
+            "rate": 2500,
+            "amount": "14.97",
+            "currency": "BRL"
+          }
+        },
+        {
+          "id": "1729432087292775301",
+          "title": "Paleta de sombras nude 12 cores",
+          "main_image_url": PRODUCT_IMAGES["2"],
+          "commission": {
+            "rate": 2200,
+            "amount": "18.68",
+            "currency": "BRL"
+          }
+        },
+        {
+          "id": "1729432087292775302",
+          "title": "Pó compacto translúcido",
+          "main_image_url": PRODUCT_IMAGES["3"],
+          "commission": {
+            "rate": 1800,
+            "amount": "11.68",
+            "currency": "BRL"
+          }
+        }
+      ]
+    },
+    {
+      "id": "789078671231123121",
+      "name": "Lançamento CreatorKit",
+      "status": "LIVE",
+      "products": [
+        {
+          "id": "1729432087292775305",
+          "title": "Ring light 30 cm com tripé 2 m",
+          "main_image_url": PRODUCT_IMAGES["110"],
+          "commission": {
+            "rate": 1500,
+            "amount": "22.48",
+            "currency": "BRL"
+          }
+        },
+        {
+          "id": "1729432087292775304",
+          "title": "Microfone de lapela para celular",
+          "main_image_url": PRODUCT_IMAGES["111"],
+          "commission": {
+            "rate": 1800,
+            "amount": "11.68",
+            "currency": "BRL"
+          }
+        }
+      ]
+    },
+    {
+      "id": "789078671231123122",
+      "name": "Volta às aulas · Casa",
+      "status": "ENDED",
+      "products": [
+        {
+          "id": "1729432087292775309",
+          "title": "Mixer de mão 500 W",
+          "main_image_url": PRODUCT_IMAGES["61"],
+          "commission": {
+            "rate": 1300,
+            "amount": "19.49",
+            "currency": "BRL"
+          }
+        },
+        {
+          "id": "1729432087292775311",
+          "title": "Marmita térmica inox 3 andares",
+          "main_image_url": PRODUCT_IMAGES["65"],
+          "commission": {
+            "rate": 1900,
+            "amount": "18.98",
+            "currency": "BRL"
           }
         }
       ]
@@ -812,22 +1828,112 @@ export const getCreatorApplicableSampleLabelFixture = {
   }
 } as unknown as T.GetCreatorApplicableSampleLabelData;
 export const searchCreatorSampleApplicationsFixture = {
-  "next_page_token": "aDU2dHIzMlFhME5CUzJKUDhDdVJhTDM1WmJkeFVTVW9LTkRaSnNaZCtuWjJXVU5CSDhlaA==",
+  "next_page_token": "",
   "sample_applications": [
+    {
+      "id": "8070590921506065180",
+      "sample_product": {
+        "id": "1729432087292775304",
+        "sku_id": "1729480364147774360",
+        "sku_sale_property_value_names": "vermelho, tamanho único"
+      },
+      "main_order_id": "13444220",
+      "activity_id": "13456670",
+      "status": "PENDING",
+      "creator_fulfillment": {
+        "id": "123450",
+        "expiration_time": 1758326400,
+        "total_suspend_duration": 0,
+        "status": "PENDING",
+        "bound_product_status": "LIVE"
+      }
+    },
+    {
+      "id": "8070590921506065181",
+      "sample_product": {
+        "id": "1729432087292775410",
+        "sku_id": "1729480364147774361",
+        "sku_sale_property_value_names": "branco, 26 cm"
+      },
+      "main_order_id": "13444221",
+      "activity_id": "13456671",
+      "status": "AWAITING_SHIPMENT",
+      "creator_fulfillment": {
+        "id": "123451",
+        "expiration_time": 1758412800,
+        "total_suspend_duration": 0,
+        "status": "PENDING",
+        "bound_product_status": "LIVE"
+      }
+    },
+    {
+      "id": "8070590921506065182",
+      "sample_product": {
+        "id": "1729432087292775391",
+        "sku_id": "1729480364147774362",
+        "sku_sale_property_value_names": "branco/vermelho, 40"
+      },
+      "main_order_id": "13444222",
+      "activity_id": "13456672",
+      "status": "SHIPPED",
+      "creator_fulfillment": {
+        "id": "123452",
+        "expiration_time": 1758499200,
+        "total_suspend_duration": 0,
+        "status": "PENDING",
+        "bound_product_status": "LIVE"
+      }
+    },
     {
       "id": "8070590921506065183",
       "sample_product": {
-        "id": "1729432087292775344",
-        "sku_id": "1729480364147774364",
-        "sku_sale_property_value_names": "red, large size"
+        "id": "1729432087292775302",
+        "sku_id": "1729480364147774363",
+        "sku_sale_property_value_names": "nude, 12 cores"
       },
-      "main_order_id": "13444222",
-      "activity_id": "13456677",
-      "status": "Pending",
+      "main_order_id": "13444223",
+      "activity_id": "13456673",
+      "status": "CONTENT_PENDING",
       "creator_fulfillment": {
-        "id": "123456",
-        "expiration_time": 1726301400,
-        "total_suspend_duration": 123,
+        "id": "123453",
+        "expiration_time": 1758585600,
+        "total_suspend_duration": 0,
+        "status": "PENDING",
+        "bound_product_status": "LIVE"
+      }
+    },
+    {
+      "id": "8070590921506065184",
+      "sample_product": {
+        "id": "1729432087292775361",
+        "sku_id": "1729480364147774364",
+        "sku_sale_property_value_names": "preto, 500 W"
+      },
+      "main_order_id": "13444224",
+      "activity_id": "13456674",
+      "status": "COMPLETED",
+      "creator_fulfillment": {
+        "id": "123454",
+        "expiration_time": 1758672000,
+        "total_suspend_duration": 0,
+        "status": "FINISHED",
+        "bound_product_status": "LIVE"
+      }
+    },
+    {
+      "id": "8070590921506065185",
+      "sample_product": {
+        "id": "1729432087292775365",
+        "sku_id": "1729480364147774365",
+        "sku_sale_property_value_names": "inox, 3 andares"
+      },
+      "main_order_id": "13444225",
+      "activity_id": "13456675",
+      "status": "REJECT_CANCELLED",
+      "creator_fulfillment": {
+        "id": "123455",
+        "expiration_time": 1758758400,
+        "total_suspend_duration": 0,
         "status": "PENDING",
         "bound_product_status": "LIVE"
       }
@@ -915,7 +2021,7 @@ export const getShopProductsFixture = {
       "brand_name": "Apple",
       "images": [
         {
-          "url": "https://p19-pu-sign-useast8.tiktokcdn-us.com/tos-useast5-avt-0068-tx/982dd6b4e46a6a24203b00611a474cca~c5_1080x1080.webp",
+          "url": AVATAR_DATA_URI,
           "width": 200,
           "height": 200
         }
@@ -934,7 +2040,7 @@ export const searchMusicFixture = {
       "author": "Taylor Swift",
       "cover_thumb": {
         "url_list": [
-          "https://example.com/music/cover/love_story_1.jpg"
+          PRODUCT_IMAGES["5"] + ""
         ]
       },
       "duration": "235",
@@ -1179,7 +2285,7 @@ export const getLiveRoomInteractiveTrendsFixture = {
 export const getLiveRoomProductStatsFixture = {
   "product_stats": [
     {
-      "main_image_url": "https://example.com/images/products/1732333333333333629-main.jpg",
+      "main_image_url": PRODUCT_IMAGES["111"] + "",
       "product_id": "1732333333333333629",
       "is_live": true,
       "click_through_rate": "0.11",
@@ -1306,165 +2412,26 @@ export const creatorSelectAffiliateProductFixture = {
   "total_count": 12,
   "products": [
     {
-      "id": "1729432087292775301",
-      "title": "Kit Skincare Vitamina C — sérum + hidratante",
-      "brand_name": "Bella Derm",
-      "commission": {
-        "amount": "16.18",
-        "rate": 1800
-      },
-      "price": {
-        "floor_price": "89.90",
-        "ceiling_price": "129.90",
-        "currency": "BRL"
-      },
-      "review": {
-        "count": 4231,
-        "overall_score": "4.7"
-      },
-      "shop": {
-        "name": "Bella Derm Oficial",
-        "rating": "4.8"
-      },
-      "stock": {
-        "quantity": 320
-      },
-      "market_performance": {
-        "historical_sold_quantity": 12840
-      }
-    },
-    {
-      "id": "1729432087292775302",
-      "title": "Fone Bluetooth TWS com cancelamento de ruído",
-      "brand_name": "SoundPro",
-      "commission": {
-        "amount": "17.99",
-        "rate": 1200
-      },
-      "price": {
-        "floor_price": "149.9",
-        "ceiling_price": "199.9",
-        "currency": "BRL"
-      },
-      "review": {
-        "count": 2187,
-        "overall_score": "4.5"
-      },
-      "shop": {
-        "name": "SoundPro Store",
-        "rating": "4.6"
-      },
-      "stock": {
-        "quantity": 145
-      },
-      "market_performance": {
-        "historical_sold_quantity": 8930
-      }
-    },
-    {
-      "id": "1729432087292775303",
-      "title": "Secador de cabelo íons 2000W",
-      "brand_name": "GlamTech",
-      "commission": {
-        "amount": "32.85",
-        "rate": 1500
-      },
-      "price": {
-        "floor_price": "219.00",
-        "ceiling_price": "259.00",
-        "currency": "BRL"
-      },
-      "review": {
-        "count": 1502,
-        "overall_score": "4.8"
-      },
-      "shop": {
-        "name": "GlamTech BR",
-        "rating": "4.9"
-      },
-      "stock": {
-        "quantity": 88
-      },
-      "market_performance": {
-        "historical_sold_quantity": 5410
-      }
-    },
-    {
       "id": "1729432087292775304",
-      "title": "Air Fryer 5L digital antiaderente",
-      "brand_name": "CozinhaMais",
-      "commission": {
-        "amount": "32.99",
-        "rate": 1000
-      },
-      "price": {
-        "floor_price": "329.90",
-        "ceiling_price": "389.90",
-        "currency": "BRL"
-      },
-      "review": {
-        "count": 3844,
-        "overall_score": "4.6"
-      },
-      "shop": {
-        "name": "CozinhaMais Casa",
-        "rating": "4.7"
-      },
-      "stock": {
-        "quantity": 210
-      },
-      "market_performance": {
-        "historical_sold_quantity": 15230
-      }
-    },
-    {
-      "id": "1729432087292775305",
-      "title": "Camiseta oversized algodão pima",
-      "brand_name": "Urban Fit",
-      "commission": {
-        "amount": "15.38",
-        "rate": 2200
-      },
-      "price": {
-        "floor_price": "69.90",
-        "ceiling_price": "79.90",
-        "currency": "BRL"
-      },
-      "review": {
-        "count": 964,
-        "overall_score": "4.4"
-      },
-      "shop": {
-        "name": "Urban Fit Store",
-        "rating": "4.5"
-      },
-      "stock": {
-        "quantity": 640
-      },
-      "market_performance": {
-        "historical_sold_quantity": 3120
-      }
-    },
-    {
-      "id": "1729432087292775306",
-      "title": "Base líquida alta cobertura 30ml",
+      "title": "Batom matte vermelho longa duração",
       "brand_name": "Nuance",
+      "main_image_url": PRODUCT_IMAGES["4"],
       "commission": {
-        "amount": "14.98",
+        "amount": "9.97",
         "rate": 2500
       },
       "price": {
-        "floor_price": "59.90",
-        "ceiling_price": "59.90",
+        "floor_price": "39.90",
+        "ceiling_price": "49.90",
         "currency": "BRL"
       },
       "review": {
         "count": 7210,
-        "overall_score": "4.9"
+        "overall_score": "4.8"
       },
       "shop": {
         "name": "Nuance Beauty",
-        "rating": "4.8"
+        "rating": "4.9"
       },
       "stock": {
         "quantity": 890
@@ -1474,9 +2441,155 @@ export const creatorSelectAffiliateProductFixture = {
       }
     },
     {
-      "id": "1729432087292775307",
-      "title": "Tênis corrida amortecimento leve",
+      "id": "1729432087292775302",
+      "title": "Paleta de sombras 18 cores com espelho",
+      "brand_name": "Nuance",
+      "main_image_url": PRODUCT_IMAGES["2"],
+      "commission": {
+        "amount": "17.58",
+        "rate": 2200
+      },
+      "price": {
+        "floor_price": "79.90",
+        "ceiling_price": "99.90",
+        "currency": "BRL"
+      },
+      "review": {
+        "count": 4126,
+        "overall_score": "4.7"
+      },
+      "shop": {
+        "name": "Nuance Beauty",
+        "rating": "4.9"
+      },
+      "stock": {
+        "quantity": 410
+      },
+      "market_performance": {
+        "historical_sold_quantity": 15380
+      }
+    },
+    {
+      "id": "1729432087292775303",
+      "title": "Pó compacto translúcido efeito matte",
+      "brand_name": "Bella Derm",
+      "main_image_url": PRODUCT_IMAGES["3"],
+      "commission": {
+        "amount": "9.88",
+        "rate": 1800
+      },
+      "price": {
+        "floor_price": "54.90",
+        "ceiling_price": "64.90",
+        "currency": "BRL"
+      },
+      "review": {
+        "count": 3305,
+        "overall_score": "4.6"
+      },
+      "shop": {
+        "name": "Bella Derm Oficial",
+        "rating": "4.8"
+      },
+      "stock": {
+        "quantity": 520
+      },
+      "market_performance": {
+        "historical_sold_quantity": 11250
+      }
+    },
+    {
+      "id": "1729432087292775305",
+      "title": "Esmalte vermelho efeito gel 8ml",
+      "brand_name": "Bella Derm",
+      "main_image_url": PRODUCT_IMAGES["5"],
+      "commission": {
+        "amount": "6.97",
+        "rate": 2800
+      },
+      "price": {
+        "floor_price": "24.90",
+        "ceiling_price": "29.90",
+        "currency": "BRL"
+      },
+      "review": {
+        "count": 1964,
+        "overall_score": "4.5"
+      },
+      "shop": {
+        "name": "Bella Derm Oficial",
+        "rating": "4.8"
+      },
+      "stock": {
+        "quantity": 640
+      },
+      "market_performance": {
+        "historical_sold_quantity": 9340
+      }
+    },
+    {
+      "id": "1729432087292775411",
+      "title": "Bastão de selfie retrátil com controle",
+      "brand_name": "CreatorKit",
+      "main_image_url": PRODUCT_IMAGES["111"],
+      "commission": {
+        "amount": "11.18",
+        "rate": 1600
+      },
+      "price": {
+        "floor_price": "69.90",
+        "ceiling_price": "89.90",
+        "currency": "BRL"
+      },
+      "review": {
+        "count": 2187,
+        "overall_score": "4.6"
+      },
+      "shop": {
+        "name": "CreatorKit Store",
+        "rating": "4.7"
+      },
+      "stock": {
+        "quantity": 275
+      },
+      "market_performance": {
+        "historical_sold_quantity": 8930
+      }
+    },
+    {
+      "id": "1729432087292775410",
+      "title": "Ring light de mesa com tripé 26 cm",
+      "brand_name": "CreatorKit",
+      "main_image_url": PRODUCT_IMAGES["110"],
+      "commission": {
+        "amount": "19.48",
+        "rate": 1500
+      },
+      "price": {
+        "floor_price": "129.90",
+        "ceiling_price": "159.90",
+        "currency": "BRL"
+      },
+      "review": {
+        "count": 3844,
+        "overall_score": "4.7"
+      },
+      "shop": {
+        "name": "CreatorKit Store",
+        "rating": "4.7"
+      },
+      "stock": {
+        "quantity": 190
+      },
+      "market_performance": {
+        "historical_sold_quantity": 15230
+      }
+    },
+    {
+      "id": "1729432087292775391",
+      "title": "Tênis esportivo branco e vermelho",
       "brand_name": "Stride",
+      "main_image_url": PRODUCT_IMAGES["91"],
       "commission": {
         "amount": "28.59",
         "rate": 1100
@@ -1502,100 +2615,17 @@ export const creatorSelectAffiliateProductFixture = {
       }
     },
     {
-      "id": "1729432087292775308",
-      "title": "Perfume feminino floral 100ml",
-      "brand_name": "Essenza",
-      "commission": {
-        "amount": "35.80",
-        "rate": 2000
-      },
-      "price": {
-        "floor_price": "179.00",
-        "ceiling_price": "199.00",
-        "currency": "BRL"
-      },
-      "review": {
-        "count": 5126,
-        "overall_score": "4.8"
-      },
-      "shop": {
-        "name": "Essenza Parfums",
-        "rating": "4.9"
-      },
-      "stock": {
-        "quantity": 410
-      },
-      "market_performance": {
-        "historical_sold_quantity": 19640
-      }
-    },
-    {
-      "id": "1729432087292775309",
-      "title": "Suporte ergonômico para notebook",
-      "brand_name": "DeskLife",
-      "commission": {
-        "amount": "11.57",
-        "rate": 1300
-      },
-      "price": {
-        "floor_price": "89.00",
-        "ceiling_price": "109.00",
-        "currency": "BRL"
-      },
-      "review": {
-        "count": 812,
-        "overall_score": "4.3"
-      },
-      "shop": {
-        "name": "DeskLife Home",
-        "rating": "4.4"
-      },
-      "stock": {
-        "quantity": 260
-      },
-      "market_performance": {
-        "historical_sold_quantity": 2940
-      }
-    },
-    {
-      "id": "1729432087292775310",
-      "title": "Shampoo reparador sem sulfato 500ml",
-      "brand_name": "Capilar+",
-      "commission": {
-        "amount": "14.23",
-        "rate": 1900
-      },
-      "price": {
-        "floor_price": "74.90",
-        "ceiling_price": "84.90",
-        "currency": "BRL"
-      },
-      "review": {
-        "count": 3305,
-        "overall_score": "4.7"
-      },
-      "shop": {
-        "name": "Capilar Mais",
-        "rating": "4.7"
-      },
-      "stock": {
-        "quantity": 520
-      },
-      "market_performance": {
-        "historical_sold_quantity": 11250
-      }
-    },
-    {
-      "id": "1729432087292775311",
-      "title": "Relógio smartwatch tela AMOLED",
+      "id": "1729432087292775393",
+      "title": "Relógio pulseira de couro marrom",
       "brand_name": "TempoTech",
+      "main_image_url": PRODUCT_IMAGES["93"],
       "commission": {
-        "amount": "35.91",
-        "rate": 900
+        "amount": "23.88",
+        "rate": 1200
       },
       "price": {
-        "floor_price": "399.00",
-        "ceiling_price": "479.00",
+        "floor_price": "199.00",
+        "ceiling_price": "249.00",
         "currency": "BRL"
       },
       "review": {
@@ -1614,16 +2644,75 @@ export const creatorSelectAffiliateProductFixture = {
       }
     },
     {
-      "id": "1729432087292775312",
-      "title": "Conjunto 3 potes de vidro herméticos",
-      "brand_name": "CasaViva",
+      "id": "1729432087292775386",
+      "title": "Camisa manga curta estampa floral",
+      "brand_name": "Urban Fit",
+      "main_image_url": PRODUCT_IMAGES["86"],
       "commission": {
-        "amount": "15.98",
-        "rate": 1600
+        "amount": "17.98",
+        "rate": 2000
       },
       "price": {
-        "floor_price": "99.90",
-        "ceiling_price": "119.90",
+        "floor_price": "89.90",
+        "ceiling_price": "109.90",
+        "currency": "BRL"
+      },
+      "review": {
+        "count": 964,
+        "overall_score": "4.4"
+      },
+      "shop": {
+        "name": "Urban Fit Store",
+        "rating": "4.5"
+      },
+      "stock": {
+        "quantity": 340
+      },
+      "market_performance": {
+        "historical_sold_quantity": 3120
+      }
+    },
+    {
+      "id": "1729432087292775361",
+      "title": "Mixer de mão 3 velocidades 500W",
+      "brand_name": "CozinhaMais",
+      "main_image_url": PRODUCT_IMAGES["61"],
+      "commission": {
+        "amount": "19.49",
+        "rate": 1300
+      },
+      "price": {
+        "floor_price": "149.90",
+        "ceiling_price": "179.90",
+        "currency": "BRL"
+      },
+      "review": {
+        "count": 1502,
+        "overall_score": "4.6"
+      },
+      "shop": {
+        "name": "CozinhaMais Casa",
+        "rating": "4.7"
+      },
+      "stock": {
+        "quantity": 210
+      },
+      "market_performance": {
+        "historical_sold_quantity": 5410
+      }
+    },
+    {
+      "id": "1729432087292775347",
+      "title": "Luminária de mesa vintage com cúpula",
+      "brand_name": "CasaViva",
+      "main_image_url": PRODUCT_IMAGES["47"],
+      "commission": {
+        "amount": "20.38",
+        "rate": 1700
+      },
+      "price": {
+        "floor_price": "119.90",
+        "ceiling_price": "149.90",
         "currency": "BRL"
       },
       "review": {
@@ -1635,10 +2724,39 @@ export const creatorSelectAffiliateProductFixture = {
         "rating": "4.8"
       },
       "stock": {
-        "quantity": 380
+        "quantity": 260
       },
       "market_performance": {
         "historical_sold_quantity": 4890
+      }
+    },
+    {
+      "id": "1729432087292775365",
+      "title": "Marmita térmica inox 3 andares",
+      "brand_name": "CasaViva",
+      "main_image_url": PRODUCT_IMAGES["65"],
+      "commission": {
+        "amount": "18.98",
+        "rate": 1900
+      },
+      "price": {
+        "floor_price": "99.90",
+        "ceiling_price": "119.90",
+        "currency": "BRL"
+      },
+      "review": {
+        "count": 2530,
+        "overall_score": "4.7"
+      },
+      "shop": {
+        "name": "CasaViva Utilidades",
+        "rating": "4.8"
+      },
+      "stock": {
+        "quantity": 380
+      },
+      "market_performance": {
+        "historical_sold_quantity": 8120
       }
     }
   ]
