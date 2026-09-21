@@ -20,7 +20,9 @@
       de baixa resolução. Em cor sólida e degradê linear, a peça sai em vetor.
 
     Sem selo de desconto, ao contrário da peça do seller: o creator não tem
-    oferta de preço, e o preço do plano ainda é provisório no banco.
+    oferta de preço, e o preço do plano ainda é provisório no banco. No lugar
+    dele, o selo "em breve": o produto não abriu, e a peça não pode sugerir que
+    quem escanear entra hoje. A página do outro lado do QR diz o mesmo.
   */
   @page { size: 14.8cm 21cm; margin: 0; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -48,6 +50,11 @@
   .sigla svg { width: .7cm; height: .7cm; }
   .nome { font-size: .8cm; font-weight: 800; letter-spacing: -.025cm; }
   .nome b { color: #fe2c55; font-weight: 800; }
+  .embreve {
+    margin-left: auto; border: .04cm solid #fe2c55; color: #fe2c55;
+    border-radius: 1cm; padding: .14cm .34cm;
+    font-size: .26cm; font-weight: 800; letter-spacing: .07cm; text-transform: uppercase;
+  }
 
   h1 {
     margin-top: .55cm;
@@ -88,12 +95,13 @@
         </svg>
       </div>
       <div class="nome">TikTally <b>Creator</b></div>
+      <span class="embreve">Em breve</span>
     </div>
 
     <h1>Você postou,<br>vendeu. Quanto<br><em>entrou?</em></h1>
     <p class="sub">
       Suas comissões do TikTok Shop, vídeo por vídeo e live por live, no mesmo
-      painel.
+      painel. Estamos terminando de construir.
     </p>
 
     <div class="qrbloco">
@@ -105,7 +113,7 @@
       <div class="qrtexto">
         <p class="acao">Aponte a<br>câmera</p>
         <p class="url">creator.tiktally.com.br</p>
-        <p class="obs">Deixe seu contato e a gente te mostra o painel com os seus números.</p>
+        <p class="obs">Entre na lista e a gente te avisa quando abrir.</p>
       </div>
     </div>
 

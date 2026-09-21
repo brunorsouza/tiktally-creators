@@ -48,6 +48,13 @@
   .sigla svg { width: 3cm; height: 3cm; }
   .nome { font-size: 3.4cm; font-weight: 800; letter-spacing: -.1cm; }
   .nome b { color: #fe2c55; font-weight: 800; }
+  /* O produto não abriu: a peça avisa antes de alguém escanear e esperar
+     entrar hoje. A página do outro lado do QR diz o mesmo. */
+  .embreve {
+    border: .16cm solid #fe2c55; color: #fe2c55; border-radius: 3cm;
+    padding: .5cm 1.2cm; font-size: 1.05cm; font-weight: 800;
+    letter-spacing: .26cm; text-transform: uppercase;
+  }
   .eyebrow {
     top: 19.5cm; font-size: 1.2cm; font-weight: 700; letter-spacing: .3cm;
     text-transform: uppercase; color: #b9a8ae;
@@ -59,7 +66,7 @@
   .sub { top: 52cm; font-size: 2.75cm; line-height: 1.3; color: #d8ccd1; max-width: 62cm; }
 
   /* ── Provas ────────────────────────────────────────────────────── */
-  .provas { top: 66cm; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.6cm; }
+  .provas { top: 68cm; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.6cm; }
   .prova { font-size: 1.72cm; line-height: 1.24; color: #efe7ea; padding-top: 1cm; border-top: .08cm solid rgba(254,44,85,.5); }
 
   /* ── QR ────────────────────────────────────────────────────────── */
@@ -96,14 +103,15 @@
         </svg>
       </div>
       <div class="nome">TikTally <b>Creator</b></div>
+      <span class="embreve">Em breve</span>
     </div>
     <p class="bloco eyebrow">Para creator afiliado do TikTok Shop</p>
 
     <h1 class="bloco">Você postou,<br>vendeu. Quanto<br><em>entrou?</em></h1>
 
     <p class="bloco sub">
-      O TikTally Creator lê suas comissões direto do TikTok Shop e mostra o que
-      cada vídeo e cada live rendeu de verdade.
+      Suas comissões do TikTok Shop, vídeo por vídeo e live por live, no mesmo
+      painel. Estamos terminando de construir.
     </p>
 
     <div class="bloco provas">
@@ -122,7 +130,7 @@
       <div class="qrtexto">
         <p class="acao">Aponte a câmera<br>do celular</p>
         <p class="url">creator.tiktally.com.br</p>
-        <p class="obs">Deixe seu contato e a gente te mostra<br>o painel com os seus números.</p>
+        <p class="obs">Entre na lista e a gente te avisa<br>quando abrir.</p>
       </div>
     </div>
 

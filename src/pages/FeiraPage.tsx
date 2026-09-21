@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { ArrowRight, Check, Loader2, Mail, MessageCircle, User } from "lucide-react";
+import { Check, Loader2, Mail, MessageCircle, User } from "lucide-react";
 
 import { Logo } from "@/components/brand/Logo";
-import { captureLead, markLeadProceeded } from "@/services/leads";
+import { captureLead } from "@/services/leads";
 
 /**
  * FeiraPage — `/feira`, a página pública de captura de lead.
@@ -22,6 +21,12 @@ import { captureLead, markLeadProceeded } from "@/services/leads";
  * ## Público
  * Esta é a única rota pública além de `/auth`. Nada aqui depende de sessão, e
  * ela não deve ganhar dependência de sessão: quem chega pelo QR não tem conta.
+ *
+ * ## Lista de espera, não cadastro
+ * O produto ainda não abriu. A página diz isso na cara, coleta o contato para
+ * avisar no lançamento e NÃO oferece criar conta: mandar alguém para um
+ * cadastro de um produto que ainda não entrega o que o material prometeu
+ * queima o lead no primeiro contato. Quando abrir, é aqui que o CTA volta.
  */
 
 const MIN_WHATSAPP_DIGITOS = 10;
@@ -119,6 +124,9 @@ export default function FeiraPage() {
             <Logo size={28} />
             <span className="text-[17px] font-extrabold tracking-[-0.02em]">TikTally Creator</span>
           </span>
+          <span className="ml-auto rounded-full bg-accent px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-primary">
+            Em breve
+          </span>
         </div>
       </header>
 
@@ -132,7 +140,8 @@ export default function FeiraPage() {
             </h1>
             <p className="mt-4 text-[16px] leading-relaxed text-muted-foreground md:text-[18px]">
               O TikTally Creator lê suas comissões direto do TikTok Shop e mostra o que cada vídeo e
-              cada live rendeu. Deixe seu contato que a gente te chama.
+              cada live rendeu. Estamos terminando de construir. Deixe seu contato para ser avisado
+              quando abrir.
             </p>
 
             <ul className="mt-7 grid gap-2.5">
@@ -189,7 +198,7 @@ export default function FeiraPage() {
                 className="flex h-14 items-center justify-center gap-2 rounded-xl bg-primary text-[16px] font-bold text-primary-foreground transition-opacity disabled:opacity-60"
               >
                 {enviando && <Loader2 className="h-4 w-4 animate-spin" />}
-                {enviando ? "Enviando" : "Quero conhecer"}
+                {enviando ? "Enviando" : "Avise quando abrir"}
               </button>
               <p className="text-center text-[12px] text-faint">
                 Usamos seu contato só para falar com você sobre o TikTally Creator.
@@ -205,26 +214,18 @@ export default function FeiraPage() {
               Pronto{primeiroNome ? `, ${primeiroNome}` : ""}.
             </h1>
             <p className="mt-3 text-[16px] leading-relaxed text-muted-foreground">
-              Seu contato chegou para a gente. Vamos te chamar no WhatsApp para mostrar o painel com
-              os seus próprios números, não com os de exemplo.
+              Você está na lista. Assim que o TikTally Creator abrir, a gente te chama no WhatsApp
+              para você ver o painel com os seus próprios números, não com os de exemplo.
             </p>
 
             <div className="mt-6 border-t pt-6">
               <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-faint">
-                Se quiser adiantar
+                Enquanto isso
               </p>
               <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
-                Crie sua conta agora e conecte o TikTok Shop. Suas comissões aparecem no painel
-                assim que a conta conectar.
+                Passe no estande para ver o painel funcionando com uma conta de verdade. É a melhor
+                forma de saber se ele resolve o seu caso antes de a gente abrir.
               </p>
-              <Link
-                to="/auth?modo=cadastro"
-                onClick={() => markLeadProceeded(leadId, "creator_pro")}
-                className="mt-4 inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-[15px] font-bold text-primary-foreground"
-              >
-                Criar minha conta
-                <ArrowRight className="h-4 w-4" />
-              </Link>
             </div>
           </div>
         )}
