@@ -40,14 +40,8 @@
 
   /* ── Marca ─────────────────────────────────────────────────────── */
   .marca { top: 12cm; display: flex; align-items: center; gap: 1.2cm; }
-  .sigla {
-    width: 5cm; height: 5cm; border-radius: 1.4cm;
-    background: linear-gradient(135deg, #22d3ee, #0891b2);
-    display: flex; align-items: center; justify-content: center;
-  }
-  .sigla svg { width: 3cm; height: 3cm; }
+  .sigla { width: 5.8cm; height: 5.8cm; flex: none; }
   .nome { font-size: 3.4cm; font-weight: 800; letter-spacing: -.1cm; }
-  .nome b { color: #fe2c55; font-weight: 800; }
   /* O produto não abriu: a peça avisa antes de alguém escanear e esperar
      entrar hoje. A página do outro lado do QR diz o mesmo. */
   .embreve {
@@ -97,12 +91,11 @@
 <body>
   <div class="palco">
     <div class="bloco marca">
-      <div class="sigla">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#fe2c55" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M20 6 9 17l-5-5"/>
-        </svg>
-      </div>
-      <div class="nome">TikTally <b>Creator</b></div>
+      <svg class="sigla" viewBox="102 100 290 290" xmlns="http://www.w3.org/2000/svg">
+        <g transform="translate(265 303) rotate(-47)"><rect x="-60" y="-32" width="120" height="64" rx="32" fill="#10D9E0"/></g>
+        <path d="M 147 238 L 215 312 L 347 160" fill="none" stroke="#F00F69" stroke-width="78" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="nome">TikTally Creator</div>
       <span class="embreve">Em breve</span>
     </div>
     <p class="bloco eyebrow">Para creator afiliado do TikTok Shop</p>

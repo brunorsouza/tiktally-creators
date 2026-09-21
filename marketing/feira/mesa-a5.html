@@ -43,13 +43,8 @@
 
   /* ── Marca ─────────────────────────────────────────────────────── */
   .marca { display: flex; align-items: center; gap: .38cm; }
-  .sigla {
-    width: 1.15cm; height: 1.15cm; border-radius: .34cm; background: #22d3ee;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .sigla svg { width: .7cm; height: .7cm; }
+  .sigla { width: 1.25cm; height: 1.25cm; flex: none; }
   .nome { font-size: .8cm; font-weight: 800; letter-spacing: -.025cm; }
-  .nome b { color: #fe2c55; font-weight: 800; }
   .embreve {
     margin-left: auto; border: .04cm solid #fe2c55; color: #fe2c55;
     border-radius: 1cm; padding: .14cm .34cm;
@@ -89,12 +84,11 @@
 <body>
   <div class="palco">
     <div class="marca">
-      <div class="sigla">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#fe2c55" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M20 6 9 17l-5-5"/>
-        </svg>
-      </div>
-      <div class="nome">TikTally <b>Creator</b></div>
+      <svg class="sigla" viewBox="102 100 290 290" xmlns="http://www.w3.org/2000/svg">
+        <g transform="translate(265 303) rotate(-47)"><rect x="-60" y="-32" width="120" height="64" rx="32" fill="#10D9E0"/></g>
+        <path d="M 147 238 L 215 312 L 347 160" fill="none" stroke="#F00F69" stroke-width="78" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="nome">TikTally Creator</div>
       <span class="embreve">Em breve</span>
     </div>
 
