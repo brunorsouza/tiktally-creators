@@ -32,7 +32,11 @@ import { loadEnv } from "./demo/env.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DIST = path.join(ROOT, "dist-demo");
-const GATE = path.join(ROOT, "demo", ".htaccess");
+// O portão mora junto dos scripts da demo, e não numa pasta `demo/` na raiz:
+// uma pasta com esse nome sugere que a demo está ali dentro, quando o que
+// existe é um arquivo de configuração do Apache. A demo em si é gerada em
+// dist-demo/ a partir do src/ do app.
+const GATE = path.join(ROOT, "scripts", "demo", "htaccess.template");
 
 const RESET = "\x1b[0m", BOLD = "\x1b[1m", RED = "\x1b[31m", GREEN = "\x1b[32m", YELLOW = "\x1b[33m";
 const die = (msg, dica) => {

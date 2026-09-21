@@ -11,6 +11,16 @@ npm run demo:deploy               # build + upload + confere que subiu fechado
 npm run demo:test                 # testa a implementação de apr1
 ```
 
+## Onde está o HTML
+
+Em nenhum lugar até você buildar. Diferente do `tiktally-demo`, cujo
+`index.html` de 2,1 MB **é** a demo e está versionado, aqui o HTML é gerado:
+`npm run demo:build` compila o `src/` e escreve `dist-demo/index.html` mais
+~1,2 MB de bundle. `dist-demo/` é gitignorado, como todo build.
+
+O que está versionado é só o portão:
+`scripts/demo/htaccess.template`, com `{{DOCROOT}}` substituído no build.
+
 ## Não é o mesmo que o `tiktally-demo`
 
 O [`tiktally-demo`](../../tiktally-demo) serve um HTML único entregue pelo
