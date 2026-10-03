@@ -11,6 +11,7 @@ import { StatCard } from "@/components/StatCard";
 import { useAllAffiliateOrders, useTraceOrders, salesBaseOf, type GanhosFilters } from "@/hooks/useGanhos";
 import { USE_MOCK } from "@/services/creatorClient";
 import { formatCurrency, formatNumber, formatPercent, parseAmount } from "@/lib/formatters";
+import { orderStatusLabel, orderStatusTone } from "@/lib/orderStatus";
 
 type Money = { amount?: string; currency?: string };
 
@@ -29,22 +30,6 @@ const CONTENT_ICONS: Record<string, LucideIcon> = {
   SHOP: Store,
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  SETTLED: "Pago",
-  REFUNDED: "Reembolsado",
-  FROZEN: "Congelado",
-  ORDERED: "Pedido",
-  DEDUCTED: "Deduzido",
-  "AWAITING PAYMENT": "Aguardando pagamento",
-  "To-SETTLE": "A liquidar",
-  UNSPECIFIED: "Indefinido",
-};
-
-function statusVariant(status?: string): "success" | "destructive" | "secondary" {
-  if (status === "SETTLED") return "success";
-  if (status === "REFUNDED" || status === "FROZEN") return "destructive";
-  return "secondary"; // ORDERED, AWAITING PAYMENT, To-SETTLE, DEDUCTED, UNSPECIFIED…
-}
 
 /** Alguns valores mock vêm com símbolo de moeda embutido (ex.: "Rp9.900") — limpa antes de parsear. */
 
@@ -350,8 +335,8 @@ export default function GanhosPage() {
                           </Badge>
                         </td>
                         <td className="py-3 pr-4">
-                          <Badge variant={statusVariant(row.status)} className="whitespace-nowrap">
-                            {(row.status && STATUS_LABELS[row.status]) || row.status || "—"}
+                          <Badge variant={orderStatusTone(row.status)} className="whitespace-nowrap">
+                            {orderStatusLabel(row.status)}
                           </Badge>
                         </td>
                         <td className="whitespace-nowrap py-3 pr-4 text-right font-medium">

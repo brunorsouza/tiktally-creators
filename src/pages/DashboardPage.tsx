@@ -4,6 +4,8 @@ import {
   Wallet, ShoppingBag, Receipt, Tag, PlugZap, Zap, Radio, Store, Film,
   ChevronRight, Compass, Link2, Clapperboard, type LucideIcon, TriangleAlert, ChevronLeft } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
+import { Balance, BalanceAction } from "@/components/Balance";
+import { orderStatusLabel, orderStatusTone } from "@/lib/orderStatus";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -157,13 +159,6 @@ const CONTENT_LABEL: Record<string, string> = {
   LINKSHARE: "link",
 };
 
-/** Chip de status no tom certo: pago = verde, a caminho = âmbar, resto = neutro. */
-function statusVariant(status?: string): "success" | "warning" | "secondary" {
-  if (status === "SETTLED") return "success";
-  if (status === "To-SETTLE" || status === "AWAITING PAYMENT") return "warning";
-  return "secondary";
-}
-
 const SHORTCUTS = [
   {
     to: "/descoberta",
@@ -292,6 +287,16 @@ function compactAmount(value: number, dense = false): string {
     : 0;
   const showBarLabels = colWidth >= 30;
 
+  /**
+   * Teto da largura da barra, proporcional ao número de colunas.
+   *
+   * Era fixo em 34px. O teto só entra em ação quando há POUCAS colunas — com o
+   * mês cheio (31) a coluna já nasce com ~33px e o teto nem morde. Resultado:
+   * ele estragava exatamente o caso ruim. Nos primeiros dias do mês o gráfico
+   * tinha três fiapos de 34px boiando em 1100px de cartão.
+   */
+  const barMaxWidth = chart.buckets.length <= 5 ? 76 : chart.buckets.length <= 10 ? 54 : 34;
+
   /** Os pedidos exibidos no cartão e as imagens correspondentes. */
   const recentOrders = useMemo(() => orders.slice(0, 5), [orders]);
   const recentProductIds = useMemo(
@@ -391,24 +396,20 @@ function compactAmount(value: number, dense = false): string {
             monthLabel={resolved.kpiLabel}
           />
         </div>
-        <h1 className="mt-2 font-display text-[30px] font-extrabold leading-[1.1] tracking-[-1.1px] md:text-[36px]">
+        <h1 className="mt-1.5 font-display text-[19px] font-bold leading-[1.2] tracking-[-0.5px] text-muted-foreground md:text-[21px]">
           {greeting()}
           {name ? `, ${name}` : ""}
+          {!busy && !connectionIssue && kpis.orderCount > 0 && (
+            <span className="font-medium text-faint">
+              {" "}
+              — {orderTotal} {orderTotal === 1 ? "pedido atribuído" : "pedidos atribuídos"} ao seu
+              conteúdo
+            </span>
+          )}
         </h1>
-        {!busy && !connectionIssue && (
-          <p className="mt-2.5 max-w-[560px] text-pretty text-base leading-[1.55] text-muted-foreground">
-            {kpis.orderCount > 0 ? (
-              <>
-                Em {resolved.subject} entraram {orderTotal}{" "}
-                {orderTotal === 1 ? "pedido" : "pedidos"} e{" "}
-                <strong className="font-semibold text-foreground">
-                  {money(kpis.commission, kpis.currency)}
-                </strong>{" "}
-                em comissão{commissionSplitLabel}
-              </>
-            ) : (
-              `Nenhum pedido em ${resolved.subject}. Assim que uma venda entrar, ela aparece aqui.`
-            )}
+        {!busy && !connectionIssue && kpis.orderCount === 0 && (
+          <p className="mt-2 max-w-[560px] text-pretty text-[15px] leading-[1.55] text-muted-foreground">
+            {`Nenhum pedido em ${resolved.subject}. Assim que uma venda entrar, ela aparece aqui.`}
           </p>
         )}
       </header>
@@ -456,48 +457,64 @@ function compactAmount(value: number, dense = false): string {
         </Card>
       )}
 
-      {/* ── KPIs ── */}
-      <section className="mb-gap grid grid-cols-1 gap-gap sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label={`Comissão · ${resolved.kpiLabel}`}
-          value={money(kpis.commission, kpis.currency)}
-          icon={Wallet}
-          accent="primary"
+      {/* ── Abertura: o dinheiro ──
+          Lidera com a comissão LIQUIDADA, não com o total do período. O total
+          é promessa (inclui pedido que ainda pode ser devolvido); o liquidado
+          é o que já é do creator. As duas ações são rotas que existem — não há
+          saque na Affiliate Creator API, a liquidação acontece do lado do
+          TikTok, então um botão "Sacar" aqui seria mentira. */}
+      <section className="mb-gap">
+        <Balance
+          label={`Comissão liquidada · ${resolved.kpiLabel}`}
+          value={money(kpis.settled, kpis.currency)}
+          total={kpis.commission > 0.005 ? money(kpis.commission, kpis.currency) : undefined}
+          pending={pendingCommission > 0.005 ? money(pendingCommission, kpis.currency) : undefined}
+          share={kpis.commission > 0.005 ? kpis.settled / kpis.commission : undefined}
           loading={busy}
-          delta={commissionDelta?.text}
-          up={commissionDelta?.up}
-          deltaLabel={commissionDelta ? resolved.deltaLabel : resolved.subject}
+          actions={
+            <>
+              <Link to="/ganhos">
+                <BalanceAction>Ver extrato</BalanceAction>
+              </Link>
+              <Link to="/links">
+                <BalanceAction variant="ghost">Gerar link</BalanceAction>
+              </Link>
+            </>
+          }
         />
-        <StatCard
-          label="Vendas geradas"
-          value={money(kpis.gross, kpis.currency)}
-          icon={ShoppingBag}
-          accent="success"
-          loading={busy}
-          delta={grossDelta?.text}
-          up={grossDelta?.up}
-          deltaLabel={grossDelta ? resolved.deltaLabel : "GMV atribuído a você"}
-        />
-        <StatCard
-          label="Pedidos"
-          value={String(kpis.orderCount)}
-          icon={Receipt}
-          accent="warning"
-          loading={busy}
-          delta={orderDelta?.text}
-          up={orderDelta?.up}
-          deltaLabel={orderDelta ? resolved.deltaLabel : `${kpis.skuCount} itens vendidos`}
-        />
-        <StatCard
-          label="Ticket médio"
-          value={money(kpis.avgTicket, kpis.currency)}
-          icon={Tag}
-          accent="info"
-          loading={busy}
-          delta={ticketDelta?.text}
-          up={ticketDelta?.up}
-          deltaLabel={ticketDelta ? resolved.deltaLabel : "por pedido"}
-        />
+
+        <div className="mt-gap grid gap-gap sm:grid-cols-3">
+          <StatCard
+            label="Vendas geradas"
+            value={money(kpis.gross, kpis.currency)}
+            icon={ShoppingBag}
+            accent="success"
+            loading={busy}
+            delta={grossDelta?.text}
+            up={grossDelta?.up}
+            deltaLabel={grossDelta ? resolved.deltaLabel : "GMV atribuído a você"}
+          />
+          <StatCard
+            label="Pedidos"
+            value={String(kpis.orderCount)}
+            icon={Receipt}
+            accent="warning"
+            loading={busy}
+            delta={orderDelta?.text}
+            up={orderDelta?.up}
+            deltaLabel={orderDelta ? resolved.deltaLabel : `${kpis.skuCount} itens vendidos`}
+          />
+          <StatCard
+            label="Ticket médio"
+            value={money(kpis.avgTicket, kpis.currency)}
+            icon={Tag}
+            accent="info"
+            loading={busy}
+            delta={ticketDelta?.text}
+            up={ticketDelta?.up}
+            deltaLabel={ticketDelta ? resolved.deltaLabel : "por pedido"}
+          />
+        </div>
       </section>
 
       <div className="mb-gap">
@@ -581,9 +598,12 @@ function compactAmount(value: number, dense = false): string {
                             ? `${b.date.toLocaleDateString("pt-BR")} — ${money(b.value, kpis.currency)}`
                             : `semana de ${b.date.toLocaleDateString("pt-BR")} — ${money(b.value, kpis.currency)}`
                         }
-                        style={{ height: `${Math.max((b.value / chart.max) * 100, 2)}%` }}
+                        style={{
+                          height: `${Math.max((b.value / chart.max) * 100, 2)}%`,
+                          maxWidth: barMaxWidth,
+                        }}
                         className={cn(
-                          "w-full max-w-[34px] rounded-[8px_8px_4px_4px] transition-[height] duration-500",
+                          "w-full rounded-[8px_8px_4px_4px] transition-[height] duration-500",
                           last ? "bg-primary" : "bg-primary/[.085]"
                         )}
                       />
@@ -661,8 +681,8 @@ function compactAmount(value: number, dense = false): string {
                             .join(" · ")}
                         </p>
                       </div>
-                      <Badge variant={statusVariant(o.status)} className="hidden sm:inline-flex">
-                        {o.status ?? "—"}
+                      <Badge variant={orderStatusTone(o.status)} className="hidden sm:inline-flex">
+                        {orderStatusLabel(o.status)}
                       </Badge>
                       <div className="min-w-[104px] text-right">
                         <p className="num text-[14.5px] font-bold">
