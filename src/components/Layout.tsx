@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { Logo } from "@/components/brand/Logo";
 import { USE_MOCK } from "@/services/creatorClient";
+import { CreatorAvatar } from "@/components/CreatorAvatar";
+import { useCreatorProfile } from "@/hooks/useCreatorProfile";
 
 /* ── Navegação no TOPO ─────────────────────────────────────────────────────
    Terceira estrutura, e a que ficou. A barra lateral — de dois níveis ou de
@@ -232,15 +234,20 @@ function NavTree({ onNavigate }: { onNavigate?: () => void }) {
     O tema mora na topbar (desktop) e no próprio menu (mobile). */
 function IdentityFooter() {
   const { user, signOut } = useAuth();
+  const { data: profile } = useCreatorProfile();
   const name = (user?.user_metadata?.name as string | undefined) ?? null;
 
   return (
     <div className="flex items-center gap-[11px] border-t px-4 py-3">
-      <div className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[11px] bg-primary/[.085] font-display text-sm font-bold text-primary">
-        {initials(name, user?.email)}
-      </div>
+      <CreatorAvatar
+        url={profile?.avatar?.url}
+        fallback={initials(name, user?.email)}
+        className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[11px] bg-primary/[.085] font-display text-sm font-bold text-primary"
+      />
       <div className="min-w-0 flex-1">
-        <div className="truncate text-[13.5px] font-semibold">{name ?? "Creator"}</div>
+        <div className="truncate text-[13.5px] font-semibold">
+          {profile?.username ?? name ?? "Creator"}
+        </div>
         <div className="truncate text-[11.5px] text-faint">{user?.email}</div>
       </div>
       <button
@@ -384,6 +391,9 @@ function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
 export function Layout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const { user } = useAuth();
+  // Mesma query do Perfil — o react-query compartilha pela chave, então a foto
+  // na topbar não custa uma requisição a mais.
+  const { data: profile } = useCreatorProfile();
   const section = useMemo(() => sectionForPath(location.pathname), [location.pathname]);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -442,11 +452,15 @@ export function Layout({ children }: { children: ReactNode }) {
             o canto direito da barra, que é onde as pessoas procuram. */}
         <Link
           to="/perfil"
-          title={name ?? user?.email ?? "Perfil"}
+          title={profile?.username ?? name ?? user?.email ?? "Perfil"}
           aria-label="Perfil"
-          className="hidden h-[42px] w-[42px] shrink-0 place-items-center rounded-[13px] bg-primary/[.12] font-display text-sm font-bold text-primary transition-colors hover:bg-primary/20 md:grid"
+          className="hidden h-[42px] w-[42px] shrink-0 rounded-[13px] ring-1 ring-border transition-colors hover:ring-primary md:block"
         >
-          {initials(name, user?.email)}
+          <CreatorAvatar
+            url={profile?.avatar?.url}
+            fallback={initials(name, user?.email)}
+            className="grid h-full w-full place-items-center rounded-[13px] bg-primary/[.12] font-display text-sm font-bold text-primary"
+          />
         </Link>
       </header>
 
