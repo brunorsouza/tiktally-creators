@@ -4,13 +4,15 @@ import {
   Wallet, ShoppingBag, Receipt, Tag, PlugZap, Zap, Radio, Store, Film,
   ChevronRight, Compass, Link2, Clapperboard, type LucideIcon, TriangleAlert, ChevronLeft } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
+import { Balance, BalanceAction } from "@/components/Balance";
+import { orderStatusLabel, orderStatusTone } from "@/lib/orderStatus";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
-import { useAllAffiliateOrders, salesBaseOf, type GanhosFilters } from "@/hooks/useGanhos";
-import { isNotConnected } from "@/services/creatorClient";
+import { useAllAffiliateOrders, salesBaseOf, commissionOf, type GanhosFilters } from "@/hooks/useGanhos";
+import { isNotConnected, isReauthRequired } from "@/services/creatorClient";
 import { PeriodPicker } from "@/components/PeriodPicker";
 import { DAY, ROLLING_DAYS, resolvePeriod, type Period } from "@/lib/period";
 import { useOpenCollaborationByIds } from "@/hooks/useDescoberta";
@@ -48,24 +50,6 @@ function money(amount: number, currency?: string): string {
   }
 }
 
-/**
- * Comissão da SKU — vem DA API, não é recalculada aqui.
- *
- * `price * commission_rate` dá um número diferente do que a TikTok paga: a base de
- * cálculo (`estimated_commission_base`) não é o preço, e o valor final embute bônus e
- * regras de tier. Para pedido liquidado vale `actual_commission`; nos demais, a
- * estimativa. Atenção: `*_commission_base` é a BASE, não a comissão.
- */
-function commissionOf(sku: {
-  estimated_commission?: { amount?: string };
-  actual_commission?: { amount?: string };
-}, orderStatus?: string): number {
-  if (orderStatus === "SETTLED") {
-    const actual = parseAmount(sku.actual_commission?.amount);
-    if (actual) return actual;
-  }
-  return parseAmount(sku.estimated_commission?.amount);
-}
 
 type Order = NonNullable<
   ReturnType<typeof useAllAffiliateOrders>["data"]
@@ -76,32 +60,45 @@ type Order = NonNullable<
 interface Totals {
   gross: number;
   commission: number;
+  /** Fatia de `commission` já liquidada (pedido SETTLED) — o resto é estimativa pendente. */
+  settled: number;
   currency: string;
   skuCount: number;
   orderCount: number;
   avgTicket: number;
 }
 
+function validOrders(orders: Order[]): number {
+  return orders.filter((o) => o.status !== "REFUNDED").length;
+}
+
 function totalsOf(orders: Order[]): Totals {
   let gross = 0;
   let commission = 0;
+  let settled = 0;
   let skuCount = 0;
   let currency = "BRL";
   for (const o of orders) {
+    const isSettled = o.status === "SETTLED";
     for (const s of o.skus ?? []) {
       skuCount++;
       gross += salesBaseOf(s, o.status);
-      commission += commissionOf(s, o.status);
+      const c = commissionOf(s, o.status);
+      commission += c;
+      if (isSettled) settled += c;
       if (s.price?.currency) currency = s.price.currency;
     }
   }
   return {
     gross,
     commission,
+    settled,
     currency,
     skuCount,
     orderCount: orders.length,
-    avgTicket: orders.length ? gross / orders.length : 0,
+    // Pedido devolvido entra na contagem mas não tem venda — dividir por ele puxava o
+    // ticket médio para baixo.
+    avgTicket: validOrders(orders) ? gross / validOrders(orders) : 0,
   };
 }
 
@@ -150,31 +147,24 @@ const CONTENT_LABEL: Record<string, string> = {
   LINKSHARE: "link",
 };
 
-/** Chip de status no tom certo: pago = verde, a caminho = âmbar, resto = neutro. */
-function statusVariant(status?: string): "success" | "warning" | "secondary" {
-  if (status === "SETTLED") return "success";
-  if (status === "To-SETTLE" || status === "AWAITING PAYMENT") return "warning";
-  return "secondary";
-}
-
 const SHORTCUTS = [
   {
     to: "/descoberta",
     icon: Compass,
     title: "Achar produtos para promover",
-    sub: "Colaborações abertas ordenadas por comissão.",
+    sub: "Produtos com comissão aberta para você divulgar.",
   },
   {
     to: "/links",
     icon: Link2,
-    title: "Conferir seus links",
-    sub: "Cliques e conversão por link, um por vídeo.",
+    title: "Gerar links de afiliado",
+    sub: "Um link por vídeo mostra qual conteúdo vendeu.",
   },
   {
     to: "/estudio",
     icon: Clapperboard,
-    title: "Terminar um rascunho",
-    sub: "Marcar produtos e publicar sem sair daqui.",
+    title: "Publicar um vídeo com produtos",
+    sub: "Marque os produtos e publique sem sair daqui.",
   },
 ];
 
@@ -285,6 +275,16 @@ function compactAmount(value: number, dense = false): string {
     : 0;
   const showBarLabels = colWidth >= 30;
 
+  /**
+   * Teto da largura da barra, proporcional ao número de colunas.
+   *
+   * Era fixo em 34px. O teto só entra em ação quando há POUCAS colunas — com o
+   * mês cheio (31) a coluna já nasce com ~33px e o teto nem morde. Resultado:
+   * ele estragava exatamente o caso ruim. Nos primeiros dias do mês o gráfico
+   * tinha três fiapos de 34px boiando em 1100px de cartão.
+   */
+  const barMaxWidth = chart.buckets.length <= 5 ? 76 : chart.buckets.length <= 10 ? 54 : 34;
+
   /** Os pedidos exibidos no cartão e as imagens correspondentes. */
   const recentOrders = useMemo(() => orders.slice(0, 5), [orders]);
   const recentProductIds = useMemo(
@@ -305,7 +305,7 @@ function compactAmount(value: number, dense = false): string {
     return map;
   }, [productDetails]);
 
-  /** Feed "acontecendo agora": os pedidos mais recentes, do mais novo pro mais velho. */
+  /** Feed "vendas mais recentes": os pedidos mais recentes, do mais novo pro mais velho. */
   const feed = useMemo(
     () =>
       [...orders]
@@ -323,7 +323,7 @@ function compactAmount(value: number, dense = false): string {
             source: CONTENT_LABEL[type] ?? "",
             time: timeAgo(o.create_time),
             value: money(
-              (o.skus ?? []).reduce((sum, s) => sum + commissionOf(s), 0),
+              (o.skus ?? []).reduce((sum, s) => sum + commissionOf(s, o.status), 0),
               sku?.price?.currency
             ),
           };
@@ -334,10 +334,30 @@ function compactAmount(value: number, dense = false): string {
   // Só é "não conectado" quando a API diz isso. Escopo ausente, região bloqueada ou
   // erro da TikTok são outras causas e merecem outra mensagem.
   const notConnected = isNotConnected(error);
-  const failureMessage = !notConnected && error instanceof Error ? error.message : null;
+  // Conta conectada cuja autorização venceu de vez: mesmo destino do
+  // "não conectado" (o botão de reconectar), mas sem chamar o creator de
+  // desconectado — e sem cair no aviso genérico de falha, que só o confundiria.
+  const needsReauth = isReauthRequired(error);
+  const connectionIssue = notConnected || needsReauth;
+  const failureMessage = !connectionIssue && error instanceof Error ? error.message : null;
   const commissionDelta = delta(kpis.commission, prevKpis.commission);
   const grossDelta = delta(kpis.gross, prevKpis.gross);
   const orderDelta = delta(kpis.orderCount, prevKpis.orderCount);
+
+  /**
+   * Gestão financeira na frase de abertura: quanto da comissão do período já foi
+   * liquidado e quanto ainda depende do prazo de devolução (ver painel lateral
+   * "Resultados" e a tela de Ganhos, que detalha isso por pedido).
+   */
+  const pendingCommission = Math.max(0, kpis.commission - kpis.settled);
+  const commissionSplitLabel =
+    kpis.commission <= 0
+      ? "."
+      : pendingCommission <= 0.005
+        ? " — já liquidada."
+        : kpis.settled > 0.005
+          ? ` (${money(kpis.settled, kpis.currency)} liquidada, ${money(pendingCommission, kpis.currency)} pendente).`
+          : " — ainda pendente de liquidação.";
   const ticketDelta = delta(kpis.avgTicket, prevKpis.avgTicket);
 
   const todayLabel = new Intl.DateTimeFormat("pt-BR", {
@@ -364,24 +384,20 @@ function compactAmount(value: number, dense = false): string {
             monthLabel={resolved.kpiLabel}
           />
         </div>
-        <h1 className="mt-2 font-display text-[30px] font-extrabold leading-[1.1] tracking-[-1.1px] md:text-[36px]">
+        <h1 className="mt-1.5 font-display text-[19px] font-bold leading-[1.2] tracking-[-0.5px] text-muted-foreground md:text-[21px]">
           {greeting()}
           {name ? `, ${name}` : ""}
+          {!busy && !connectionIssue && kpis.orderCount > 0 && (
+            <span className="font-medium text-faint">
+              {" "}
+              — {orderTotal} {orderTotal === 1 ? "pedido atribuído" : "pedidos atribuídos"} ao seu
+              conteúdo
+            </span>
+          )}
         </h1>
-        {!busy && !notConnected && (
-          <p className="mt-2.5 max-w-[560px] text-pretty text-base leading-[1.55] text-muted-foreground">
-            {kpis.orderCount > 0 ? (
-              <>
-                Em {resolved.subject} entraram {orderTotal}{" "}
-                {orderTotal === 1 ? "pedido" : "pedidos"} e{" "}
-                <strong className="font-semibold text-foreground">
-                  {money(kpis.commission, kpis.currency)}
-                </strong>{" "}
-                em comissão.
-              </>
-            ) : (
-              `Nenhum pedido em ${resolved.subject}. Assim que uma venda entrar, ela aparece aqui.`
-            )}
+        {!busy && !connectionIssue && kpis.orderCount === 0 && (
+          <p className="mt-2 max-w-[560px] text-pretty text-[15px] leading-[1.55] text-muted-foreground">
+            {`Nenhum pedido em ${resolved.subject}. Assim que uma venda entrar, ela aparece aqui.`}
           </p>
         )}
       </header>
@@ -404,67 +420,96 @@ function compactAmount(value: number, dense = false): string {
         </Card>
       )}
 
-      {notConnected && (
+      {connectionIssue && (
         <Card className="mb-gap border-primary/30 bg-primary/5">
           <CardContent className="flex flex-col items-start gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <PlugZap className="h-5 w-5 shrink-0 text-primary" />
               <div>
-                <p className="font-semibold">Conecte sua conta de creator</p>
+                <p className="font-semibold">
+                  {needsReauth
+                    ? "Renove a autorização do TikTok"
+                    : "Conecte sua conta de creator"}
+                </p>
                 <p className="text-sm text-muted-foreground">
-                  Ainda não conseguimos ler seus dados do TikTok Shop.
+                  {needsReauth
+                    ? "A autorização da sua conta expirou. Reconecte para voltar a carregar seus ganhos."
+                    : "Ainda não conseguimos ler seus dados do TikTok Shop."}
                 </p>
               </div>
             </div>
             <Button asChild>
-              <Link to="/conectar">Conectar TikTok</Link>
+              <Link to="/conectar">{needsReauth ? "Reconectar TikTok" : "Conectar TikTok"}</Link>
             </Button>
           </CardContent>
         </Card>
       )}
 
-      {/* ── KPIs ── */}
-      <section className="mb-gap grid grid-cols-1 gap-gap sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label={`Comissão · ${resolved.kpiLabel}`}
-          value={money(kpis.commission, kpis.currency)}
-          icon={Wallet}
-          accent="primary"
+      {data?.truncated && (
+        <p className="mb-gap rounded-lg border border-warning/30 bg-warning/[.06] p-3 text-sm">
+          Este período tem mais pedidos do que conseguimos carregar de uma vez, então os valores abaixo
+          estão incompletos. Escolha um período mais curto para ver o total exato.
+        </p>
+      )}
+
+      {/* ── Abertura: o dinheiro ──
+          Lidera com a comissão LIQUIDADA, não com o total do período. O total
+          é promessa (inclui pedido que ainda pode ser devolvido); o liquidado
+          é o que já é do creator. As duas ações são rotas que existem — não há
+          saque na Affiliate Creator API, a liquidação acontece do lado do
+          TikTok, então um botão "Sacar" aqui seria mentira. */}
+      <section className="mb-gap">
+        <Balance
+          label={`Comissão liquidada · ${resolved.kpiLabel}`}
+          value={money(kpis.settled, kpis.currency)}
+          total={kpis.commission > 0.005 ? money(kpis.commission, kpis.currency) : undefined}
+          pending={pendingCommission > 0.005 ? money(pendingCommission, kpis.currency) : undefined}
+          share={kpis.commission > 0.005 ? kpis.settled / kpis.commission : undefined}
           loading={busy}
-          delta={commissionDelta?.text}
-          up={commissionDelta?.up}
-          deltaLabel={commissionDelta ? resolved.deltaLabel : resolved.subject}
+          actions={
+            <>
+              <Link to="/ganhos">
+                <BalanceAction>Ver extrato</BalanceAction>
+              </Link>
+              <Link to="/links">
+                <BalanceAction variant="ghost">Gerar link</BalanceAction>
+              </Link>
+            </>
+          }
         />
-        <StatCard
-          label="Vendas geradas"
-          value={money(kpis.gross, kpis.currency)}
-          icon={ShoppingBag}
-          accent="success"
-          loading={busy}
-          delta={grossDelta?.text}
-          up={grossDelta?.up}
-          deltaLabel={grossDelta ? resolved.deltaLabel : "GMV atribuído a você"}
-        />
-        <StatCard
-          label="Pedidos"
-          value={String(kpis.orderCount)}
-          icon={Receipt}
-          accent="warning"
-          loading={busy}
-          delta={orderDelta?.text}
-          up={orderDelta?.up}
-          deltaLabel={orderDelta ? resolved.deltaLabel : `${kpis.skuCount} itens vendidos`}
-        />
-        <StatCard
-          label="Ticket médio"
-          value={money(kpis.avgTicket, kpis.currency)}
-          icon={Tag}
-          accent="info"
-          loading={busy}
-          delta={ticketDelta?.text}
-          up={ticketDelta?.up}
-          deltaLabel={ticketDelta ? resolved.deltaLabel : "por pedido"}
-        />
+
+        <div className="mt-gap grid gap-gap sm:grid-cols-3">
+          <StatCard
+            label="Vendas geradas"
+            value={money(kpis.gross, kpis.currency)}
+            icon={ShoppingBag}
+            accent="success"
+            loading={busy}
+            delta={grossDelta?.text}
+            up={grossDelta?.up}
+            deltaLabel={grossDelta ? resolved.deltaLabel : "vendas atribuídas a você"}
+          />
+          <StatCard
+            label="Pedidos"
+            value={String(kpis.orderCount)}
+            icon={Receipt}
+            accent="warning"
+            loading={busy}
+            delta={orderDelta?.text}
+            up={orderDelta?.up}
+            deltaLabel={orderDelta ? resolved.deltaLabel : `${kpis.skuCount} itens vendidos`}
+          />
+          <StatCard
+            label="Ticket médio"
+            value={money(kpis.avgTicket, kpis.currency)}
+            icon={Tag}
+            accent="info"
+            loading={busy}
+            delta={ticketDelta?.text}
+            up={ticketDelta?.up}
+            deltaLabel={ticketDelta ? resolved.deltaLabel : "por pedido"}
+          />
+        </div>
       </section>
 
       <div className="mb-gap">
@@ -473,7 +518,7 @@ function compactAmount(value: number, dense = false): string {
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <div className="font-display text-[18px] font-bold tracking-[-0.3px]">
-                  Comissão por dia
+                  {chart.groupDays === 7 ? "Comissão por semana" : "Comissão por dia"}
                 </div>
                 <p className="mt-[3px] text-[13.5px] text-faint">
                   A partir dos pedidos atribuídos ao seu conteúdo
@@ -548,9 +593,12 @@ function compactAmount(value: number, dense = false): string {
                             ? `${b.date.toLocaleDateString("pt-BR")} — ${money(b.value, kpis.currency)}`
                             : `semana de ${b.date.toLocaleDateString("pt-BR")} — ${money(b.value, kpis.currency)}`
                         }
-                        style={{ height: `${Math.max((b.value / chart.max) * 100, 2)}%` }}
+                        style={{
+                          height: `${Math.max((b.value / chart.max) * 100, 2)}%`,
+                          maxWidth: barMaxWidth,
+                        }}
                         className={cn(
-                          "w-full max-w-[34px] rounded-[8px_8px_4px_4px] transition-[height] duration-500",
+                          "w-full rounded-[8px_8px_4px_4px] transition-[height] duration-500",
                           last ? "bg-primary" : "bg-primary/[.085]"
                         )}
                       />
@@ -598,11 +646,13 @@ function compactAmount(value: number, dense = false): string {
               </div>
             ) : orders.length === 0 ? (
               <p className="py-10 text-center text-sm text-muted-foreground">
-                {notConnected
-                  ? "Conecte o TikTok para ver seus pedidos aqui."
-                  : failureMessage
-                    ? "Não foi possível carregar os pedidos."
-                    : "Nenhum pedido no período."}
+                {needsReauth
+                  ? "Reconecte o TikTok para ver seus pedidos aqui."
+                  : notConnected
+                    ? "Conecte o TikTok para ver seus pedidos aqui."
+                    : failureMessage
+                      ? "Não foi possível carregar os pedidos."
+                      : "Nenhum pedido no período."}
               </p>
             ) : (
               <div>
@@ -626,8 +676,8 @@ function compactAmount(value: number, dense = false): string {
                             .join(" · ")}
                         </p>
                       </div>
-                      <Badge variant={statusVariant(o.status)} className="hidden sm:inline-flex">
-                        {o.status ?? "—"}
+                      <Badge variant={orderStatusTone(o.status)} className="hidden sm:inline-flex">
+                        {orderStatusLabel(o.status)}
                       </Badge>
                       <div className="min-w-[104px] text-right">
                         <p className="num text-[14.5px] font-bold">
@@ -651,7 +701,7 @@ function compactAmount(value: number, dense = false): string {
             <div className="mb-1 flex items-center gap-[9px]">
               <span className="h-2 w-2 animate-breathe rounded-full bg-success" />
               <div className="font-display text-[17px] font-bold tracking-[-0.3px]">
-                Acontecendo agora
+                Vendas mais recentes
               </div>
             </div>
 
@@ -662,7 +712,9 @@ function compactAmount(value: number, dense = false): string {
                 ))}
               </div>
             ) : feed.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">Nada por aqui ainda.</p>
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                Nenhuma venda no período. Quando alguém comprar pelo seu conteúdo, ela aparece aqui.
+              </p>
             ) : (
               feed.map(({ id, icon: Icon, text, source, time, value }, i) => (
                 <div

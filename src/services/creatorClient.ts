@@ -1,14 +1,32 @@
 import { ENDPOINTS, type EndpointKey } from "@/api/endpoints.generated";
 import { FIXTURES } from "@/mocks/fixtures.generated";
+import { mockOverride } from "@/mocks/dense";
 import { supabase, FUNCTIONS_BASE_URL } from "@/integrations/supabase/client";
 
 /**
  * Client único de chamada aos endpoints de creator.
- * - USE_MOCK (default true): devolve os fixtures gerados da doc — dá pra testar sem backend.
- * - USE_MOCK=false: chama o edge dispatcher `affiliate-proxy`, que assina e bate na TikTok.
- * Troca com a env VITE_USE_MOCK ("false" liga o modo live).
+ * - USE_MOCK: devolve os fixtures gerados da doc — dá pra testar sem backend.
+ * - senão: chama o edge dispatcher `affiliate-proxy`, que assina e bate na TikTok.
+ *
+ * Ligar exige `VITE_USE_MOCK=true` E estar em dev. Duas travas, porque a versão
+ * anterior (`!== "false"`) era fail-OPEN: variável ausente, vazia, `FALSE` ou um
+ * typo ligavam o mock — inclusive num build de produção, que então servia
+ * fixture da documentação como se fosse a comissão real do creator.
+ *
+ * `import.meta.env.DEV` é a trava que importa: o Vite a resolve para `false` no
+ * build, e o bundle de produção sai sem o caminho de mock, aconteça o que
+ * acontecer com a env. Mesmo padrão do PREVIEW_MODE no backoffice.
+ *
+ * A exceção é o build de FEIRA (`vite build --mode demo`), que precisa rodar
+ * mockado num servidor. Ela não reabre o furo porque exige duas coisas
+ * deliberadas ao mesmo tempo — o modo nomeado na linha de comando E a env — e
+ * nenhuma delas acontece por variável faltando. Além disso o deploy de produção
+ * (`scripts/deploy.sh`) aborta se achar o caminho de mock no bundle.
  */
-export const USE_MOCK = import.meta.env.VITE_USE_MOCK !== "false";
+export const IS_DEMO_BUILD = import.meta.env.MODE === "demo";
+
+export const USE_MOCK =
+  (import.meta.env.DEV || IS_DEMO_BUILD) && import.meta.env.VITE_USE_MOCK === "true";
 
 export interface CallParams {
   pathParams?: Record<string, string | number>;
@@ -35,6 +53,7 @@ export interface CallResult<T = unknown> {
  */
 export type CreatorErrorKind =
   | "not_connected"
+  | "reauth_required"
   | "session_expired"
   | "missing_scope"
   | "unauthorized_region"
@@ -43,9 +62,21 @@ export type CreatorErrorKind =
 export const NOT_CONNECTED_MESSAGE =
   "Conta de creator não conectada. Conecte o TikTok para ver seus dados.";
 
+export const REAUTH_REQUIRED_MESSAGE =
+  "A autorização do TikTok expirou. Reconecte sua conta para voltar a carregar seus dados.";
+
 /** Um erro já lançado por um hook veio de "conta não conectada"? */
 export function isNotConnected(err: unknown): boolean {
   return err instanceof Error && err.message === NOT_CONNECTED_MESSAGE;
+}
+
+/**
+ * O erro é "a autorização morreu, reconecte"? Diferente de `isNotConnected`:
+ * aqui a conta ESTÁ conectada, mas o refresh_token venceu (ou a TikTok o
+ * revogou), então nem a renovação automática salva — só um novo OAuth.
+ */
+export function isReauthRequired(err: unknown): boolean {
+  return err instanceof Error && err.message === REAUTH_REQUIRED_MESSAGE;
 }
 
 /** Códigos de erro da TikTok observados em produção. */
@@ -60,7 +91,13 @@ function tiktokCode(raw?: string): number | null {
 }
 
 export function classifyError(raw?: string, status?: number): CreatorErrorKind {
-  if (raw === "CREATOR_NOT_CONNECTED" || status === 409) return "not_connected";
+  if (raw === "CREATOR_REAUTH_REQUIRED") return "reauth_required";
+  if (raw === "CREATOR_NOT_CONNECTED") return "not_connected";
+  // Credencial vencida vindo crua da TikTok: o servidor renova sozinho, então
+  // chegar aqui significa que a renovação não deu conta — trata como reconectar
+  // em vez de despejar o texto em inglês da TikTok na tela do creator.
+  if (raw && /expired credentials|header has expired/i.test(raw)) return "reauth_required";
+  if (status === 409) return "not_connected";
   if (raw && /Sess[aã]o expirada|Invalid session|Missing Authorization/i.test(raw)) return "session_expired";
   const code = tiktokCode(raw);
   if (code === TIKTOK_MISSING_SCOPE) return "missing_scope";
@@ -74,17 +111,25 @@ export function friendlyError(kind: CreatorErrorKind, raw: string | undefined, k
   switch (kind) {
     case "not_connected":
       return NOT_CONNECTED_MESSAGE;
+    case "reauth_required":
+      return REAUTH_REQUIRED_MESSAGE;
     case "session_expired":
       return "Sessão expirada. Faça login novamente.";
     case "missing_scope":
-      return scopes
-        ? `Escopo não autorizado. Este recurso exige ${scopes} — habilite no app do Partner Center e reautorize a conta.`
-        : "Escopo não autorizado para este recurso. Habilite-o no Partner Center e reautorize a conta.";
+      // Quem lê é o creator, que não tem acesso ao Partner Center. O escopo exato vai
+      // para o console (e continua no `raw` do resultado, que o API Tester mostra).
+      if (scopes) console.warn(`[creatorClient] escopo ausente: ${scopes}`);
+      return "Este recurso ainda não foi liberado para a sua conta. Reconecte o TikTok em Conta → Conexão; se continuar, fale com o suporte.";
     case "unauthorized_region":
-      return "Recurso indisponível na sua região. A TikTok ainda não liberou este endpoint para a região da sua conta.";
+      return "O TikTok ainda não liberou este recurso para a região da sua conta.";
     default: {
-      const msg = (raw || "").match(/"message":"([^"]*)"/)?.[1];
-      return msg || raw || "Falha ao chamar a API do TikTok.";
+      // Erro vindo da TikTok chega em inglês ("Invalid params", "system busy"…): o
+      // creator vê a versão em português e o código, que é o que o suporte precisa.
+      const code = tiktokCode(raw);
+      if (code != null) {
+        return `Não foi possível carregar seus dados do TikTok Shop agora. Tente de novo em alguns minutos (código ${code}).`;
+      }
+      return raw || "Não foi possível carregar seus dados do TikTok Shop agora. Tente de novo em alguns minutos.";
     }
   }
 }
@@ -101,7 +146,28 @@ export async function callEndpoint<T = unknown>(
 
   if (USE_MOCK) {
     await new Promise((r) => setTimeout(r, 200)); // simula latência de rede
-    return { ok: true, data: FIXTURES[key] as T, source: "mock" };
+    // VITE_MOCK_DENSE=true troca o fixture estático por uma série de 90 dias com volume
+    // realista (ver src/mocks/dense.ts). Desligado — o default — devolve null e nada muda.
+    const denso = mockOverride(key, params);
+    const dado = denso ?? FIXTURES[key];
+
+    // Fixture ausente vira ERRO, e não `ok: true` com data undefined.
+    //
+    // O React Query proíbe `undefined` como dado de query, então a versão
+    // anterior estourava com "data is undefined" — uma string crua de
+    // biblioteca, no meio da tela, sem dizer qual endpoint faltava. Foi o que
+    // apareceu na Descoberta, e havia outros três endpoints na mesma situação
+    // esperando alguém abrir a tela numa feira.
+    if (dado === undefined) {
+      return {
+        ok: false,
+        error: `Sem fixture de mock para "${key}". Adicione em src/mocks/fixtures.generated.ts.`,
+        kind: "api_error",
+        source: "mock",
+      };
+    }
+
+    return { ok: true, data: dado as T, source: "mock" };
   }
 
   const { data: sess } = await supabase.auth.getSession();

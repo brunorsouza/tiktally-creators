@@ -14,7 +14,7 @@ import {
   useTopShowcaseProducts,
 } from "@/hooks/useShowcase";
 import { USE_MOCK } from "@/services/creatorClient";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, formatPercent } from "@/lib/formatters";
 import type { GetShowcaseProductsData } from "@/types/creator-api.generated";
 
 type Product = NonNullable<GetShowcaseProductsData["products"]>[number];
@@ -104,9 +104,11 @@ export default function VitrinePage() {
     <div className="space-y-gap">
       <PageHeader title="Vitrine" subtitle={
           <>
-            Produtos que você promove na sua vitrine
-            {totalCount != null ? ` · ${totalCount} no total` : ""}
-            {products.length > 0 ? ` · ${products.length} carregados` : ""}
+            Produtos que você divulga na sua vitrine do TikTok
+            {totalCount != null ? ` · ${totalCount} ${totalCount === 1 ? "produto" : "produtos"}` : ""}
+            {totalCount != null && products.length > 0 && products.length < totalCount
+              ? ` (${products.length} exibidos)`
+              : ""}
             .
           </>
         } />
@@ -147,6 +149,7 @@ export default function VitrinePage() {
           <CardContent className="flex flex-col items-center gap-2 py-16 text-center text-muted-foreground">
             <Package className="h-8 w-8" />
             <p className="text-sm">Nenhum produto na vitrine.</p>
+            <p className="text-xs">Adicione pelo ID acima ou escolha produtos na Descoberta.</p>
           </CardContent>
         </Card>
       ) : (
@@ -179,7 +182,7 @@ export default function VitrinePage() {
                     {p.commission?.rate != null && (
                       <Badge variant="outline" className="gap-1">
                         <Percent className="h-3 w-3" />
-                        {(p.commission.rate / 100).toFixed(2)}%
+                        {formatPercent(p.commission.rate / 10000, 2)}
                       </Badge>
                     )}
                   </div>
@@ -191,7 +194,7 @@ export default function VitrinePage() {
                       disabled={busy}
                       onClick={() => handleTop(p)}
                     >
-                      <Pin className="h-3.5 w-3.5" /> Topo
+                      <Pin className="h-3.5 w-3.5" /> Fixar no topo
                     </Button>
                     <Button
                       variant="ghost"

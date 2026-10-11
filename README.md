@@ -22,12 +22,21 @@ mesma assinatura HMAC da TikTok Open API, mas com **token de creator** (`user_ty
 ```bash
 npm install          # instala deps
 cp .env.example .env  # preencha as variáveis (ver docs/SETUP.md)
-npm run dev          # dev server em http://localhost:8091
+npm run dev          # dev server em http://localhost:8092
 npm run build        # build de produção
 npm run lint         # eslint
+
+npm run demo:build   # gera o HTML da demo de feira (arquivo único, mockado)
 ```
 
-> Porta **8091** (o TikTally-seller usa 8080), pra rodar os dois lado a lado.
+> **Demo de feira:** `demo:build` gera `dist-demo/index.html` — o app inteiro
+> num arquivo, com dados fictícios. Quem publica com senha é o repo
+> [`tiktally-creator-demo`](../tiktally-creator-demo), igual ao
+> `tiktally-demo` do seller.
+
+> Porta **8092**, fixa com `strictPort` (o túnel do callback OAuth depende de
+> porta previsível). 8080 = app seller · 8090 = backoffice seller · 8093 =
+> backoffice creator.
 
 ## Arquitetura (padrão TikTally)
 

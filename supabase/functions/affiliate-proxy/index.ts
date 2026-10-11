@@ -6,8 +6,14 @@
 // permitido da Creator API, resolvemos o token de creator do usuário, assinamos e
 // chamamos a TikTok. O escopo real ainda é imposto pela própria TikTok via token.
 
-import { resolveCreatorAuth } from "../_shared/creatorAuth.ts";
-import { callTikTok, getAppCredentials, getBaseUrl, corsHeaders } from "../_shared/tiktokSign.ts";
+import { resolveCreatorAuth, NOT_CONNECTED, REAUTH_REQUIRED } from "../_shared/creatorAuth.ts";
+import {
+  callTikTok,
+  getAppCredentials,
+  getBaseUrl,
+  corsHeaders,
+  isExpiredCredentials,
+} from "../_shared/tiktokSign.ts";
 
 // Prefixos de path liberados.
 //
@@ -44,24 +50,38 @@ Deno.serve(async (req) => {
     }
     if (/\{[a-z_]+\}/i.test(path)) throw new Error(`Path param não resolvido: ${path}`);
 
-    const { accessToken } = await resolveCreatorAuth(req);
+    const auth = await resolveCreatorAuth(req);
     const { appKey, appSecret } = getAppCredentials();
 
-    const data = await callTikTok({
-      method: method as "GET" | "POST" | "PUT" | "DELETE",
-      path,
-      accessToken,
-      appKey,
-      appSecret,
-      baseUrl: getBaseUrl(),
-      query: input.query as Record<string, string | number | undefined> | undefined,
-      body: input.hasBody ? input.body : undefined,
-    });
+    const call = (accessToken: string) =>
+      callTikTok({
+        method: method as "GET" | "POST" | "PUT" | "DELETE",
+        path,
+        accessToken,
+        appKey,
+        appSecret,
+        baseUrl: getBaseUrl(),
+        query: input.query as Record<string, string | number | undefined> | undefined,
+        body: input.hasBody ? input.body : undefined,
+      });
+
+    let data: unknown;
+    try {
+      data = await call(auth.accessToken);
+    } catch (err) {
+      // A TikTok pode recusar um token que o nosso `expires_at` jurava válido
+      // (revogação, relógio fora de sincronia, prazo encurtado do lado deles).
+      // Nesse caso força a renovação e repete UMA vez — sem `auth.refreshed`
+      // esse retry seria uma segunda tentativa com o mesmo token novo.
+      if (!isExpiredCredentials(err) || auth.refreshed) throw err;
+      const renewed = await resolveCreatorAuth(req, { force: true });
+      data = await call(renewed.accessToken);
+    }
 
     return json({ ok: true, path, data });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    const status = message === "CREATOR_NOT_CONNECTED" ? 409 : 400;
+    const status = message === NOT_CONNECTED || message === REAUTH_REQUIRED ? 409 : 400;
     return json({ ok: false, error: message }, status);
   }
 });

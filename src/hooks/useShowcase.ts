@@ -50,7 +50,19 @@ function useShowcaseMutation(key: "addShowcaseProducts" | "removeShowcaseProduct
   return useMutation({
     mutationFn: async (body: Record<string, unknown>) => {
       const r = await callEndpoint(key, { body });
-      if (!r.ok) throw new Error(r.error || "Operação falhou");
+      if (!r.ok) throw new Error(r.error || "Não foi possível atualizar a vitrine. Tente de novo.");
+      // Falha parcial chega com code 0 e a recusa em `data.errors[]` (ex.: produto que não
+      // pode ir para a vitrine). Sem isto a tela dizia "adicionado" para um produto recusado.
+      const errors = (r.data as { errors?: { message?: string; detail?: { product_id?: string } }[] } | undefined)
+        ?.errors;
+      if (errors?.length) {
+        // A mensagem da TikTok vem em inglês — vai para o console, o creator lê em português.
+        console.warn("[vitrine] produto recusado pela TikTok:", errors);
+        const id = errors[0]?.detail?.product_id;
+        throw new Error(
+          `O TikTok não aceitou ${id ? `o produto ${id}` : "o produto"}. Confira o ID e tente de novo em instantes.`
+        );
+      }
       return r;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: showcaseKeys.all }),

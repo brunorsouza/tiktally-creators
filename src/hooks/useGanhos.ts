@@ -157,7 +157,38 @@ export function salesBaseOf(
   },
   orderStatus?: string
 ): number {
+  // Pedido devolvido/cancelado não é venda: a própria base da TikTok desconta devoluções.
+  if (orderStatus === "REFUNDED") return 0;
   const actual = parseAmount(sku.actual_commission_base?.amount);
   if (orderStatus === "SETTLED" && actual) return actual;
   return parseAmount(sku.estimated_commission_base?.amount) || actual;
+}
+
+/**
+ * Comissão da SKU que conta para o creator — a ÚNICA regra usada por Painel, Ganhos,
+ * Ranking e Horários (antes cada tela tinha a sua e os totais divergiam).
+ *
+ * - SETTLED: `actual_commission`; se faltar (nenhum campo da resposta é obrigatório),
+ *   cai na estimativa em vez de virar zero.
+ * - REFUNDED: zero. Pela API, "no commission will be settled" — somar a estimativa
+ *   inflava a comissão e a "pendente" com vendas que voltaram.
+ * - Demais (AWAITING PAYMENT, To-SETTLE, FROZEN…): estimativa. FROZEN segue como
+ *   pendente porque a API diz que a comissão é liberada quando a suspeita de fraude
+ *   for resolvida.
+ *
+ * Atenção: `*_commission_base` é a BASE de cálculo, não a comissão.
+ */
+export function commissionOf(
+  sku: {
+    estimated_commission?: { amount?: string };
+    actual_commission?: { amount?: string };
+  },
+  orderStatus?: string
+): number {
+  if (orderStatus === "REFUNDED") return 0;
+  if (orderStatus === "SETTLED") {
+    const actual = parseAmount(sku.actual_commission?.amount);
+    if (actual) return actual;
+  }
+  return parseAmount(sku.estimated_commission?.amount);
 }

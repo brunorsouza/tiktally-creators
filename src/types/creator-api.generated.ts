@@ -2056,3 +2056,47 @@ export type CheckAnchorPrerequisitesData = Record<string, never>;
  * além de palavrão, pontuação e emoji.
  */
 export type CheckAnchorContentData = Record<string, never>;
+
+/** Get Live Room Info - GET /affiliate/202309/live_rooms (fonte do live_room_id p/ a analytics de live) */
+export interface GetLiveRoomInfoData {
+  /** The live room's ID */
+  id?: string;
+  /** The start time of broadcasting (Unix) */
+  start_time?: number;
+  /** The live room's status */
+  status?: string;
+  /** The live room's title */
+  title?: string;
+}
+
+/** Generate Affiliate Sharing Link - POST /affiliate_creator/202501/affiliate_sharing_links/generate_batch */
+export interface GenerateAffiliateSharingLinkData {
+  /** Generated affiliate links for each tag */
+  affiliate_sharing_links?: {
+    /** Affiliate short link (www.tiktok.com domain) */
+    affiliate_sharing_link?: string;
+    /** One of the tags in the request */
+    tag?: string;
+  }[];
+  /** Per-tag errors on partial failure */
+  errors?: {
+    code?: number;
+    message?: string;
+    detail?: { fail_reason?: string; tag?: string };
+  }[];
+}
+
+export interface GenerateAffiliateSharingLinkBody {
+  /** Customized promotion channel */
+  channel?: string;
+  /** Material to generate links for */
+  material?: {
+    campaign_url?: string;
+    /** ID of product/campaign/showcase to promote */
+    id?: string;
+    /** PRODUCT | CAMPAIGN | SHOWCASE */
+    type?: string;
+  };
+  /** Creator's own tracking tags */
+  tags?: string[];
+}

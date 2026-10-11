@@ -47,10 +47,21 @@ if [ ! -f "${PROJECT_DIR}/dist/.htaccess" ]; then
   exit 1
 fi
 
-# O build embute VITE_USE_MOCK. Se vazar "true" pro bundle de produção, o app
-# serve fixtures da doc em vez dos dados reais da TikTok.
-if grep -rqs '"VITE_USE_MOCK":"true"' "${PROJECT_DIR}/dist/assets" 2>/dev/null; then
-  echo "::error::build contém VITE_USE_MOCK=true — abortando"
+# Trava contra mock em produção — serviria fixture da doc como se fosse a
+# comissão real, e o login falso deixaria entrar quem não tem conta.
+#
+# A checagem anterior procurava '"VITE_USE_MOCK":"true"' e NUNCA disparava: o
+# Vite inlina o VALOR da env, não o par chave-valor, então aquela string não
+# existe no bundle. Passava tanto com VITE_USE_MOCK=true quanto com a variável
+# ausente (medido nos três cenários).
+#
+# Agora procuramos um marcador que só existe DENTRO do caminho de mock: a chave
+# do localStorage da sessão forjada. Com o mock travado em `import.meta.env.DEV`
+# o build de produção já não deveria conter isso — este grep é a rede embaixo,
+# para o dia em que alguém tirar a trava sem perceber.
+if grep -rqs "tc-mock-session" "${PROJECT_DIR}/dist/assets" 2>/dev/null; then
+  echo "::error::o bundle contém o login mockado (tc-mock-session) — abortando"
+  echo "  Alguém removeu a trava import.meta.env.DEV de MOCK_AUTH/USE_MOCK."
   exit 1
 fi
 

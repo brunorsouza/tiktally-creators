@@ -60,7 +60,6 @@ type ShopProduct = NonNullable<GetShopProductsData["products"]>[number];
 type MusicTrack = NonNullable<SearchMusicData["music"]>[number];
 type FieldInputMode = "text" | "numeric" | "decimal" | "search" | "email" | "tel" | "url" | "none";
 
-const SCOPE_NAME = "creator.video.write";
 
 // =============== Labels e helpers compartilhados ===============
 
@@ -69,7 +68,7 @@ const SCOPE_NAME = "creator.video.write";
 const STATUS_LABELS: Record<string, string> = {
   SUCCESS: "Sucesso",
   FAIL: "Falhou",
-  PROCESSING: "Processando",
+  PROCESSING: "Em processamento",
 };
 
 function statusVariant(status?: string): "success" | "destructive" | "warning" | "secondary" {
@@ -90,7 +89,7 @@ function StatusIcon({ status }: { status?: string }) {
 const ADDED_STATUS_LABELS: Record<string, string> = {
   ADDABLE: "Pode adicionar à vitrine",
   ADDED: "Já está na vitrine",
-  REJECTED: "Rejeitado",
+  REJECTED: "Não pode ser adicionado",
 };
 
 function addedStatusVariant(status?: string): "success" | "destructive" | "secondary" {
@@ -139,7 +138,7 @@ export default function EstudioPage() {
 
   return (
     <div className="space-y-gap">
-      <PageHeader title="Estúdio de conteúdo" subtitle="Descubra produtos e músicas, monte o pipeline de upload/precheck e publique vídeos e fotos shoppable." />
+      <PageHeader title="Estúdio" subtitle="Escolha produtos e músicas, envie seu vídeo ou suas fotos e publique já com o produto marcado." />
 
       {!USE_MOCK && <GatingBanner />}
 
@@ -190,15 +189,10 @@ function GatingBanner() {
       <CardContent className="flex items-start gap-3 p-4 text-sm">
         <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
         <div className="space-y-1">
-          <p className="font-medium">Estúdio de conteúdo exige um escopo hoje inativo</p>
+          <p className="font-medium">A publicação pelo TikTally ainda está em liberação</p>
           <p className="text-muted-foreground">
-            Os 10 endpoints desta área (produtos/música, upload, precheck e publicação) pedem o escopo{" "}
-            <code className="rounded bg-background/60 px-1 py-0.5 text-xs">{SCOPE_NAME}</code> (pacote{" "}
-            <strong>Content Posting</strong>), que hoje está <strong>inativo</strong> no app — é um escopo{" "}
-            <strong>sensível</strong>, sujeito a revisão extra da TikTok antes de ativar (ver{" "}
-            <code className="text-xs">docs/RELATORIO_ESCOPOS_MVP.md</code>). Em modo live essas chamadas tendem a
-            falhar por permissão até o pacote ser ativado e o creator re-autorizar o app. Em modo mock tudo funciona
-            normalmente.
+            Publicar vídeos e fotos por aqui depende de uma permissão que o TikTok ainda está analisando. Até lá,
+            algumas ações desta tela podem não funcionar — publique pelo app do TikTok normalmente.
           </p>
         </div>
       </CardContent>
@@ -252,7 +246,7 @@ function ShopProductsSection() {
           <Package className="h-4 w-4" /> Produtos da loja
         </CardTitle>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Get Shop Products (202509) — não retorna comissão (isso fica na área Descoberta)
+          Produtos que você pode marcar nos seus vídeos. A comissão de cada um aparece na Descoberta.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -397,8 +391,8 @@ function ShopProductCard({ product }: { product: ShopProduct }) {
 
 /** Search Music (202602) — biblioteca de música pra usar como BGM do vídeo/foto shoppable. */
 function MusicSearchSection() {
-  const [keywordInput, setKeywordInput] = useState(USE_MOCK ? "Love Story" : "");
-  const [appliedKeyword, setAppliedKeyword] = useState(USE_MOCK ? "Love Story" : "");
+  const [keywordInput, setKeywordInput] = useState(USE_MOCK ? "verão" : "");
+  const [appliedKeyword, setAppliedKeyword] = useState(USE_MOCK ? "verão" : "");
   const [searchId, setSearchId] = useState<string | undefined>();
   const [pageToken, setPageToken] = useState<string | undefined>();
 
@@ -431,7 +425,7 @@ function MusicSearchSection() {
         <CardTitle className="flex items-center gap-2 text-base">
           <Music className="h-4 w-4" /> Buscar música
         </CardTitle>
-        <p className="mt-0.5 text-xs text-muted-foreground">Search Music (202602) — para usar como BGM do vídeo/foto</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">Músicas para usar de fundo no seu vídeo ou nas suas fotos.</p>
       </CardHeader>
       <CardContent className="space-y-4">
         <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row">
@@ -668,7 +662,7 @@ function StepUploadInit() {
     const size = parseInt(fileSize, 10);
     const chunks = parseInt(totalChunkCount, 10);
     if (!fileName.trim() || !fileType.trim() || !targetPath.trim() || !Number.isFinite(size)) {
-      toast.error("Preencha nome, tipo, tamanho (bytes) e target_path");
+      toast.error("Preencha nome, tipo, tamanho do arquivo e o destino do envio");
       return;
     }
     mutation.mutate(
@@ -682,7 +676,7 @@ function StepUploadInit() {
         categoryAssetCipher: categoryAssetCipher.trim() || undefined,
       },
       {
-        onSuccess: () => toast.success(`Upload inicializado${mockNote}`),
+        onSuccess: () => toast.success(`Envio preparado${mockNote}`),
         onError: (err) => toast.error((err as Error).message),
       }
     );
@@ -692,37 +686,37 @@ function StepUploadInit() {
     <StepCard
       step={1}
       icon={UploadCloud}
-      title="Inicializar upload de arquivo"
-      subtitle="Upload File Init (202512) — sessão genérica de upload usada antes de subir um arquivo grande"
+      title="Preparar envio de arquivo grande"
+      subtitle="Necessário só para arquivos grandes: reserva o espaço antes de enviar em partes"
     >
       <form onSubmit={handleSubmit} className="space-y-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Nome do arquivo" value={fileName} onChange={setFileName} placeholder="video_20251201.mp4" />
           <Field label="Tipo do arquivo" value={fileType} onChange={setFileType} placeholder="video" />
           <Field label="Tamanho (bytes)" value={fileSize} onChange={setFileSize} placeholder="1024" inputMode="numeric" />
-          <Field label="Total de chunks" value={totalChunkCount} onChange={setTotalChunkCount} placeholder="1" inputMode="numeric" />
+          <Field label="Número de partes" value={totalChunkCount} onChange={setTotalChunkCount} placeholder="1" inputMode="numeric" />
         </div>
         <Field
-          label="target_path"
+          label="Destino do envio (target_path)"
           value={targetPath}
           onChange={setTargetPath}
           placeholder="[POST]/affiliate_seller/202501/images/upload"
         />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="shop_cipher (opcional, lojas cross-border)" value={shopCipher} onChange={setShopCipher} />
-          <Field label="category_asset_cipher (opcional)" value={categoryAssetCipher} onChange={setCategoryAssetCipher} />
+          <Field label="Código da loja (opcional, só lojas internacionais)" value={shopCipher} onChange={setShopCipher} />
+          <Field label="Código da categoria (opcional)" value={categoryAssetCipher} onChange={setCategoryAssetCipher} />
         </div>
         <Button type="submit" disabled={mutation.isPending} className="gap-2">
-          <UploadCloud className="h-4 w-4" /> {mutation.isPending ? "Inicializando…" : "Inicializar upload"}
+          <UploadCloud className="h-4 w-4" /> {mutation.isPending ? "Preparando…" : "Preparar envio"}
         </Button>
       </form>
       {mutation.isError && (
-        <ErrorBanner text={`Não foi possível inicializar o upload: ${(mutation.error as Error).message}`} />
+        <ErrorBanner text={`Não foi possível preparar o envio: ${(mutation.error as Error).message}`} />
       )}
       {mutation.data && (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <ResultField label="upload_url" value={mutation.data.upload_url} />
-          <ResultField label="upload_token" value={mutation.data.upload_token} />
+          <ResultField label="Endereço de envio" value={mutation.data.upload_url} />
+          <ResultField label="Código do envio" value={mutation.data.upload_token} />
         </div>
       )}
     </StepCard>
@@ -751,10 +745,10 @@ function StepUploadVideo({ onUploaded }: { onUploaded: (id: string) => void }) {
   };
 
   return (
-    <StepCard step={2} icon={Film} title="Upload do arquivo de vídeo" subtitle="Upload Shoppable Video File (202505)">
+    <StepCard step={2} icon={Film} title="Enviar o vídeo" subtitle="Envia o arquivo de vídeo para o TikTok">
       <p className="text-[11px] text-muted-foreground">
-        Upload real de binário não é suportado nesta ferramenta web (o client só manda JSON) — informe um nome de
-        arquivo local só para simular a chamada e ver o retorno.
+        Atenção: o envio do arquivo de vídeo pelo navegador ainda não está disponível. Por enquanto esta etapa só
+        registra o nome do arquivo — para publicar de verdade, use o app do TikTok.
       </p>
       <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="flex-1">
@@ -769,8 +763,8 @@ function StepUploadVideo({ onUploaded }: { onUploaded: (id: string) => void }) {
       )}
       {mutation.data?.video_file && (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <ResultField label="file_id (video_file.id)" value={mutation.data.video_file.id} />
-          <ResultField label="md5" value={mutation.data.video_file.md5} />
+          <ResultField label="ID do arquivo de vídeo" value={mutation.data.video_file.id} />
+          <ResultField label="Código de verificação (MD5)" value={mutation.data.video_file.md5} />
         </div>
       )}
     </StepCard>
@@ -806,20 +800,20 @@ function StepPrecheck({ defaultFileId, onTaskId }: { defaultFileId?: string; onT
       toast.error(`Título: ${(e as Error).message}`);
       return;
     }
-    toast.success("Produto e título aprovados para virar âncora.");
+    toast.success("Produto e título aprovados para aparecer no vídeo.");
   };
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!fileId.trim() || !productId.trim() || !anchorTitle.trim()) {
-      toast.error("Preencha file_id, ID do produto e o título da âncora");
+      toast.error("Preencha o ID do arquivo de vídeo, o ID do produto e o título do link do produto");
       return;
     }
     mutation.mutate(
       { fileId: fileId.trim(), productId: productId.trim(), anchorTitle: anchorTitle.trim() },
       {
         onSuccess: (data) => {
-          toast.success(`Precheck iniciado${mockNote}`);
+          toast.success(`Verificação iniciada${mockNote}`);
           if (data.precheck?.task_id) onTaskId(data.precheck.task_id);
         },
         onError: (err) => toast.error((err as Error).message),
@@ -831,18 +825,18 @@ function StepPrecheck({ defaultFileId, onTaskId }: { defaultFileId?: string; onT
     <StepCard
       step={3}
       icon={ShieldCheck}
-      title="Prechecar o vídeo"
-      subtitle="Precheck Video Content (202511) — checa violação de política e a âncora de produto"
+      title="Verificar o vídeo antes de publicar"
+      subtitle="Confere se o vídeo segue as regras do TikTok e se o link do produto está certo"
     >
       <form onSubmit={handleSubmit} className="space-y-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Field label="file_id do vídeo" value={fileId} onChange={setFileId} placeholder="v12d00gd0024d3nfqr7og65" />
+          <Field label="ID do arquivo de vídeo" value={fileId} onChange={setFileId} placeholder="v12d00gd0024d3nfqr7og65" />
           <Field label="ID do produto" value={productId} onChange={setProductId} placeholder="17294069642063424" />
           <Field
-            label="Título da âncora (< 30 car.)"
+            label="Título do link do produto (até 30 caracteres)"
             value={anchorTitle}
             onChange={setAnchorTitle}
-            placeholder="Sample product anchor title"
+            placeholder="Ex.: Sérum que eu uso todo dia"
           />
         </div>
         {defaultFileId && defaultFileId !== fileId && (
@@ -852,7 +846,7 @@ function StepPrecheck({ defaultFileId, onTaskId }: { defaultFileId?: string; onT
         )}
         <div className="flex flex-wrap items-center gap-2">
           <Button type="submit" disabled={mutation.isPending} className="gap-2">
-            <ShieldCheck className="h-4 w-4" /> {mutation.isPending ? "Enviando…" : "Prechecar vídeo"}
+            <ShieldCheck className="h-4 w-4" /> {mutation.isPending ? "Enviando…" : "Verificar vídeo"}
           </Button>
           {/* Estas duas checagens NÃO dependem de creator.video.write — funcionam
               com os escopos atuais, então servem de validação prévia mesmo com a
@@ -869,13 +863,13 @@ function StepPrecheck({ defaultFileId, onTaskId }: { defaultFileId?: string; onT
         </div>
       </form>
       {mutation.isError && (
-        <ErrorBanner text={`Não foi possível prechecar o vídeo: ${(mutation.error as Error).message}`} />
+        <ErrorBanner text={`Não foi possível verificar o vídeo: ${(mutation.error as Error).message}`} />
       )}
       {mutation.data?.precheck?.task_id && (
         <>
-          <ResultField label="task_id" value={mutation.data.precheck.task_id} />
+          <ResultField label="Código da verificação" value={mutation.data.precheck.task_id} />
           <p className="text-xs text-muted-foreground">
-            Consulte o resultado na aba <strong>Status</strong> com esse task_id.
+            Acompanhe o resultado na aba <strong>Status</strong> com esse código.
           </p>
         </>
       )}
@@ -899,7 +893,7 @@ function StepPostVideo({ defaultFileId, onPosted }: { defaultFileId?: string; on
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!fileId.trim() || !title.trim() || !productId.trim() || !anchorTitle.trim()) {
-      toast.error("Preencha file_id, legenda, ID do produto e o título da âncora");
+      toast.error("Preencha o ID do arquivo de vídeo, a legenda, o ID do produto e o título do link do produto");
       return;
     }
     mutation.mutate(
@@ -915,7 +909,7 @@ function StepPostVideo({ defaultFileId, onPosted }: { defaultFileId?: string; on
       },
       {
         onSuccess: (data) => {
-          toast.success(`Vídeo publicado${mockNote}${data.quota ? ` · cota: ${data.quota}` : ""}`);
+          toast.success(`Vídeo publicado${mockNote}${data.quota ? ` · publicações restantes hoje: ${data.quota}` : ""}`);
           if (data.video?.id) onPosted(data.video.id);
         },
         onError: (err) => toast.error((err as Error).message),
@@ -924,22 +918,22 @@ function StepPostVideo({ defaultFileId, onPosted }: { defaultFileId?: string; on
   };
 
   return (
-    <StepCard step={4} icon={Rocket} title="Publicar vídeo shoppable" subtitle="Post Shoppable Video (202607)">
+    <StepCard step={4} icon={Rocket} title="Publicar o vídeo" subtitle="Publica o vídeo no seu perfil com o produto marcado">
       <form onSubmit={handleSubmit} className="space-y-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="file_id do vídeo" value={fileId} onChange={setFileId} placeholder="v12d00gd0024d3nfqr7og65" />
-          <Field label="Legenda (title)" value={title} onChange={setTitle} placeholder="Sample video title" />
+          <Field label="ID do arquivo de vídeo" value={fileId} onChange={setFileId} placeholder="v12d00gd0024d3nfqr7og65" />
+          <Field label="Legenda" value={title} onChange={setTitle} placeholder="Legenda do vídeo + #hashtags" />
           <Field label="ID do produto" value={productId} onChange={setProductId} placeholder="17294069642063424" />
           <Field
-            label="Título da âncora (< 30 car.)"
+            label="Título do link do produto (até 30 caracteres)"
             value={anchorTitle}
             onChange={setAnchorTitle}
-            placeholder="Sample product anchor title"
+            placeholder="Ex.: Sérum que eu uso todo dia"
           />
-          <Field label="music_id (opcional)" value={musicId} onChange={setMusicId} placeholder="ID da aba Produtos & Música" />
-          <Field label="cover_uri (opcional)" value={coverUri} onChange={setCoverUri} placeholder="photo_uri da capa" />
+          <Field label="ID da música (opcional)" value={musicId} onChange={setMusicId} placeholder="Copie na aba Produtos & Música" />
+          <Field label="Capa: código de uma foto enviada (opcional)" value={coverUri} onChange={setCoverUri} placeholder="Código da foto do passo 5" />
           <Field
-            label="cover_timestamp_ms (opcional)"
+            label="Capa: momento do vídeo, em milissegundos (opcional)"
             value={coverTimestampMs}
             onChange={setCoverTimestampMs}
             placeholder="1000"
@@ -965,10 +959,10 @@ function StepPostVideo({ defaultFileId, onPosted }: { defaultFileId?: string; on
       )}
       {mutation.data?.video?.id && (
         <>
-          <ResultField label="video.id" value={mutation.data.video.id} />
+          <ResultField label="ID do vídeo publicado" value={mutation.data.video.id} />
           {mutation.data.quota && <p className="text-xs text-muted-foreground">Cota de publicação: {mutation.data.quota}</p>}
           <p className="text-xs text-muted-foreground">
-            Consulte o status na aba <strong>Status</strong> com esse video_id.
+            Acompanhe a publicação na aba <strong>Status</strong> com esse ID.
           </p>
         </>
       )}
@@ -1006,10 +1000,10 @@ function StepUploadPhoto({
   };
 
   return (
-    <StepCard step={5} icon={ImagePlus} title="Upload de arquivo(s) de foto" subtitle="Upload Shoppable Photo File (202511)">
+    <StepCard step={5} icon={ImagePlus} title="Enviar as fotos" subtitle="Envia uma foto por vez; elas ficam listadas abaixo">
       <p className="text-[11px] text-muted-foreground">
-        Assim como no vídeo, o upload real de binário não é suportado aqui — informe um nome de arquivo por vez; cada
-        envio soma um photo_uri à lista usada no passo de publicar fotos.
+        Atenção: assim como no vídeo, o envio do arquivo de foto pelo navegador ainda não está disponível. Informe um
+        nome de arquivo por vez; cada envio entra na lista usada no passo de publicar as fotos.
       </p>
       <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="flex-1">
@@ -1023,7 +1017,7 @@ function StepUploadPhoto({
         <ErrorBanner text={`Não foi possível subir a foto: ${(mutation.error as Error).message}`} />
       )}
       {mutation.data?.photo_file?.photo_uri && (
-        <ResultField label="photo_uri (último envio)" value={mutation.data.photo_file.photo_uri} />
+        <ResultField label="Código da última foto enviada" value={mutation.data.photo_file.photo_uri} />
       )}
       {photoUris.length > 0 && (
         <div className="space-y-1.5 border-t pt-3">
@@ -1075,7 +1069,7 @@ function StepPostPhotos({ defaultPhotoUris }: { defaultPhotoUris: string[] }) {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (effectiveUris.length === 0) {
-      toast.error("Informe ao menos um photo_uri (ou envie fotos no passo 5)");
+      toast.error("Informe ao menos uma foto (ou envie fotos no passo 5)");
       return;
     }
     mutation.mutate(
@@ -1092,7 +1086,7 @@ function StepPostPhotos({ defaultPhotoUris }: { defaultPhotoUris: string[] }) {
       },
       {
         onSuccess: (data) => {
-          toast.success(`Fotos publicadas${mockNote}${data.quota ? ` · cota: ${data.quota}` : ""}`);
+          toast.success(`Fotos publicadas${mockNote}${data.quota ? ` · publicações restantes hoje: ${data.quota}` : ""}`);
         },
         onError: (err) => toast.error((err as Error).message),
       }
@@ -1100,10 +1094,10 @@ function StepPostPhotos({ defaultPhotoUris }: { defaultPhotoUris: string[] }) {
   };
 
   return (
-    <StepCard step={6} icon={Rocket} title="Publicar fotos shoppable" subtitle="Post Shoppable Photos (202607)">
+    <StepCard step={6} icon={Rocket} title="Publicar as fotos" subtitle="Publica um carrossel de fotos com o produto ou a loja marcada">
       <form onSubmit={handleSubmit} className="space-y-3">
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">photo_uris (um por linha — vazio usa as fotos do passo 5)</Label>
+          <Label className="text-xs text-muted-foreground">Códigos das fotos (um por linha — deixe vazio para usar as fotos do passo 5)</Label>
           <textarea
             rows={2}
             className={textareaClass}
@@ -1114,15 +1108,15 @@ function StepPostPhotos({ defaultPhotoUris }: { defaultPhotoUris: string[] }) {
           <p className="text-[11px] text-muted-foreground">
             {typedUris.length === 0 && defaultPhotoUris.length > 0
               ? `Vazio: vai usar as ${defaultPhotoUris.length} foto(s) enviadas no passo 5.`
-              : `${effectiveUris.length} foto(s) reconhecida(s).`}
+              : `${effectiveUris.length} ${effectiveUris.length === 1 ? "foto reconhecida" : "fotos reconhecidas"}.`}
           </p>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="Título do post (opcional)" value={title} onChange={setTitle} placeholder="Legenda + #hashtags" />
-          <Field label="music_id (opcional)" value={musicId} onChange={setMusicId} placeholder="ID da aba Produtos & Música" />
+          <Field label="Legenda (opcional)" value={title} onChange={setTitle} placeholder="Legenda + #hashtags" />
+          <Field label="ID da música (opcional)" value={musicId} onChange={setMusicId} placeholder="Copie na aba Produtos & Música" />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Tipo de vínculo (link_info.post_type)</Label>
+          <Label className="text-xs text-muted-foreground">O que marcar nas fotos</Label>
           <div className="flex flex-wrap gap-2">
             {PHOTO_POST_TYPES.map((opt) => (
               <Button
@@ -1139,14 +1133,14 @@ function StepPostPhotos({ defaultPhotoUris }: { defaultPhotoUris: string[] }) {
         </div>
         {postType === "2" ? (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Field label="shop_id" value={shopId} onChange={setShopId} placeholder="7494831143334152261" />
-            <Field label="group_type (1=home, 2=categoria, 3=coleção)" value={groupType} onChange={setGroupType} placeholder="1" />
-            <Field label="group_id" value={groupId} onChange={setGroupId} placeholder="6" />
+            <Field label="ID da loja" value={shopId} onChange={setShopId} placeholder="7494831143334152261" />
+            <Field label="Página da loja (1 = início, 2 = categoria, 3 = coleção)" value={groupType} onChange={setGroupType} placeholder="1" />
+            <Field label="ID da categoria ou coleção" value={groupId} onChange={setGroupId} placeholder="6" />
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="ID do produto" value={productId} onChange={setProductId} placeholder="74998589993939330" />
-            <Field label="Título da âncora (< 30 car.)" value={linkTitle} onChange={setLinkTitle} placeholder="product A" />
+            <Field label="Título do link do produto (até 30 caracteres)" value={linkTitle} onChange={setLinkTitle} placeholder="Ex.: Kit completo" />
           </div>
         )}
         <Button type="submit" disabled={mutation.isPending} className="gap-2">
@@ -1158,7 +1152,7 @@ function StepPostPhotos({ defaultPhotoUris }: { defaultPhotoUris: string[] }) {
       )}
       {mutation.data?.photo?.photo_post_id && (
         <>
-          <ResultField label="photo_post_id" value={mutation.data.photo.photo_post_id} />
+          <ResultField label="ID da publicação" value={mutation.data.photo.photo_post_id} />
           {mutation.data.quota && <p className="text-xs text-muted-foreground">Cota de publicação: {mutation.data.quota}</p>}
         </>
       )}
@@ -1197,12 +1191,12 @@ function VideoStatusTool({ initialId }: { initialId?: string }) {
         <CardTitle className="flex items-center gap-2 text-base">
           <PlayCircle className="h-4 w-4" /> Status do vídeo publicado
         </CardTitle>
-        <p className="mt-0.5 text-xs text-muted-foreground">Get Shoppable Video Status (202509)</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">Veja se o vídeo já foi publicado ou se ainda está em processamento.</p>
       </CardHeader>
       <CardContent className="space-y-4">
         <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="flex-1 space-y-1">
-            <Label className="text-xs text-muted-foreground">video_id</Label>
+            <Label className="text-xs text-muted-foreground">ID do vídeo</Label>
             <Input value={videoId} onChange={(e) => setVideoId(e.target.value)} placeholder="7493990579714164574" />
           </div>
           <Button type="submit" className="gap-2" disabled={!videoId.trim()}>
@@ -1259,12 +1253,12 @@ function PrecheckResultTool({ initialId }: { initialId?: string }) {
         <CardTitle className="flex items-center gap-2 text-base">
           <ShieldCheck className="h-4 w-4" /> Resultado do precheck
         </CardTitle>
-        <p className="mt-0.5 text-xs text-muted-foreground">Get Shoppable Video Precheck Result (202601)</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">O resultado da verificação feita antes de publicar.</p>
       </CardHeader>
       <CardContent className="space-y-4">
         <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="flex-1 space-y-1">
-            <Label className="text-xs text-muted-foreground">task_id</Label>
+            <Label className="text-xs text-muted-foreground">Código da verificação</Label>
             <Input value={taskId} onChange={(e) => setTaskId(e.target.value)} placeholder="1123123123" />
           </div>
           <Button type="submit" className="gap-2" disabled={!taskId.trim()}>
@@ -1273,9 +1267,9 @@ function PrecheckResultTool({ initialId }: { initialId?: string }) {
         </form>
 
         {!applied ? (
-          <EmptyState icon={ShieldCheck} text="Informe o task_id devolvido pelo Precheck Video Content (aba Publicar)." />
+          <EmptyState icon={ShieldCheck} text="Informe o código gerado na etapa “Verificar o vídeo antes de publicar” (aba Publicar)." />
         ) : error ? (
-          <ErrorBanner text={`Não foi possível consultar o precheck: ${(error as Error).message}`} />
+          <ErrorBanner text={`Não foi possível consultar a verificação: ${(error as Error).message}`} />
         ) : isLoading || !task ? (
           <div className="space-y-2">
             <Skeleton className="h-16 w-full" />
@@ -1289,7 +1283,7 @@ function PrecheckResultTool({ initialId }: { initialId?: string }) {
                 <RefreshCw className="h-3.5 w-3.5" /> Atualizar
               </Button>
             </div>
-            <PrecheckResultBlock title="Checagem de violação de política" result={task.violation_check_result} />
+            <PrecheckResultBlock title="Regras da comunidade" result={task.violation_check_result} />
             <PrecheckResultBlock title="Checagem de qualidade" result={task.good_quality_check_result} />
           </div>
         )}

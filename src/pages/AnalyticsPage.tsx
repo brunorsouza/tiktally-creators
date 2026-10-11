@@ -10,7 +10,6 @@ import {
   Flame,
   UserPlus,
   Ticket,
-  Calendar,
   Search,
   Film,
   MousePointerClick,
@@ -23,6 +22,15 @@ import {
   AlertCircle,
   Package,
   ShieldAlert,
+  Trophy,
+  TrendingUp,
+  TrendingDown,
+  ArrowDownRight,
+  Clock,
+  CalendarClock,
+  Sparkles,
+  CircleSlash2,
+  Download,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -39,6 +47,7 @@ import {
   Legend,
 } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
+import { PeriodPicker } from "@/components/PeriodPicker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,6 +57,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatCard } from "@/components/StatCard";
 import {
   useVideoPerformances,
+  aggregateVideoPerformance,
+  aggregateVideoKpis,
+  useVideoContentPerformance,
   useLiveRoomCoreStats,
   useLiveRoomGmvTrend,
   useLiveRoomViewTrends,
@@ -55,17 +67,66 @@ import {
   useLiveRoomInteractiveTrends,
   useLiveRoomProductStats,
   useLiveRoomUserPortraits,
+  useLiveRoomInfo,
   type VideoPerformancesFilters,
+  type ContentVideoRow,
   useRecentLiveRooms,
 } from "@/hooks/useAnalytics";
+import type { GanhosFilters } from "@/hooks/useGanhos";
+import { useHorarios } from "@/hooks/useHorarios";
+import {
+  BLOCOS,
+  CONFIANCA_LABEL,
+  JANELA_HORAS,
+  CONTENT_FILTERS,
+  DIAS_CURTOS,
+  DIAS_ORDEM,
+  LEITURA,
+  MIN_PEDIDOS_BLOCOS,
+  MIN_PEDIDOS_GRADE,
+  MIN_PEDIDOS_RECOMENDACAO,
+  celulaBloco,
+  rotuloHora,
+  rotuloJanela,
+  type CelulaBloco,
+  type Confianca,
+  type ContentFilter,
+  type HoraBucket,
+  type ResumoHorarios,
+} from "@/lib/horarios";
+import {
+  fracaoEmPalavras,
+  rotuloCelula,
+  type Acao,
+  type EstatisticasHorarios,
+} from "@/lib/horariosInsights";
+import {
+  BarrasPorHora,
+  GradeBlocos,
+  GradeSemanal,
+  TabelaHorarios,
+  TopHoras,
+  type MetricaHora,
+} from "@/components/HorariosChart";
+import { cn } from "@/lib/utils";
+import { ROLLING_DAYS, resolvePeriod, type Period } from "@/lib/period";
 import { USE_MOCK } from "@/services/creatorClient";
-import { formatCurrency, formatMoney, formatNumber, formatPercent, formatDate, abbreviateNumber, parseAmount } from "@/lib/formatters";
-import type { GetVideoPerformancesData, GetLiveRoomTrafficPerformanceData } from "@/types/creator-api.generated";
+import {
+  formatCurrency,
+  formatMoney,
+  formatNumber,
+  formatPercent,
+  formatDate,
+  formatDateTime,
+  abbreviateNumber,
+} from "@/lib/formatters";
+import type { GetLiveRoomTrafficPerformanceData } from "@/types/creator-api.generated";
 
 /**
- * Analytics de creator: aba "Vídeos" (Get Video Performances — gated, `creator.video.write`
- * inativo) e aba "Live" (7 endpoints de live room, `creator.data.live.read.public` ativo).
- * Ver docs/TIKTOK_AFFILIATE_CREATOR_API.md, seção "Analytics de conteúdo (creator scope)".
+ * Analytics de creator: "Ranking" (cruza retorno dos pedidos com receita de Get Video
+ * Performances — gated, `creator.video.write` inativo), "Vídeo específico" (consulta
+ * manual por ID) e "Live" (7 endpoints de live room, `creator.data.live.read.public`
+ * ativo). Ver docs/TIKTOK_AFFILIATE_CREATOR_API.md, seção "Analytics de conteúdo".
  */
 
 // =============== Helpers compartilhados ===============
@@ -81,8 +142,6 @@ function parseLines(raw: string): string[] {
     .filter(Boolean);
 }
 
-/** Alguns valores mock vêm com símbolo de moeda embutido — limpa antes de parsear. */
-
 /** formatCurrency com fallback — nunca derruba a tela se vier um código de moeda inválido do fixture. */
 function money(amount: number, currency?: string): string {
   try {
@@ -92,19 +151,34 @@ function money(amount: number, currency?: string): string {
   }
 }
 
-/** avg_watching_duration vem em segundos — formata "m:ss". */
+/** avg_watching_duration vem em segundos — formata humano "Xm Ys" (ex.: "3m 20s"). */
 function formatDuration(seconds?: number): string {
   if (seconds == null || !Number.isFinite(seconds) || seconds < 0) return "—";
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
-  return `${m}:${String(s).padStart(2, "0")}`;
+  return `${m}m ${s}s`;
 }
 
-/** Humaniza nomes de fonte de tráfego (ex.: "card_click" → "Card click") — a doc não lista
- *  um enum fechado de valores possíveis, então só normalizamos, sem inventar tradução. */
+/** Humaniza nomes de fonte de tráfego / status (ex.: "card_click" → "Card click") — a doc
+ *  não lista um enum fechado, então só normalizamos, sem inventar tradução. */
+/** Status da sala de live. A API não fecha a lista de valores (o exemplo é "LIVE"), então o
+ *  que não for reconhecido cai no `humanize`. */
+function liveStatusLabel(raw?: string): string {
+  if (!raw) return "—";
+  if (/^(ONGOING|LIVE|LIVING)$/i.test(raw)) return "Ao vivo";
+  if (/^(END|ENDED|FINISH|FINISHED|CLOSED)$/i.test(raw)) return "Encerrada";
+  return humanize(raw);
+}
+
 function humanize(raw?: string): string {
   if (!raw) return "—";
   return raw.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** Início/fim de um vídeo formatados como intervalo de data (ou data única quando iguais). */
+function formatPeriodRange(minStart?: number, maxEnd?: number): string {
+  if (minStart == null || maxEnd == null) return "—";
+  return minStart === maxEnd ? formatDate(minStart) : `${formatDate(minStart)} – ${formatDate(maxEnd)}`;
 }
 
 function EmptyState({ icon: Icon, text }: { icon: LucideIcon; text: string }) {
@@ -278,7 +352,7 @@ function buildCountTrendData(series: CountTrendSeries[]): TrendPoint[] {
 }
 
 const VIEW_TREND_LABELS: Record<string, string> = {
-  TREND_ONLINE_VIEWER: "Online",
+  TREND_ONLINE_VIEWER: "Assistindo",
   TREND_ENTER_VIEWER: "Entraram",
   TREND_LEFT_VIEWER: "Saíram",
 };
@@ -302,13 +376,42 @@ const INTERACTIVE_TREND_COLORS: Record<string, string> = {
 // =============== Página ===============
 
 export default function AnalyticsPage() {
-  const [tab, setTab] = useState<"videos" | "live">("videos");
+  const [tab, setTab] = useState<"ranking" | "videos" | "live" | "horarios">("ranking");
+
+  // Período único da página — o mesmo seletor do Painel/Ganhos, para as três abas
+  // falarem do mesmo recorte de tempo: KPIs do ranking, consulta manual de vídeo e,
+  // na aba Live, qual live entra na lista de "lives recentes" (os 7 endpoints de KPI
+  // de UMA live não aceitam filtro de data — o período só decide qual live escolher).
+  const [periodKey, setPeriodKey] = useState<string>("month");
+  const [monthOffset, setMonthOffset] = useState(0);
+  const now = useMemo(() => Math.floor(Date.now() / 1000), []);
+  const resolved = useMemo(() => {
+    const period: Period =
+      periodKey === "month"
+        ? { kind: "month", offset: monthOffset }
+        : { kind: "rolling", days: ROLLING_DAYS[periodKey] ?? 30 };
+    return resolvePeriod(period, now);
+  }, [periodKey, monthOffset, now]);
+  const range = resolved.current;
 
   return (
     <div className="space-y-gap">
-      <PageHeader title="Analytics de creator" subtitle="Performance por vídeo e por sala de live (creator scope)." />
+      <PageHeader
+        title="Desempenho"
+        subtitle="Quais vídeos vendem mais, quais rendem mais comissão e como foi a sua live."
+      />
 
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="segmented w-fit" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "ranking"}
+            onClick={() => setTab("ranking")}
+            className="segmented-item flex items-center gap-2"
+          >
+            <Trophy className="h-4 w-4" /> Ranking
+          </button>
           <button
             type="button"
             role="tab"
@@ -316,7 +419,7 @@ export default function AnalyticsPage() {
             onClick={() => setTab("videos")}
             className="segmented-item flex items-center gap-2"
           >
-            <Video className="h-4 w-4" /> Vídeos
+            <Video className="h-4 w-4" /> Vídeo específico
           </button>
           <button
             type="button"
@@ -327,82 +430,308 @@ export default function AnalyticsPage() {
           >
             <Radio className="h-4 w-4" /> Live
           </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "horarios"}
+            onClick={() => setTab("horarios")}
+            className="segmented-item flex items-center gap-2"
+          >
+            <Clock className="h-4 w-4" /> Horários
+          </button>
         </div>
 
-      {tab === "videos" ? <VideosTab /> : <LiveTab />}
+        <PeriodPicker
+          periodKey={periodKey}
+          onPeriodKey={setPeriodKey}
+          monthOffset={monthOffset}
+          onMonthOffset={setMonthOffset}
+          monthLabel={resolved.kpiLabel}
+        />
+      </div>
+
+      {tab === "ranking" ? (
+        <RankingTab range={range} subject={resolved.subject} />
+      ) : tab === "videos" ? (
+        <ManualVideoTab range={range} subject={resolved.subject} />
+      ) : tab === "horarios" ? (
+        <HorariosTab range={range} subject={resolved.subject} />
+      ) : (
+        <LiveTab range={range} subject={resolved.subject} />
+      )}
     </div>
   );
 }
 
-// =============== Aba 1: Vídeos ===============
+// =============== Aba 1: Ranking (receita x retorno por vídeo) ===============
 
-const VIDEO_PERIODS = [
-  { days: 7, label: "Últimos 7 dias" },
-  { days: 30, label: "Últimos 30 dias" },
-  { days: 90, label: "Últimos 90 dias" },
-] as const;
+const RANK_ICON: Record<string, LucideIcon> = {
+  gmv: TrendingUp,
+  commission: Trophy,
+};
 
-function videoPeriodRange(days: number) {
-  const now = Math.floor(Date.now() / 1000);
-  return { startTimeGe: now - days * 24 * 3600, endTimeLe: now };
+function HighlightCard({
+  icon: Icon,
+  label,
+  row,
+  metric,
+  accent,
+}: {
+  icon: LucideIcon;
+  label: string;
+  row?: ContentVideoRow;
+  metric: "gmv" | "commission";
+  accent: "primary" | "success" | "warning" | "info";
+}) {
+  const ACCENT_TEXT: Record<string, string> = {
+    primary: "text-primary",
+    success: "text-success",
+    warning: "text-warning",
+    info: "text-info",
+  };
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className={`flex items-center gap-1.5 text-xs font-semibold ${ACCENT_TEXT[accent]}`}>
+          <Icon className="h-3.5 w-3.5" /> {label}
+        </div>
+        {!row ? (
+          <p className="mt-2 text-sm text-muted-foreground">Sem dados suficientes.</p>
+        ) : (
+          <>
+            <p className="mt-2 truncate text-sm font-semibold" title={row.label}>
+              {row.label}
+            </p>
+            <p className="num mt-0.5 text-lg font-extrabold tracking-[-0.3px]">
+              {metric === "gmv" ? money(row.gmv, row.gmvCurrency) : money(row.commission, row.commissionCurrency)}
+            </p>
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+              {row.shopName ?? `Vídeo ${row.id}`}
+            </p>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
+
+function RankingTab({ range, subject }: { range: GanhosFilters; subject: string }) {
+  const { rows, isLoading, error, gmvError } = useVideoContentPerformance(range);
+  const [sortBy, setSortBy] = useState<"gmv" | "commission">("gmv");
+  // GMV (Get Video Performances) exige `creator.video.write`, hoje inativo em live. Sem ele
+  // a RECEITA fica indisponível, mas o RETORNO (comissão, dos pedidos) segue funcionando —
+  // então degradamos: some as colunas de GMV e ordena por retorno, em vez de travar a aba.
+  const gmvUnavailable = !!gmvError;
+  const effectiveSort: "gmv" | "commission" = gmvUnavailable ? "commission" : sortBy;
+
+  const kpis = useMemo(() => {
+    const gmv = rows.reduce((s, r) => s + r.gmv, 0);
+    const commission = rows.reduce((s, r) => s + r.commission, 0);
+    const pending = rows.reduce((s, r) => s + r.pendingCommission, 0);
+    const itemsSold = rows.reduce((s, r) => s + r.itemsSold, 0);
+    const withCtr = rows.filter((r) => r.hasPerformance);
+    const avgCtr = withCtr.length ? withCtr.reduce((s, r) => s + r.ctr, 0) / withCtr.length : 0;
+    const gmvCurrency = rows.find((r) => r.gmv > 0)?.gmvCurrency ?? "BRL";
+    const commissionCurrency = rows.find((r) => r.commission > 0)?.commissionCurrency ?? gmvCurrency;
+    return { gmv, commission, pending, itemsSold, avgCtr, gmvCurrency, commissionCurrency };
+  }, [rows]);
+
+  // "Maior/menor receita" só considera vídeos com retorno de Get Video Performances —
+  // um vídeo sem esse dado não tem GMV pra comparar (ver `hasPerformance`).
+  const byGmv = useMemo(
+    () => rows.filter((r) => r.hasPerformance).sort((a, b) => b.gmv - a.gmv),
+    [rows]
+  );
+  const byCommission = useMemo(() => [...rows].sort((a, b) => b.commission - a.commission), [rows]);
+  const sorted = useMemo(
+    () => (effectiveSort === "gmv" ? [...rows].sort((a, b) => b.gmv - a.gmv) : byCommission),
+    [rows, effectiveSort, byCommission]
+  );
+
+  const topRevenue = byGmv[0];
+  const bottomRevenue = byGmv.length > 1 ? byGmv[byGmv.length - 1] : undefined;
+  const topReturn = byCommission[0];
+  const bottomReturn = byCommission.length > 1 ? byCommission[byCommission.length - 1] : undefined;
+
+  return (
+    <div className="space-y-6">
+      <p className="text-sm text-muted-foreground">
+        Vídeos que geraram pedidos em {subject}. As vendas vêm das métricas de cada vídeo no TikTok; a comissão vem
+        dos seus pedidos de afiliado.
+      </p>
+
+      {error ? (
+        <ErrorBanner text={`Não foi possível montar o ranking: ${(error as Error).message}`} />
+      ) : isLoading ? (
+        <>
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <StatCard key={i} label="—" value="" loading />
+            ))}
+          </section>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 w-full" />
+            ))}
+          </div>
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-14 w-full" />
+            ))}
+          </div>
+        </>
+      ) : rows.length === 0 ? (
+        <EmptyState icon={Trophy} text="Nenhum vídeo com pedido de afiliado nesse período." />
+      ) : (
+        <>
+          {gmvUnavailable && (
+            <Card className="border-warning/30 bg-warning/5">
+              <CardContent className="flex items-start gap-3 p-4 text-sm">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                <span>
+                  As <strong className="font-medium text-foreground">vendas por vídeo</strong> ainda não estão
+                  disponíveis para a sua conta. A{" "}
+                  <strong className="font-medium text-foreground">comissão</strong> abaixo vem dos seus pedidos e já
+                  está valendo; as vendas aparecem assim que o TikTok liberar esse dado.
+                </span>
+              </CardContent>
+            </Card>
+          )}
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              label="Vendas geradas"
+              value={gmvUnavailable ? "—" : money(kpis.gmv, kpis.gmvCurrency)}
+              icon={Wallet}
+              accent="primary"
+            />
+            <StatCard
+              label="Comissão"
+              value={money(kpis.commission, kpis.commissionCurrency)}
+              icon={Trophy}
+              accent="success"
+              hint={kpis.pending > 0 ? `${money(kpis.pending, kpis.commissionCurrency)} ainda pendente` : "Tudo já liquidado"}
+            />
+            <StatCard
+              label="Itens vendidos"
+              value={gmvUnavailable ? "—" : formatNumber(kpis.itemsSold)}
+              icon={PackageCheck}
+              accent="info"
+            />
+            <StatCard
+              label="Taxa de cliques"
+              value={gmvUnavailable ? "—" : formatPercent(kpis.avgCtr, 1)}
+              hint="De cada 100 vezes que o produto apareceu no vídeo, quantas viraram clique"
+              icon={MousePointerClick}
+              accent="warning"
+            />
+          </section>
+
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <HighlightCard icon={TrendingUp} label="Mais vendeu" row={topRevenue} metric="gmv" accent="primary" />
+            <HighlightCard icon={TrendingDown} label="Menos vendeu" row={bottomRevenue} metric="gmv" accent="warning" />
+            <HighlightCard icon={Trophy} label="Maior comissão" row={topReturn} metric="commission" accent="success" />
+            <HighlightCard icon={ArrowDownRight} label="Menor comissão" row={bottomReturn} metric="commission" accent="warning" />
+          </section>
+
+          <Card>
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle className="text-base">Ranking de vídeos</CardTitle>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {effectiveSort === "gmv" ? "Do que mais vendeu para o que menos vendeu" : "Da maior para a menor comissão"}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant={effectiveSort === "gmv" ? "toggle-on" : "toggle"}
+                  onClick={() => setSortBy("gmv")}
+                  disabled={gmvUnavailable}
+                  title={gmvUnavailable ? "Vendas por vídeo ainda não disponíveis para a sua conta" : undefined}
+                >
+                  Por vendas
+                </Button>
+                <Button
+                  size="sm"
+                  variant={effectiveSort === "commission" ? "toggle-on" : "toggle"}
+                  onClick={() => setSortBy("commission")}
+                >
+                  Por comissão
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+                      <th className="pb-2 pr-4 font-medium">#</th>
+                      <th className="pb-2 pr-4 font-medium">Vídeo</th>
+                      <th className="pb-2 pr-4 text-right font-medium">Vendas</th>
+                      <th className="pb-2 pr-4 text-right font-medium">Comissão</th>
+                      <th className="pb-2 pr-4 text-right font-medium">Pedidos</th>
+                      <th className="pb-2 pr-4 text-right font-medium">Itens vendidos</th>
+                      <th className="pb-2 text-right font-medium">Taxa de cliques</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {sorted.map((row, i) => {
+                      const RankIcon = RANK_ICON[effectiveSort];
+                      return (
+                        <tr key={row.id}>
+                          <td className="py-3 pr-4 text-xs text-muted-foreground">
+                            {i === 0 ? <RankIcon className="h-4 w-4 text-primary" /> : i + 1}
+                          </td>
+                          <td className="max-w-[220px] py-3 pr-4">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+                                <Film className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-medium" title={row.label}>
+                                  {row.label}
+                                </p>
+                                <p className="truncate text-xs text-muted-foreground">
+                                  {row.shopName ?? `Vídeo ${row.id}`}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="whitespace-nowrap py-3 pr-4 text-right font-semibold">
+                            {row.hasPerformance ? money(row.gmv, row.gmvCurrency) : "—"}
+                          </td>
+                          <td className="whitespace-nowrap py-3 pr-4 text-right">
+                            <p className="font-semibold text-success">{money(row.commission, row.commissionCurrency)}</p>
+                            {row.pendingCommission > 0 && (
+                              <p className="flex items-center justify-end gap-1 text-xs text-warning">
+                                <Clock className="h-3 w-3" /> {money(row.pendingCommission, row.commissionCurrency)} pendente
+                              </p>
+                            )}
+                          </td>
+                          <td className="whitespace-nowrap py-3 pr-4 text-right">{formatNumber(row.ordersFromAffiliate)}</td>
+                          <td className="whitespace-nowrap py-3 pr-4 text-right">
+                            {row.hasPerformance ? formatNumber(row.itemsSold) : "—"}
+                          </td>
+                          <td className="whitespace-nowrap py-3 text-right">
+                            {row.hasPerformance ? formatPercent(row.ctr, 1) : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
+    </div>
+  );
+}
+
+// =============== Aba 2: Vídeo específico (consulta manual por ID) ===============
 
 const DEFAULT_VIDEO_ID = "7271486684427046149";
-
-interface VideoRow {
-  id: string;
-  period: string;
-  gmv: number;
-  currency: string;
-  orders: number;
-  itemsSold: number;
-  ctr: number;
-  anchor: number;
-}
-
-/** Soma/agrega as métricas diárias (`performances[]`) de um vídeo num único total do período. */
-function aggregateVideo(v: NonNullable<GetVideoPerformancesData["videos"]>[number]): VideoRow {
-  const perfs = v.performances ?? [];
-  let gmv = 0;
-  let orders = 0;
-  let itemsSold = 0;
-  let ctrSum = 0;
-  let anchorSum = 0;
-  let currency = "BRL";
-  let minStart: number | undefined;
-  let maxEnd: number | undefined;
-  for (const p of perfs) {
-    const m = p.metrics;
-    gmv += parseAmount(m?.gmv?.amount);
-    if (m?.gmv?.currency) currency = m.gmv.currency;
-    orders += m?.order_count ?? 0;
-    itemsSold += m?.item_sold_count ?? 0;
-    ctrSum += parseFloat(m?.click_through_rate ?? "0") || 0;
-    anchorSum += parseFloat(m?.anchor_display_rate ?? "0") || 0;
-    const s = p.time_range?.start_time;
-    const e = p.time_range?.end_time;
-    if (s != null) minStart = minStart == null ? s : Math.min(minStart, s);
-    if (e != null) maxEnd = maxEnd == null ? e : Math.max(maxEnd, e);
-  }
-  const n = perfs.length || 1;
-  const period =
-    minStart != null && maxEnd != null
-      ? minStart === maxEnd
-        ? formatDate(minStart)
-        : `${formatDate(minStart)} – ${formatDate(maxEnd)}`
-      : "—";
-  return { id: v.id ?? "—", period, gmv, currency, orders, itemsSold, ctr: ctrSum / n, anchor: anchorSum / n };
-}
-
-function aggregateVideoKpis(rows: VideoRow[]) {
-  const gmv = rows.reduce((s, r) => s + r.gmv, 0);
-  const orders = rows.reduce((s, r) => s + r.orders, 0);
-  const itemsSold = rows.reduce((s, r) => s + r.itemsSold, 0);
-  const avgCtr = rows.length ? rows.reduce((s, r) => s + r.ctr, 0) / rows.length : 0;
-  const avgAnchor = rows.length ? rows.reduce((s, r) => s + r.anchor, 0) / rows.length : 0;
-  const currency = rows[0]?.currency ?? "BRL";
-  return { gmv, orders, itemsSold, avgCtr, avgAnchor, currency };
-}
 
 function VideoGatingBanner() {
   return (
@@ -410,12 +739,10 @@ function VideoGatingBanner() {
       <CardContent className="flex items-start gap-3 p-4 text-sm">
         <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
         <div className="space-y-1">
-          <p className="font-medium">Performance de vídeo exige um escopo hoje inativo</p>
+          <p className="font-medium">As métricas por vídeo podem ainda não estar liberadas</p>
           <p className="text-muted-foreground">
-            Get Video Performances pede o escopo <code className="rounded bg-background/60 px-1 py-0.5 text-xs">creator.video.write</code>{" "}
-            (pacote <strong>Content Posting</strong>), que hoje está <strong>inativo</strong> no app — mesma ressalva do Estúdio de
-            conteúdo (ver <code className="text-xs">docs/RELATORIO_ESCOPOS_MVP.md</code>). Em modo live essa chamada tende a falhar por
-            permissão até o pacote ser ativado. Em modo mock funciona normalmente.
+            O TikTok libera esse dado por etapas. Se a consulta falhar, a sua conta ainda não tem acesso às métricas de
+            vídeo — a comissão por vídeo continua disponível na aba Ranking.
           </p>
         </div>
       </CardContent>
@@ -423,15 +750,16 @@ function VideoGatingBanner() {
   );
 }
 
-function VideosTab() {
+function ManualVideoTab({ range, subject }: { range: GanhosFilters; subject: string }) {
   const [idsInput, setIdsInput] = useState(USE_MOCK ? DEFAULT_VIDEO_ID : "");
   const [appliedIds, setAppliedIds] = useState<string[]>(USE_MOCK ? [DEFAULT_VIDEO_ID] : []);
-  const [days, setDays] = useState<7 | 30 | 90>(30);
 
-  const range = useMemo(() => videoPeriodRange(days), [days]);
-  const filters: VideoPerformancesFilters = useMemo(() => ({ videoIds: appliedIds, ...range }), [appliedIds, range]);
+  const filters: VideoPerformancesFilters = useMemo(
+    () => ({ videoIds: appliedIds, startTimeGe: range.createTimeGe, endTimeLe: range.createTimeLt }),
+    [appliedIds, range]
+  );
   const { data, isLoading, error } = useVideoPerformances(filters);
-  const rows = useMemo(() => (data?.videos ?? []).map(aggregateVideo), [data]);
+  const rows = useMemo(() => (data?.videos ?? []).map(aggregateVideoPerformance), [data]);
   const kpis = useMemo(() => aggregateVideoKpis(rows), [rows]);
 
   const handleSubmit = (e: FormEvent) => {
@@ -442,7 +770,7 @@ function VideosTab() {
       return;
     }
     if (ids.length > 100) {
-      toast.error("Máximo de 100 IDs por consulta (todos do mesmo autor)");
+      toast.error("Informe no máximo 100 IDs de vídeo por consulta");
       return;
     }
     setAppliedIds(ids);
@@ -455,18 +783,18 @@ function VideosTab() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Video className="h-4 w-4" /> Performance dos vídeos
+            <Video className="h-4 w-4" /> Desempenho de um vídeo específico
           </CardTitle>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Get Video Performances (202403) — GMV, pedidos, itens vendidos e engajamento por vídeo. A API não retorna
-            título nem thumbnail (só as métricas por video_id).
+            Vendas, pedidos, itens vendidos e cliques do vídeo em {subject}. O TikTok não envia o título nem a capa do
+            vídeo, só as métricas.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
           <form onSubmit={handleSubmit} className="space-y-3">
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">
-                IDs dos vídeos (um por linha ou separados por vírgula — todos do mesmo autor, máx. 100)
+                IDs dos vídeos (um por linha ou separados por vírgula, até 100, todos da sua conta)
               </Label>
               <textarea
                 rows={2}
@@ -477,23 +805,7 @@ function VideosTab() {
               />
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <span className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-                <Calendar className="h-4 w-4" /> Período
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {VIDEO_PERIODS.map((p) => (
-                  <Button
-                    key={p.days}
-                    type="button"
-                    size="sm"
-                    variant={days === p.days ? "toggle-on" : "toggle"}
-                    onClick={() => setDays(p.days)}
-                  >
-                    {p.label}
-                  </Button>
-                ))}
-              </div>
-              <Button type="submit" className="ml-auto gap-2">
+              <Button type="submit" className="gap-2">
                 <Search className="h-4 w-4" /> Consultar
               </Button>
             </div>
@@ -521,15 +833,15 @@ function VideosTab() {
               </div>
             </>
           ) : rows.length === 0 ? (
-            <EmptyState icon={Video} text="Nenhuma performance encontrada para os vídeos/período informados." />
+            <EmptyState icon={Video} text="Nenhum resultado para esses vídeos no período. Confira os IDs ou escolha um período maior." />
           ) : (
             <>
               <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <StatCard label="GMV total" value={money(kpis.gmv, kpis.currency)} icon={Wallet} accent="primary" />
+                <StatCard label="Vendas geradas" value={money(kpis.gmv, kpis.currency)} icon={Wallet} accent="primary" />
                 <StatCard label="Pedidos" value={formatNumber(kpis.orders)} icon={ShoppingBag} accent="info" />
                 <StatCard label="Itens vendidos" value={formatNumber(kpis.itemsSold)} icon={PackageCheck} accent="success" />
-                <StatCard label="CTR médio" value={formatPercent(kpis.avgCtr, 1)} icon={MousePointerClick} accent="warning" />
-                <StatCard label="Exibição da âncora (média)" value={formatPercent(kpis.avgAnchor, 1)} icon={Eye} accent="primary" />
+                <StatCard label="Taxa de cliques" value={formatPercent(kpis.avgCtr, 1)} icon={MousePointerClick} accent="warning" />
+                <StatCard label="Exibição do link do produto" value={formatPercent(kpis.avgAnchor, 1)} icon={Eye} accent="primary" />
               </section>
 
               <div className="overflow-x-auto">
@@ -537,11 +849,11 @@ function VideosTab() {
                   <thead>
                     <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
                       <th className="pb-2 pr-4 font-medium">Vídeo</th>
-                      <th className="pb-2 pr-4 text-right font-medium">GMV</th>
+                      <th className="pb-2 pr-4 text-right font-medium">Vendas</th>
                       <th className="pb-2 pr-4 text-right font-medium">Pedidos</th>
                       <th className="pb-2 pr-4 text-right font-medium">Itens vendidos</th>
-                      <th className="pb-2 pr-4 text-right font-medium">CTR</th>
-                      <th className="pb-2 text-right font-medium">Exibição da âncora</th>
+                      <th className="pb-2 pr-4 text-right font-medium">Taxa de cliques</th>
+                      <th className="pb-2 text-right font-medium">Exibição do link</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -554,7 +866,7 @@ function VideosTab() {
                             </div>
                             <div className="min-w-0">
                               <p className="whitespace-nowrap text-sm font-medium">Vídeo {row.id}</p>
-                              <p className="text-xs text-muted-foreground">{row.period}</p>
+                              <p className="text-xs text-muted-foreground">{formatPeriodRange(row.minStart, row.maxEnd)}</p>
                             </div>
                           </div>
                         </td>
@@ -576,15 +888,66 @@ function VideosTab() {
   );
 }
 
-// =============== Aba 2: Live ===============
+// =============== Aba 3: Live ===============
 
-function LiveTab() {
+/** Get Live Room Info (202309) — a live "atual" da conta, para abrir o dashboard num clique
+ *  em vez do creator ter que descobrir/colar o próprio live_room_id. */
+function LiveRoomInfoCard({
+  onView,
+  isActive,
+}: {
+  onView: (id: string) => void;
+  isActive: (id: string) => boolean;
+}) {
+  const { data, isLoading, error } = useLiveRoomInfo();
+
+  if (isLoading) return <Skeleton className="h-[74px] w-full" />;
+  // É uma conveniência para auto-preencher o ID — se falhar ou não houver live agora,
+  // o fluxo manual abaixo (ID digitado ou lives recentes) já cobre o caso sem ruído extra.
+  if (error || !data?.id) return null;
+
+  const isOngoing = /ONGOING|LIVE/i.test(data.status ?? "");
+  return (
+    <Card className="border-primary/30 bg-primary/5">
+      <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <span className="tint text-primary">
+            <Radio className="h-[19px] w-[19px] stroke-[1.6]" />
+          </span>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-semibold">{data.title || "Sua live"}</p>
+              <Badge variant={isOngoing ? "success" : "secondary"}>{liveStatusLabel(data.status)}</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              ID {data.id}
+              {data.start_time ? ` · iniciada em ${formatDateTime(data.start_time)}` : ""}
+            </p>
+          </div>
+        </div>
+        <Button
+          size="sm"
+          variant={isActive(data.id) ? "toggle-on" : "default"}
+          className="shrink-0 gap-1.5"
+          onClick={() => onView(data.id as string)}
+        >
+          <Search className="h-3.5 w-3.5" /> Ver resultados desta live
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function LiveTab({ range, subject }: { range: GanhosFilters; subject: string }) {
   const [idInput, setIdInput] = useState(USE_MOCK ? "7093488394589768494" : "");
   const [liveRoomId, setLiveRoomId] = useState(USE_MOCK ? idInput : "");
 
   // A API não expõe "listar minhas lives"; os IDs saem do content_id dos pedidos
   // com content_type LIVE. Sem isso o creator não teria como saber o próprio ID.
-  const { liveRoomIds, isLoading: loadingRooms } = useRecentLiveRooms();
+  // O período é o mesmo `PeriodPicker` do topo da página — os 7 endpoints de KPIs da
+  // live escolhida (abaixo) não aceitam filtro de data (são de UMA sessão só), então o
+  // período só se aplica aqui: em decidir QUAL live vira candidata a ser analisada.
+  const { liveRoomIds, isLoading: loadingRooms } = useRecentLiveRooms(range);
 
   const pick = (id: string) => {
     setIdInput(id);
@@ -603,22 +966,23 @@ function LiveTab() {
         <CardContent className="flex items-start gap-3 p-4 text-sm">
           <Signal className="mt-0.5 h-4 w-4 shrink-0 text-info" />
           <p className="leading-relaxed text-muted-foreground">
-            Esses 7 indicadores usam o escopo <code className="rounded bg-background/60 px-1 py-0.5 text-xs">creator.data.live.read.public</code>{" "}
-            (pacote <strong>Live Data</strong>), que está <strong>ativo</strong> no app — funcionam em modo live real, desde que você
-            informe o ID de uma sala de live da própria conta.
+            Escolha uma das suas lives abaixo ou informe o ID da sala para ver vendas, público, tráfego e produtos da
+            transmissão.
           </p>
         </CardContent>
       </Card>
+
+      <LiveRoomInfoCard onView={pick} isActive={(id) => liveRoomId === id} />
 
       <Card>
         <CardContent className="p-4">
           <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="flex-1 space-y-1">
-              <Label className="text-xs text-muted-foreground">live_room_id</Label>
+              <Label className="text-xs text-muted-foreground">ID da sala de live</Label>
               <Input value={idInput} onChange={(e) => setIdInput(e.target.value)} placeholder="7093488394589768494" />
             </div>
             <Button type="submit" className="gap-2" disabled={!idInput.trim()}>
-              <Search className="h-4 w-4" /> Ver dashboard da live
+              <Search className="h-4 w-4" /> Ver resultados da live
             </Button>
           </form>
 
@@ -629,7 +993,8 @@ function LiveTab() {
               ) : liveRoomIds.length > 0 ? (
                 <>
                   <p className="mb-2 text-sm text-muted-foreground">
-                    Suas lives recentes (identificadas pelos pedidos gerados nelas):
+                    Suas lives em <strong className="font-medium text-foreground">{subject}</strong> (identificadas
+                    pelos pedidos gerados nelas) — use o seletor de período acima para ver outra janela:
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {liveRoomIds.map((r) => (
@@ -651,7 +1016,7 @@ function LiveTab() {
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Nenhuma live encontrada nos pedidos dos últimos 90 dias. Cole o ID manualmente.
+                  Nenhuma live encontrada nos pedidos de {subject}. Troque o período acima ou cole o ID manualmente.
                 </p>
               )}
             </div>
@@ -662,7 +1027,7 @@ function LiveTab() {
       {!liveRoomId ? (
         <Card>
           <CardContent>
-            <EmptyState icon={Radio} text="Informe o ID de uma sala de live para ver o dashboard completo." />
+            <EmptyState icon={Radio} text="Escolha uma live ou informe o ID da sala para ver os resultados." />
           </CardContent>
         </Card>
       ) : (
@@ -693,19 +1058,19 @@ function CoreStatsSection({ liveRoomId }: { liveRoomId: string }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Gauge className="h-4 w-4" /> KPIs da live
+          <Gauge className="h-4 w-4" /> Resumo da live
         </CardTitle>
-        <p className="mt-0.5 text-xs text-muted-foreground">Get Live Room Core Stats (202502)</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">Os principais números da transmissão.</p>
       </CardHeader>
       <CardContent className="space-y-5">
         {error ? (
-          <ErrorBanner text={`Não foi possível carregar os KPIs: ${(error as Error).message}`} />
+          <ErrorBanner text={`Não foi possível carregar os números da live: ${(error as Error).message}`} />
         ) : !isLoading && !stats ? (
           <EmptyState icon={Gauge} text="Nenhum dado retornado para essa live." />
         ) : (
           <>
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              <StatCard label="GMV" value={formatMoney(stats?.local_gmv)} icon={Wallet} accent="primary" loading={isLoading} />
+              <StatCard label="Vendas geradas" value={formatMoney(stats?.local_gmv)} icon={Wallet} accent="primary" loading={isLoading} />
               <StatCard label="Itens vendidos" value={formatNumber(stats?.sales ?? 0)} icon={ShoppingBag} accent="info" loading={isLoading} />
               <StatCard
                 label="Pedidos pagos"
@@ -745,9 +1110,9 @@ function CoreStatsSection({ liveRoomId }: { liveRoomId: string }) {
                   <MiniStat label="Pedidos criados" value={formatNumber(stats.created_order_count ?? 0)} />
                   <MiniStat label="Visitantes atuais" value={formatNumber(stats.current_visitor_count ?? 0)} />
                   <MiniStat label="Cliques em produto" value={formatNumber(stats.product_reach_count ?? 0)} />
-                  <MiniStat label="Impressões de produto" value={formatNumber(stats.product_view_count ?? 0)} />
-                  <MiniStat label="CTR (cliques/views)" value={formatPercent(parseFloat(stats.click_through_rate ?? "0") || 0, 1)} />
-                  <MiniStat label="Conversão (pedido/clique)" value={formatPercent(parseFloat(stats.click_order_rate ?? "0") || 0, 1)} />
+                  <MiniStat label="Exibições de produto" value={formatNumber(stats.product_view_count ?? 0)} />
+                  <MiniStat label="Taxa de cliques" value={formatPercent(parseFloat(stats.click_through_rate ?? "0") || 0, 1)} />
+                  <MiniStat label="Taxa de conversão (pedidos por clique)" value={formatPercent(parseFloat(stats.click_order_rate ?? "0") || 0, 1)} />
                   <MiniStat label="Comentários" value={formatNumber(stats.accumulated_comment_count ?? 0)} />
                   <MiniStat label="Compartilhamentos" value={formatNumber(stats.accumulated_sharing_count ?? 0)} />
                   <MiniStat label="Tempo médio assistido" value={formatDuration(stats.avg_watching_duration)} />
@@ -775,7 +1140,7 @@ function GmvTrendSection({ liveRoomId }: { liveRoomId: string }) {
     if (series.some((s) => s.stats_type === "TREND_GMV")) {
       result.push({
         dataKey: "gmv",
-        name: "GMV",
+        name: "Vendas",
         color: "hsl(var(--primary))",
         yAxisId: "left",
         valueFormatter: (v) => money(v, currency),
@@ -797,17 +1162,17 @@ function GmvTrendSection({ liveRoomId }: { liveRoomId: string }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <LineChartIcon className="h-4 w-4" /> Tendência de GMV
+          <LineChartIcon className="h-4 w-4" /> Vendas ao longo da live
         </CardTitle>
-        <p className="mt-0.5 text-xs text-muted-foreground">Get Live Room GMV Trend (202502)</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">Vendas e pedidos ao longo da transmissão.</p>
       </CardHeader>
       <CardContent>
         {error ? (
-          <ErrorBanner text={`Não foi possível carregar a tendência de GMV: ${(error as Error).message}`} />
+          <ErrorBanner text={`Não foi possível carregar a evolução das vendas: ${(error as Error).message}`} />
         ) : isLoading ? (
           <Skeleton className="h-64 w-full" />
         ) : points.length === 0 ? (
-          <EmptyState icon={LineChartIcon} text="Sem pontos de tendência de GMV para essa live." />
+          <EmptyState icon={LineChartIcon} text="Ainda não há dados de vendas ao longo dessa live." />
         ) : (
           <TrendChart data={points} lines={lines} yFormatterLeft={(v) => abbreviateNumber(v)} yFormatterRight={(v) => formatNumber(v)} />
         )}
@@ -838,9 +1203,9 @@ function ViewTrendSection({ liveRoomId }: { liveRoomId: string }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Eye className="h-4 w-4" /> Tendência de espectadores
+          <Eye className="h-4 w-4" /> Audiência ao longo da live
         </CardTitle>
-        <p className="mt-0.5 text-xs text-muted-foreground">Get Live Room View Trends (202502)</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">Quem estava assistindo, entrando e saindo ao longo da live.</p>
       </CardHeader>
       <CardContent>
         {error ? (
@@ -848,7 +1213,7 @@ function ViewTrendSection({ liveRoomId }: { liveRoomId: string }) {
         ) : isLoading ? (
           <Skeleton className="h-64 w-full" />
         ) : points.length === 0 ? (
-          <EmptyState icon={Eye} text="Sem pontos de tendência de espectadores para essa live." />
+          <EmptyState icon={Eye} text="Ainda não há dados de audiência ao longo dessa live." />
         ) : (
           <TrendChart data={points} lines={lines} yFormatterLeft={(v) => abbreviateNumber(v)} />
         )}
@@ -879,9 +1244,9 @@ function InteractiveTrendSection({ liveRoomId }: { liveRoomId: string }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <MessageCircle className="h-4 w-4" /> Tendência de interações
+          <MessageCircle className="h-4 w-4" /> Interações ao longo da live
         </CardTitle>
-        <p className="mt-0.5 text-xs text-muted-foreground">Get Live Room Interactive Trends (202502)</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">Visualizações, comentários e compartilhamentos ao longo da live.</p>
       </CardHeader>
       <CardContent>
         {error ? (
@@ -889,7 +1254,7 @@ function InteractiveTrendSection({ liveRoomId }: { liveRoomId: string }) {
         ) : isLoading ? (
           <Skeleton className="h-64 w-full" />
         ) : points.length === 0 ? (
-          <EmptyState icon={MessageCircle} text="Sem pontos de tendência de interação para essa live." />
+          <EmptyState icon={MessageCircle} text="Ainda não há dados de interação ao longo dessa live." />
         ) : (
           <TrendChart data={points} lines={lines} yFormatterLeft={(v) => abbreviateNumber(v)} />
         )}
@@ -916,17 +1281,17 @@ function TrafficSection({ liveRoomId }: { liveRoomId: string }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Radar className="h-4 w-4" /> Fontes de tráfego
+          <Radar className="h-4 w-4" /> De onde veio o público
         </CardTitle>
-        <p className="mt-0.5 text-xs text-muted-foreground">Get Live Room Traffic Performance (202502)</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">De onde vieram as pessoas que entraram na live.</p>
       </CardHeader>
       <CardContent className="space-y-4">
         {error ? (
-          <ErrorBanner text={`Não foi possível carregar o tráfego: ${(error as Error).message}`} />
+          <ErrorBanner text={`Não foi possível carregar as origens do público: ${(error as Error).message}`} />
         ) : isLoading ? (
           <Skeleton className="h-52 w-full" />
         ) : sources.length === 0 ? (
-          <EmptyState icon={Radar} text="Sem dados de tráfego para essa live." />
+          <EmptyState icon={Radar} text="Ainda não há dados de origem do público para essa live." />
         ) : (
           <>
             <ResponsiveContainer width="100%" height={Math.max(140, chartData.length * 42)}>
@@ -977,7 +1342,7 @@ function TrafficSourceBreakdown({ source }: { source: TrafficSource }) {
   return (
     <div className="space-y-1.5">
       <p className="text-xs font-medium">
-        {humanize(source.source?.name)} <span className="font-normal text-muted-foreground">— sub-fontes</span>
+        {humanize(source.source?.name)} <span className="font-normal text-muted-foreground">— detalhamento</span>
       </p>
       {subs.map((sub, i) => (
         <div key={sub.name ?? i} className="space-y-1">
@@ -1014,7 +1379,7 @@ function ProductStatsSection({ liveRoomId }: { liveRoomId: string }) {
         <CardTitle className="flex items-center gap-2 text-base">
           <Package className="h-4 w-4" /> Produtos da live
         </CardTitle>
-        <p className="mt-0.5 text-xs text-muted-foreground">Get Live Room Product Stats (202502)</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">Como cada produto da live vendeu.</p>
       </CardHeader>
       <CardContent>
         {error ? (
@@ -1033,10 +1398,10 @@ function ProductStatsSection({ liveRoomId }: { liveRoomId: string }) {
               <thead>
                 <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
                   <th className="pb-2 pr-4 font-medium">Produto</th>
-                  <th className="pb-2 pr-4 text-right font-medium">GMV</th>
+                  <th className="pb-2 pr-4 text-right font-medium">Vendas</th>
                   <th className="pb-2 pr-4 text-right font-medium">Preço médio</th>
                   <th className="pb-2 pr-4 text-right font-medium">Pedidos</th>
-                  <th className="pb-2 pr-4 text-right font-medium">Cliques / CTR</th>
+                  <th className="pb-2 pr-4 text-right font-medium">Cliques / taxa</th>
                   <th className="pb-2 text-right font-medium">Estoque</th>
                 </tr>
               </thead>
@@ -1069,11 +1434,11 @@ function ProductStatsSection({ liveRoomId }: { liveRoomId: string }) {
                     </td>
                     <td className="whitespace-nowrap py-3 pr-4 text-right">
                       <p>{formatNumber(p.total_click_count ?? 0)}</p>
-                      <p className="text-xs text-muted-foreground">CTR {formatPercent(parseFloat(p.click_through_rate ?? "0") || 0, 1)}</p>
+                      <p className="text-xs text-muted-foreground">Taxa de cliques {formatPercent(parseFloat(p.click_through_rate ?? "0") || 0, 1)}</p>
                     </td>
                     <td className="whitespace-nowrap py-3 text-right">
-                      <p>{formatNumber(p.inventory_left_count ?? 0)} restante</p>
-                      <p className="text-xs text-muted-foreground">{formatNumber(p.inventory_consumption_count ?? 0)} vendido</p>
+                      <p>{formatNumber(p.inventory_left_count ?? 0)} em estoque</p>
+                      <p className="text-xs text-muted-foreground">{formatNumber(p.inventory_consumption_count ?? 0)} vendidos</p>
                     </td>
                   </tr>
                 ))}
@@ -1096,15 +1461,15 @@ const FAN_LABELS: Record<string, string> = {
   USER_PORTRAIT_NON_FOLLOWER: "Não seguidores",
 };
 const AGE_LABELS: Record<string, string> = {
-  USER_PORTRAIT_AGE_LESS_THAN_15: "< 15",
+  USER_PORTRAIT_AGE_LESS_THAN_15: "Menos de 15",
   USER_PORTRAIT_AGE_13_TO_17: "13–17",
   USER_PORTRAIT_AGE_15_TO_17: "15–17",
   USER_PORTRAIT_AGE_18_TO_24: "18–24",
   USER_PORTRAIT_AGE_25_TO_34: "25–34",
   USER_PORTRAIT_AGE_35_TO_44: "35–44",
   USER_PORTRAIT_AGE_45_TO_54: "45–54",
-  USER_PORTRAIT_AGE_MORE_THAN_34: "> 34",
-  USER_PORTRAIT_AGE_MORE_THAN_55: "> 55",
+  USER_PORTRAIT_AGE_MORE_THAN_34: "Mais de 34",
+  USER_PORTRAIT_AGE_MORE_THAN_55: "Mais de 55",
 };
 
 interface Indicator {
@@ -1166,14 +1531,14 @@ function UserPortraitsSection({ liveRoomId }: { liveRoomId: string }) {
           <CardTitle className="flex items-center gap-2 text-base">
             <Users className="h-4 w-4" /> Perfil da audiência
           </CardTitle>
-          <p className="mt-0.5 text-xs text-muted-foreground">Get Live Room User Portraits (202502)</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Quem assistiu à sua live.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant={scope === "all" ? "toggle-on" : "toggle"} onClick={() => setScope("all")}>
             Todos os espectadores
           </Button>
           <Button size="sm" variant={scope === "paid" ? "toggle-on" : "toggle"} onClick={() => setScope("paid")}>
-            Só anúncios pagos
+            Vindos de anúncios
           </Button>
         </div>
       </CardHeader>
@@ -1212,5 +1577,562 @@ function UserPortraitsSection({ liveRoomId }: { liveRoomId: string }) {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// =============== Aba 4: Horários (melhor horário) ===============
+//
+// Ver docs/SPEC_MELHOR_HORARIO.md. O núcleo desta aba não é o gráfico: é a leitura.
+// O mesmo cálculo significa coisas diferentes por `content_type`: em LIVE o pedido nasce
+// durante a transmissão (hora do pedido ≈ hora da live, recomendar horário é legítimo);
+// em VÍDEO o pedido chega dias depois do post (hora do pedido não diz nada sobre quando
+// postar). Por isso o texto muda junto com o filtro, e só LIVE recomenda.
+//
+// As ações sugeridas vivem em lib/horariosInsights.ts, cada uma com o próprio piso de
+// evidência: o painel some em vez de aconselhar a partir de 1 pedido.
+
+const FILTRO_LABEL: Record<ContentFilter, string> = {
+  tudo: "Tudo",
+  live: "Live",
+  video: "Vídeo",
+};
+
+const CONFIANCA_CHIP: Record<Confianca, string> = {
+  insuficiente: "chip-warning",
+  baixa: "chip-neutral",
+  media: "chip-neutral",
+  alta: "chip-success",
+};
+
+/** Descreve o recorte no subtítulo do gráfico. Separado de `LEITURA.titulo`, que é um
+ *  título ("Melhor horário para transmitir") e lia mal no meio de uma linha de contexto. */
+const DESCRICAO_FILTRO: Record<ContentFilter, string> = {
+  tudo: "todas as origens somadas",
+  live: "só as vendas que vieram de live",
+  video: "só as vendas que vieram de vídeo",
+};
+
+/**
+ * Comparação do valor por pedido dentro e fora da janela.
+ *
+ * Três casos, e os três precisam de texto próprio: sem "resto do dia" (todo o período caiu
+ * dentro da janela) não há o que comparar, e quando a janela rende MENOS por pedido a frase
+ * tem que dizer isso. Antes, qualquer diferença até 2% caía em "em linha com o resto do
+ * dia", inclusive uma janela 30% PIOR que o resto.
+ */
+function notaTicket(stats: EstatisticasHorarios): string {
+  if (stats.ticketFora <= 0) return "todas as vendas do período caíram nessa janela";
+  if (stats.upliftTicket > 0.05) return `${formatPercent(stats.upliftTicket, 0)} acima do resto do dia`;
+  if (stats.upliftTicket < -0.05)
+    return `${formatPercent(Math.abs(stats.upliftTicket), 0)} abaixo do resto do dia`;
+  return "em linha com o resto do dia";
+}
+
+const ACAO_ICON: Record<Acao["id"], LucideIcon> = {
+  live: CalendarClock,
+  video: Video,
+  teste: Sparkles,
+};
+
+/** Um dos quatro números da linha de KPIs do cartão principal. */
+function KpiJanela({
+  label,
+  valor,
+  nota,
+  notaPositiva,
+}: {
+  label: string;
+  valor: string;
+  nota?: string;
+  notaPositiva?: boolean;
+}) {
+  return (
+    <div className="min-w-0 sm:px-4 sm:first:pl-0 sm:last:pr-0">
+      <p className="text-[12.5px] font-medium text-muted-foreground">{label}</p>
+      <p className="num mt-1 text-[22px] font-extrabold leading-none tracking-[-0.6px] [overflow-wrap:anywhere]">
+        {valor}
+      </p>
+      {nota && (
+        <p className={cn("mt-1 text-[11.5px]", notaPositiva ? "text-success" : "text-faint")}>
+          {notaPositiva && "↗ "}
+          {nota}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Baixa o recorte como CSV: horas do dia e a grade de blocos, na mesma planilha. */
+function exportarCsv(
+  resumo: ResumoHorarios,
+  blocos: CelulaBloco[],
+  filtro: ContentFilter,
+  subject: string
+) {
+  const linhas: string[][] = [
+    ["TikTally Creator · Horários"],
+    ["Período", subject],
+    ["Origem", FILTRO_LABEL[filtro]],
+    ["Fuso", resumo.timeZone],
+    ["Pedidos", String(resumo.totalPedidos)],
+    [],
+    ["Hora", "Pedidos", "Comissão", "Por pedido"],
+    ...resumo.horas.map((h) => [
+      rotuloHora(h.hora),
+      String(h.pedidos),
+      h.comissao.toFixed(2),
+      h.pedidos > 0 ? (h.comissao / h.pedidos).toFixed(2) : "",
+    ]),
+    [],
+    ["Dia", "Bloco", "Pedidos", "Comissão"],
+    ...DIAS_ORDEM.flatMap((dia) =>
+      BLOCOS.map((b, i) => {
+        const c = celulaBloco(blocos, dia, i);
+        return [DIAS_CURTOS[dia], `${b.label} (${b.faixa})`, String(c.pedidos), c.comissao.toFixed(2)];
+      })
+    ),
+  ];
+
+  // ";" e BOM: é o que faz o Excel em pt-BR abrir o arquivo já com as colunas separadas
+  // e os acentos corretos. Sem isso o creator vê tudo numa coluna só.
+  const csv = "﻿" + linhas.map((l) => l.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";")).join("\n");
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `tiktally-horarios-${filtro}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function HorariosTab({ range, subject }: { range: GanhosFilters; subject: string }) {
+  const [filtro, setFiltro] = useState<ContentFilter>("tudo");
+  const [metrica, setMetrica] = useState<MetricaHora>("comissao");
+  const [verGrade24h, setVerGrade24h] = useState(false);
+  const [verTabela, setVerTabela] = useState(false);
+
+  const { resumo, blocos, stats, acoes, vale, currency, isLoading, error, truncated } = useHorarios(
+    range,
+    filtro
+  );
+  const leitura = LEITURA[filtro];
+  const janela = resumo.melhorJanela;
+
+  /** "hora que vende muito" e "hora de ticket alto" costumam ser horas diferentes, e
+   *  essa é a leitura menos óbvia da tela, então ela vira frase quando de fato difere. */
+  const contraste = useMemo(() => {
+    const ativas = resumo.horas.filter((h) => h.pedidos > 0);
+    if (ativas.length < 2) return null;
+    const volume = ativas.reduce((a, b) => (b.pedidos > a.pedidos ? b : a));
+    const ticket = ativas
+      .filter((h) => h.pedidos >= 3)
+      .reduce<HoraBucket | null>((a, b) => (!a || b.comissao / b.pedidos > a.comissao / a.pedidos ? b : a), null);
+    if (!ticket || ticket.hora === volume.hora) return null;
+    return { volume, ticket };
+  }, [resumo.horas]);
+
+  if (error) {
+    return <ErrorBanner text={error instanceof Error ? error.message : String(error)} />;
+  }
+
+  const fracao = janela ? fracaoEmPalavras(janela.share) : null;
+
+  return (
+    <div className="space-y-gap">
+      {/* barra de contexto: origem + volume do recorte + fuso + exportar */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="segmented w-fit" role="tablist" aria-label="Origem da venda">
+            {CONTENT_FILTERS.map((f) => (
+              <button
+                key={f}
+                type="button"
+                role="tab"
+                aria-selected={filtro === f}
+                onClick={() => setFiltro(f)}
+                className="segmented-item"
+              >
+                {FILTRO_LABEL[f]}
+              </button>
+            ))}
+          </div>
+          {!isLoading && (
+            <p className="text-[13px] text-muted-foreground">
+              {formatNumber(resumo.totalPedidos)} {resumo.totalPedidos === 1 ? "pedido" : "pedidos"} ·{" "}
+              {money(resumo.totalComissao, currency)} em comissão
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-2.5">
+          <span className="flex items-center gap-1.5 text-xs text-faint">
+            <Clock className="h-3.5 w-3.5" /> {resumo.timeZone}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isLoading || resumo.totalPedidos === 0}
+            onClick={() => exportarCsv(resumo, blocos, filtro, subject)}
+          >
+            <Download className="mr-1.5 h-3.5 w-3.5" /> Exportar
+          </Button>
+        </div>
+      </div>
+
+      {truncated && (
+        <Card className="border-warning/30 bg-warning/[.06]">
+          <CardContent className="flex items-start gap-3 p-4 text-sm">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+            <span>
+              Este período tem mais pedidos do que conseguimos carregar de uma vez, então os horários
+              abaixo cobrem só parte dele. Escolha um período mais curto para ver tudo.
+            </span>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* `[&>*]:min-w-0`: item de grid nasce com `min-width:auto`, então o cartão da grade
+          de blocos era esticado pelo `min-w-[580px]` de dentro e o `overflow-x-auto` nunca
+          entrava em ação. A PÁGINA é que rolava de lado no celular. */}
+      <div className="grid gap-gap [&>*]:min-w-0 lg:grid-cols-[minmax(0,1.85fr)_minmax(0,1fr)]">
+        {/* ============ Cartão principal: a janela ============ */}
+        <Card>
+          <CardContent className="p-5 sm:p-6">
+            <p className="text-[11px] font-bold uppercase tracking-[1.2px] text-faint">Sua janela de ouro</p>
+
+            <div className="mt-1.5 flex flex-wrap items-center gap-3">
+              {isLoading ? (
+                <Skeleton className="h-[46px] w-56" />
+              ) : janela ? (
+                <p className="num text-[44px] font-extrabold leading-none tracking-[-1.6px]">
+                  {rotuloHora(janela.inicio)} – {rotuloHora(janela.fim)}
+                </p>
+              ) : (
+                <p className="flex items-center gap-2 text-[20px] font-bold">
+                  <ShieldAlert className="h-5 w-5 shrink-0 text-warning" />
+                  Ainda não dá para dizer
+                </p>
+              )}
+              {!isLoading && <span className={CONFIANCA_CHIP[resumo.confianca]}>{CONFIANCA_LABEL[resumo.confianca]}</span>}
+            </div>
+
+            {!isLoading && janela && (
+              <p className="mt-2.5 text-[15px] leading-relaxed text-muted-foreground">
+                {/* Sem "{subject}" aqui: ele varia entre "setembro" e "últimos 90 dias", e
+                    nenhuma preposição serve aos dois. O período já está no seletor, no
+                    subtítulo do gráfico e nas notas dos KPIs. */}
+                Essas {JANELA_HORAS} horas concentram{" "}
+                <span className="font-semibold text-foreground">
+                  {fracao ?? formatPercent(janela.share)}
+                </span>{" "}
+                de tudo o que você ganhou no período
+                {stats.celulaQuente && (
+                  <>
+                    {/* "bloco mais quente", e não "pico": o KPI ao lado mostra o DIA mais
+                        forte, que pode ser outro: são unidades diferentes, e chamar os
+                        dois de pico faz a tela parecer contraditória. */}
+                    , e a sua melhor faixa é{" "}
+                    <span className="font-semibold text-foreground">{rotuloCelula(stats.celulaQuente)}</span>
+                  </>
+                )}
+                .
+              </p>
+            )}
+
+            {!isLoading && !janela && (
+              <p className="mt-2.5 text-[15px] leading-relaxed text-muted-foreground">
+                São {formatNumber(resumo.totalPedidos)} pedidos neste período, e o mínimo para uma leitura
+                confiável é {MIN_PEDIDOS_RECOMENDACAO}. Com menos que isso, o "melhor horário" é sorte, não
+                padrão. Então preferimos não cravar um número.
+              </p>
+            )}
+
+            {!isLoading && janela && (
+              <>
+                {/* Grid, e não flex: com `flex-1 min-w-0` os quatro KPIs encolhiam em vez
+                    de quebrar, e a 375px os números se sobrepunham. */}
+                <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4 border-t pt-4 sm:grid-cols-4 sm:gap-0 sm:divide-x">
+                  <KpiJanela
+                    label="Comissão na janela"
+                    valor={money(janela.comissao, currency)}
+                    nota={`${formatPercent(janela.share)} do período`}
+                  />
+                  <KpiJanela
+                    label="Pedidos"
+                    valor={formatNumber(janela.pedidos)}
+                    nota={`de ${formatNumber(resumo.totalPedidos)} no período`}
+                  />
+                  <KpiJanela
+                    label="Comissão por pedido"
+                    valor={money(stats.ticketJanela, currency)}
+                    nota={notaTicket(stats)}
+                    notaPositiva={stats.upliftTicket > 0.05}
+                  />
+                  <KpiJanela
+                    label="Dia mais forte"
+                    valor={stats.diaMaisForte ? DIAS_CURTOS[stats.diaMaisForte.dia] : "—"}
+                    nota={
+                      stats.diaMaisForte?.melhorHora
+                        ? `${money(stats.diaMaisForte.melhorHora.comissao, currency)} vieram das ${rotuloHora(
+                            stats.diaMaisForte.melhorHora.hora
+                          )}`
+                        : undefined
+                    }
+                  />
+                </div>
+
+                {/* Barra de amostra: o quanto dá para confiar, como medida e não como adjetivo. */}
+                <div className="mt-4 flex flex-col gap-3 rounded-lg border bg-muted/30 p-3.5 sm:flex-row sm:items-center">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="text-[12.5px] font-medium text-muted-foreground">Seu histórico até aqui</span>
+                      <span className="num text-[12.5px] font-bold">
+                        {resumo.gradeDisponivel
+                          ? `${formatNumber(resumo.totalPedidos)} pedidos`
+                          : `${formatNumber(resumo.totalPedidos)} de ~${formatNumber(MIN_PEDIDOS_GRADE)} pedidos`}
+                      </span>
+                    </div>
+                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                      <div
+                        className={cn(
+                          "h-full rounded-full",
+                          resumo.gradeDisponivel ? "bg-success" : "bg-warning"
+                        )}
+                        style={{
+                          width: `${Math.min(100, (resumo.totalPedidos / MIN_PEDIDOS_GRADE) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[12.5px] leading-snug text-muted-foreground sm:w-[46%] sm:border-l sm:pl-4">
+                    {resumo.gradeDisponivel
+                      ? "Vendas suficientes para ver também o detalhe hora a hora da semana."
+                      : `Com esse volume a janela ainda pode mudar. Perto de ${formatNumber(
+                          MIN_PEDIDOS_GRADE
+                        )} pedidos abrimos também o detalhe hora a hora da semana.`}
+                  </p>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ============ Painel de ações ============ */}
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="text-[15px] font-bold">O que fazer com isso</p>
+              {!isLoading && (
+                <span className="text-[11.5px] text-faint">
+                  {acoes.length} {acoes.length === 1 ? "ação" : "ações"}
+                </span>
+              )}
+            </div>
+
+            {isLoading ? (
+              <div className="mt-4 space-y-3">
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+              </div>
+            ) : acoes.length === 0 ? (
+              <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
+                Ainda não há vendas suficientes para sustentar uma sugestão. Cada uma delas precisa de um
+                mínimo de pedidos para valer. Sem isso, preferimos não sugerir.
+              </p>
+            ) : (
+              <ul className="mt-3.5 space-y-2.5">
+                {acoes.map((a) => {
+                  const Icon = ACAO_ICON[a.id];
+                  return (
+                    <li key={a.id} className="flex gap-3 rounded-lg border bg-muted/30 p-3">
+                      <span className="tint h-8 w-8 shrink-0 text-primary">
+                        <Icon className="h-[15px] w-[15px] stroke-[1.7]" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-[13.5px] font-bold leading-snug">{a.titulo}</p>
+                        <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">{a.texto}</p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            {!isLoading && vale && (
+              <p className="mt-3.5 flex gap-2 text-[12.5px] leading-relaxed text-muted-foreground">
+                <CircleSlash2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-faint" />
+                <span>{vale.texto}</span>
+              </p>
+            )}
+
+            {/* A ressalva de leitura fica SEMPRE visível: é ela que impede a tela de
+                transformar "quando o público compra" em "quando postar". */}
+            <div
+              className={cn(
+                "mt-4 rounded-lg border p-3 text-[12.5px] leading-relaxed",
+                leitura.recomenda ? "bg-muted/40 text-muted-foreground" : "border-warning/30 bg-warning/[.06]"
+              )}
+            >
+              {leitura.explicacao}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ============ Barras por hora ============ */}
+      <Card>
+        <CardContent className="p-5 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[15px] font-bold">
+                {metrica === "comissao" ? "Comissão por hora do dia" : "Pedidos por hora do dia"}
+              </p>
+              <p className="mt-0.5 text-[12.5px] text-muted-foreground">
+                {subject} · {DESCRICAO_FILTRO[filtro]} · passe o mouse para ver pedidos e valor por pedido
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="segmented" role="tablist" aria-label="Métrica">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={metrica === "comissao"}
+                  onClick={() => setMetrica("comissao")}
+                  className="segmented-item"
+                >
+                  R$
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={metrica === "pedidos"}
+                  onClick={() => setMetrica("pedidos")}
+                  className="segmented-item"
+                >
+                  Pedidos
+                </button>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setVerTabela((v) => !v)}>
+                {verTabela ? "Ocultar tabela" : "Ver como tabela"}
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            {isLoading ? (
+              <Skeleton className="h-[260px] w-full" />
+            ) : resumo.totalPedidos === 0 ? (
+              <EmptyState
+                icon={Clock}
+                text={
+                  USE_MOCK
+                    ? "Nenhum pedido neste período. Em mock, rode com VITE_MOCK_DENSE=true para ver a aba com volume realista."
+                    : "Nenhum pedido neste período. Escolha outro período ou outra origem."
+                }
+              />
+            ) : (
+              <>
+                <BarrasPorHora
+                  horas={resumo.horas}
+                  janela={janela}
+                  currency={currency}
+                  metrica={metrica}
+                  media={stats.mediaHorasAtivas}
+                />
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-[11.5px]">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-muted-foreground">
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-2.5 w-2.5 rounded-[3px] bg-primary" />
+                      {janela ? `Janela de pico (${rotuloJanela(janela)})` : "Horas do dia"}
+                    </span>
+                    {janela && (
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-2.5 w-2.5 rounded-[3px] bg-primary/45" /> Demais horas
+                      </span>
+                    )}
+                    {metrica === "comissao" && (
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-px w-4 border-t border-dashed border-muted-foreground" /> Média das
+                        horas com venda
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-faint">Hora sem venda aparece como um traço na base.</span>
+                </div>
+                {verTabela && (
+                  <div className="mt-4">
+                    <TabelaHorarios horas={resumo.horas} currency={currency} total={resumo.totalComissao} />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ============ Grade de blocos + top horas ============ */}
+      {!isLoading && resumo.totalPedidos >= MIN_PEDIDOS_BLOCOS && (
+        <div className="grid gap-gap [&>*]:min-w-0 lg:grid-cols-[minmax(0,1.85fr)_minmax(0,1fr)]">
+          <Card>
+            <CardContent className="p-5 sm:p-6">
+              <div className="mb-4">
+                <p className="text-[15px] font-bold">Dia da semana e faixa do dia</p>
+                <p className="mt-0.5 text-[12.5px] text-muted-foreground">
+                  Sua semana em 28 faixas de horário: é o nível de detalhe que os seus{" "}
+                  {formatNumber(resumo.totalPedidos)} pedidos sustentam
+                </p>
+              </div>
+
+              <GradeBlocos blocos={blocos} currency={currency} destaque={stats.celulaQuente} />
+
+              <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 text-[11.5px]">
+                <span className="text-faint">
+                  Valores em comissão. Leia como tendência: são {formatNumber(resumo.totalPedidos)} pedidos
+                  espalhados por 28 faixas.
+                </span>
+                {resumo.gradeDisponivel && (
+                  <button
+                    type="button"
+                    onClick={() => setVerGrade24h((v) => !v)}
+                    className="font-semibold text-primary hover:underline"
+                  >
+                    {verGrade24h ? "Ocultar o detalhe hora a hora" : "Ver hora a hora ↗"}
+                  </button>
+                )}
+              </div>
+
+              {verGrade24h && resumo.gradeDisponivel && (
+                <div className="mt-5 border-t pt-5">
+                  <GradeSemanal grade={resumo.grade} currency={currency} />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-5">
+              <p className="text-[15px] font-bold">Horas que mais renderam</p>
+              <p className="mt-0.5 text-[12.5px] text-muted-foreground">Ordenado por comissão no período</p>
+
+              <div className="mt-4">
+                <TopHoras horas={stats.topHoras} currency={currency} />
+              </div>
+
+              {contraste && (
+                <div className="mt-4 rounded-lg border bg-muted/30 p-3">
+                  <p className="text-[13px] font-bold">Nem toda hora boa é hora cheia</p>
+                  <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
+                    Às {rotuloHora(contraste.volume.hora)} você fez{" "}
+                    {formatNumber(contraste.volume.pedidos)} pedidos e tirou{" "}
+                    {money(contraste.volume.comissao / contraste.volume.pedidos, currency)} de cada. Às{" "}
+                    {rotuloHora(contraste.ticket.hora)} foram {formatNumber(contraste.ticket.pedidos)} a{" "}
+                    {money(contraste.ticket.comissao / contraste.ticket.pedidos, currency)}. Quantidade e
+                    valor por pedido não moram no mesmo horário.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
   );
 }
