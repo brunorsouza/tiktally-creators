@@ -161,6 +161,15 @@ function formatDuration(seconds?: number): string {
 
 /** Humaniza nomes de fonte de tráfego / status (ex.: "card_click" → "Card click") — a doc
  *  não lista um enum fechado, então só normalizamos, sem inventar tradução. */
+/** Status da sala de live. A API não fecha a lista de valores (o exemplo é "LIVE"), então o
+ *  que não for reconhecido cai no `humanize`. */
+function liveStatusLabel(raw?: string): string {
+  if (!raw) return "—";
+  if (/^(ONGOING|LIVE|LIVING)$/i.test(raw)) return "Ao vivo";
+  if (/^(END|ENDED|FINISH|FINISHED|CLOSED)$/i.test(raw)) return "Encerrada";
+  return humanize(raw);
+}
+
 function humanize(raw?: string): string {
   if (!raw) return "—";
   return raw.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -343,7 +352,7 @@ function buildCountTrendData(series: CountTrendSeries[]): TrendPoint[] {
 }
 
 const VIEW_TREND_LABELS: Record<string, string> = {
-  TREND_ONLINE_VIEWER: "Online",
+  TREND_ONLINE_VIEWER: "Assistindo",
   TREND_ENTER_VIEWER: "Entraram",
   TREND_LEFT_VIEWER: "Saíram",
 };
@@ -388,8 +397,8 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-gap">
       <PageHeader
-        title="Analytics de creator"
-        subtitle="Quais vídeos trazem mais receita, qual deu mais retorno, e como está a sua live."
+        title="Desempenho"
+        subtitle="Quais vídeos vendem mais, quais rendem mais comissão e como foi a sua live."
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -547,9 +556,8 @@ function RankingTab({ range, subject }: { range: GanhosFilters; subject: string 
   return (
     <div className="space-y-6">
       <p className="text-sm text-muted-foreground">
-        Vídeos identificados a partir dos seus pedidos de afiliado em {subject}. Receita (GMV) vem de{" "}
-        <strong className="font-medium text-foreground">Get Video Performances</strong>; retorno (comissão) vem de{" "}
-        <strong className="font-medium text-foreground">Search Creator Affiliate Orders</strong>.
+        Vídeos que geraram pedidos em {subject}. As vendas vêm das métricas de cada vídeo no TikTok; a comissão vem
+        dos seus pedidos de afiliado.
       </p>
 
       {error ? (
@@ -581,23 +589,23 @@ function RankingTab({ range, subject }: { range: GanhosFilters; subject: string 
               <CardContent className="flex items-start gap-3 p-4 text-sm">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
                 <span>
-                  A <strong className="font-medium text-foreground">receita (GMV)</strong> por vídeo está
-                  indisponível — exige o escopo <code>creator.video.write</code>, ainda inativo no app. O{" "}
-                  <strong className="font-medium text-foreground">retorno (comissão)</strong> abaixo vem dos seus
-                  pedidos e já está valendo; o GMV aparece assim que o escopo for aprovado.
+                  As <strong className="font-medium text-foreground">vendas por vídeo</strong> ainda não estão
+                  disponíveis para a sua conta. A{" "}
+                  <strong className="font-medium text-foreground">comissão</strong> abaixo vem dos seus pedidos e já
+                  está valendo; as vendas aparecem assim que o TikTok liberar esse dado.
                 </span>
               </CardContent>
             </Card>
           )}
           <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
-              label="Receita (GMV)"
+              label="Vendas geradas"
               value={gmvUnavailable ? "—" : money(kpis.gmv, kpis.gmvCurrency)}
               icon={Wallet}
               accent="primary"
             />
             <StatCard
-              label="Retorno (comissão)"
+              label="Comissão"
               value={money(kpis.commission, kpis.commissionCurrency)}
               icon={Trophy}
               accent="success"
@@ -610,18 +618,19 @@ function RankingTab({ range, subject }: { range: GanhosFilters; subject: string 
               accent="info"
             />
             <StatCard
-              label="CTR médio"
+              label="Taxa de cliques"
               value={gmvUnavailable ? "—" : formatPercent(kpis.avgCtr, 1)}
+              hint="De cada 100 vezes que o produto apareceu no vídeo, quantas viraram clique"
               icon={MousePointerClick}
               accent="warning"
             />
           </section>
 
           <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <HighlightCard icon={TrendingUp} label="Maior receita" row={topRevenue} metric="gmv" accent="primary" />
-            <HighlightCard icon={TrendingDown} label="Menor receita" row={bottomRevenue} metric="gmv" accent="warning" />
-            <HighlightCard icon={Trophy} label="Maior retorno" row={topReturn} metric="commission" accent="success" />
-            <HighlightCard icon={ArrowDownRight} label="Menor retorno" row={bottomReturn} metric="commission" accent="warning" />
+            <HighlightCard icon={TrendingUp} label="Mais vendeu" row={topRevenue} metric="gmv" accent="primary" />
+            <HighlightCard icon={TrendingDown} label="Menos vendeu" row={bottomRevenue} metric="gmv" accent="warning" />
+            <HighlightCard icon={Trophy} label="Maior comissão" row={topReturn} metric="commission" accent="success" />
+            <HighlightCard icon={ArrowDownRight} label="Menor comissão" row={bottomReturn} metric="commission" accent="warning" />
           </section>
 
           <Card>
@@ -629,7 +638,7 @@ function RankingTab({ range, subject }: { range: GanhosFilters; subject: string 
               <div>
                 <CardTitle className="text-base">Ranking de vídeos</CardTitle>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  {effectiveSort === "gmv" ? "Do maior para o menor GMV" : "Da maior para a menor comissão"}
+                  {effectiveSort === "gmv" ? "Do que mais vendeu para o que menos vendeu" : "Da maior para a menor comissão"}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -638,16 +647,16 @@ function RankingTab({ range, subject }: { range: GanhosFilters; subject: string 
                   variant={effectiveSort === "gmv" ? "toggle-on" : "toggle"}
                   onClick={() => setSortBy("gmv")}
                   disabled={gmvUnavailable}
-                  title={gmvUnavailable ? "Receita/GMV indisponível — exige creator.video.write" : undefined}
+                  title={gmvUnavailable ? "Vendas por vídeo ainda não disponíveis para a sua conta" : undefined}
                 >
-                  Por receita
+                  Por vendas
                 </Button>
                 <Button
                   size="sm"
                   variant={effectiveSort === "commission" ? "toggle-on" : "toggle"}
                   onClick={() => setSortBy("commission")}
                 >
-                  Por retorno
+                  Por comissão
                 </Button>
               </div>
             </CardHeader>
@@ -658,11 +667,11 @@ function RankingTab({ range, subject }: { range: GanhosFilters; subject: string 
                     <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
                       <th className="pb-2 pr-4 font-medium">#</th>
                       <th className="pb-2 pr-4 font-medium">Vídeo</th>
-                      <th className="pb-2 pr-4 text-right font-medium">GMV (receita)</th>
-                      <th className="pb-2 pr-4 text-right font-medium">Comissão (retorno)</th>
+                      <th className="pb-2 pr-4 text-right font-medium">Vendas</th>
+                      <th className="pb-2 pr-4 text-right font-medium">Comissão</th>
                       <th className="pb-2 pr-4 text-right font-medium">Pedidos</th>
                       <th className="pb-2 pr-4 text-right font-medium">Itens vendidos</th>
-                      <th className="pb-2 text-right font-medium">CTR</th>
+                      <th className="pb-2 text-right font-medium">Taxa de cliques</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -730,12 +739,10 @@ function VideoGatingBanner() {
       <CardContent className="flex items-start gap-3 p-4 text-sm">
         <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
         <div className="space-y-1">
-          <p className="font-medium">Performance de vídeo exige um escopo hoje inativo</p>
+          <p className="font-medium">As métricas por vídeo podem ainda não estar liberadas</p>
           <p className="text-muted-foreground">
-            Get Video Performances pede o escopo <code className="rounded bg-background/60 px-1 py-0.5 text-xs">creator.video.write</code>{" "}
-            (pacote <strong>Content Posting</strong>), que hoje está <strong>inativo</strong> no app — mesma ressalva do Estúdio de
-            conteúdo (ver <code className="text-xs">docs/RELATORIO_ESCOPOS_MVP.md</code>). Em modo live essa chamada tende a falhar por
-            permissão até o pacote ser ativado. Em modo mock funciona normalmente.
+            O TikTok libera esse dado por etapas. Se a consulta falhar, a sua conta ainda não tem acesso às métricas de
+            vídeo — a comissão por vídeo continua disponível na aba Ranking.
           </p>
         </div>
       </CardContent>
@@ -763,7 +770,7 @@ function ManualVideoTab({ range, subject }: { range: GanhosFilters; subject: str
       return;
     }
     if (ids.length > 100) {
-      toast.error("Máximo de 100 IDs por consulta (todos do mesmo autor)");
+      toast.error("Informe no máximo 100 IDs de vídeo por consulta");
       return;
     }
     setAppliedIds(ids);
@@ -776,18 +783,18 @@ function ManualVideoTab({ range, subject }: { range: GanhosFilters; subject: str
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Video className="h-4 w-4" /> Performance de um vídeo específico
+            <Video className="h-4 w-4" /> Desempenho de um vídeo específico
           </CardTitle>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Get Video Performances (202403) — GMV, pedidos, itens vendidos e engajamento, em {subject}. A API não
-            retorna título nem thumbnail (só as métricas por video_id).
+            Vendas, pedidos, itens vendidos e cliques do vídeo em {subject}. O TikTok não envia o título nem a capa do
+            vídeo, só as métricas.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
           <form onSubmit={handleSubmit} className="space-y-3">
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">
-                IDs dos vídeos (um por linha ou separados por vírgula — todos do mesmo autor, máx. 100)
+                IDs dos vídeos (um por linha ou separados por vírgula, até 100, todos da sua conta)
               </Label>
               <textarea
                 rows={2}
@@ -826,15 +833,15 @@ function ManualVideoTab({ range, subject }: { range: GanhosFilters; subject: str
               </div>
             </>
           ) : rows.length === 0 ? (
-            <EmptyState icon={Video} text="Nenhuma performance encontrada para os vídeos/período informados." />
+            <EmptyState icon={Video} text="Nenhum resultado para esses vídeos no período. Confira os IDs ou escolha um período maior." />
           ) : (
             <>
               <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <StatCard label="GMV total" value={money(kpis.gmv, kpis.currency)} icon={Wallet} accent="primary" />
+                <StatCard label="Vendas geradas" value={money(kpis.gmv, kpis.currency)} icon={Wallet} accent="primary" />
                 <StatCard label="Pedidos" value={formatNumber(kpis.orders)} icon={ShoppingBag} accent="info" />
                 <StatCard label="Itens vendidos" value={formatNumber(kpis.itemsSold)} icon={PackageCheck} accent="success" />
-                <StatCard label="CTR médio" value={formatPercent(kpis.avgCtr, 1)} icon={MousePointerClick} accent="warning" />
-                <StatCard label="Exibição da âncora (média)" value={formatPercent(kpis.avgAnchor, 1)} icon={Eye} accent="primary" />
+                <StatCard label="Taxa de cliques" value={formatPercent(kpis.avgCtr, 1)} icon={MousePointerClick} accent="warning" />
+                <StatCard label="Exibição do link do produto" value={formatPercent(kpis.avgAnchor, 1)} icon={Eye} accent="primary" />
               </section>
 
               <div className="overflow-x-auto">
@@ -842,11 +849,11 @@ function ManualVideoTab({ range, subject }: { range: GanhosFilters; subject: str
                   <thead>
                     <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
                       <th className="pb-2 pr-4 font-medium">Vídeo</th>
-                      <th className="pb-2 pr-4 text-right font-medium">GMV</th>
+                      <th className="pb-2 pr-4 text-right font-medium">Vendas</th>
                       <th className="pb-2 pr-4 text-right font-medium">Pedidos</th>
                       <th className="pb-2 pr-4 text-right font-medium">Itens vendidos</th>
-                      <th className="pb-2 pr-4 text-right font-medium">CTR</th>
-                      <th className="pb-2 text-right font-medium">Exibição da âncora</th>
+                      <th className="pb-2 pr-4 text-right font-medium">Taxa de cliques</th>
+                      <th className="pb-2 text-right font-medium">Exibição do link</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -910,7 +917,7 @@ function LiveRoomInfoCard({
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm font-semibold">{data.title || "Sua live"}</p>
-              <Badge variant={isOngoing ? "success" : "secondary"}>{humanize(data.status)}</Badge>
+              <Badge variant={isOngoing ? "success" : "secondary"}>{liveStatusLabel(data.status)}</Badge>
             </div>
             <p className="text-xs text-muted-foreground">
               ID {data.id}
@@ -924,7 +931,7 @@ function LiveRoomInfoCard({
           className="shrink-0 gap-1.5"
           onClick={() => onView(data.id as string)}
         >
-          <Search className="h-3.5 w-3.5" /> Ver analytics desta live
+          <Search className="h-3.5 w-3.5" /> Ver resultados desta live
         </Button>
       </CardContent>
     </Card>
@@ -959,9 +966,8 @@ function LiveTab({ range, subject }: { range: GanhosFilters; subject: string }) 
         <CardContent className="flex items-start gap-3 p-4 text-sm">
           <Signal className="mt-0.5 h-4 w-4 shrink-0 text-info" />
           <p className="leading-relaxed text-muted-foreground">
-            Esses 7 indicadores usam o escopo <code className="rounded bg-background/60 px-1 py-0.5 text-xs">creator.data.live.read.public</code>{" "}
-            (pacote <strong>Live Data</strong>), que está <strong>ativo</strong> no app — funcionam em modo live real, desde que você
-            informe o ID de uma sala de live da própria conta.
+            Escolha uma das suas lives abaixo ou informe o ID da sala para ver vendas, público, tráfego e produtos da
+            transmissão.
           </p>
         </CardContent>
       </Card>
@@ -972,11 +978,11 @@ function LiveTab({ range, subject }: { range: GanhosFilters; subject: string }) 
         <CardContent className="p-4">
           <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="flex-1 space-y-1">
-              <Label className="text-xs text-muted-foreground">live_room_id</Label>
+              <Label className="text-xs text-muted-foreground">ID da sala de live</Label>
               <Input value={idInput} onChange={(e) => setIdInput(e.target.value)} placeholder="7093488394589768494" />
             </div>
             <Button type="submit" className="gap-2" disabled={!idInput.trim()}>
-              <Search className="h-4 w-4" /> Ver dashboard da live
+              <Search className="h-4 w-4" /> Ver resultados da live
             </Button>
           </form>
 
@@ -1021,7 +1027,7 @@ function LiveTab({ range, subject }: { range: GanhosFilters; subject: string }) 
       {!liveRoomId ? (
         <Card>
           <CardContent>
-            <EmptyState icon={Radio} text="Informe o ID de uma sala de live para ver o dashboard completo." />
+            <EmptyState icon={Radio} text="Escolha uma live ou informe o ID da sala para ver os resultados." />
           </CardContent>
         </Card>
       ) : (
@@ -1052,19 +1058,19 @@ function CoreStatsSection({ liveRoomId }: { liveRoomId: string }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Gauge className="h-4 w-4" /> KPIs da live
+          <Gauge className="h-4 w-4" /> Resumo da live
         </CardTitle>
-        <p className="mt-0.5 text-xs text-muted-foreground">Get Live Room Core Stats (202502)</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">Os principais números da transmissão.</p>
       </CardHeader>
       <CardContent className="space-y-5">
         {error ? (
-          <ErrorBanner text={`Não foi possível carregar os KPIs: ${(error as Error).message}`} />
+          <ErrorBanner text={`Não foi possível carregar os números da live: ${(error as Error).message}`} />
         ) : !isLoading && !stats ? (
           <EmptyState icon={Gauge} text="Nenhum dado retornado para essa live." />
         ) : (
           <>
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              <StatCard label="GMV" value={formatMoney(stats?.local_gmv)} icon={Wallet} accent="primary" loading={isLoading} />
+              <StatCard label="Vendas geradas" value={formatMoney(stats?.local_gmv)} icon={Wallet} accent="primary" loading={isLoading} />
               <StatCard label="Itens vendidos" value={formatNumber(stats?.sales ?? 0)} icon={ShoppingBag} accent="info" loading={isLoading} />
               <StatCard
                 label="Pedidos pagos"
@@ -1104,9 +1110,9 @@ function CoreStatsSection({ liveRoomId }: { liveRoomId: string }) {
                   <MiniStat label="Pedidos criados" value={formatNumber(stats.created_order_count ?? 0)} />
                   <MiniStat label="Visitantes atuais" value={formatNumber(stats.current_visitor_count ?? 0)} />
                   <MiniStat label="Cliques em produto" value={formatNumber(stats.product_reach_count ?? 0)} />
-                  <MiniStat label="Impressões de produto" value={formatNumber(stats.product_view_count ?? 0)} />
-                  <MiniStat label="CTR (cliques/views)" value={formatPercent(parseFloat(stats.click_through_rate ?? "0") || 0, 1)} />
-                  <MiniStat label="Conversão (pedido/clique)" value={formatPercent(parseFloat(stats.click_order_rate ?? "0") || 0, 1)} />
+                  <MiniStat label="Exibições de produto" value={formatNumber(stats.product_view_count ?? 0)} />
+                  <MiniStat label="Taxa de cliques" value={formatPercent(parseFloat(stats.click_through_rate ?? "0") || 0, 1)} />
+                  <MiniStat label="Taxa de conversão (pedidos por clique)" value={formatPercent(parseFloat(stats.click_order_rate ?? "0") || 0, 1)} />
                   <MiniStat label="Comentários" value={formatNumber(stats.accumulated_comment_count ?? 0)} />
                   <MiniStat label="Compartilhamentos" value={formatNumber(stats.accumulated_sharing_count ?? 0)} />
                   <MiniStat label="Tempo médio assistido" value={formatDuration(stats.avg_watching_duration)} />
@@ -1134,7 +1140,7 @@ function GmvTrendSection({ liveRoomId }: { liveRoomId: string }) {
     if (series.some((s) => s.stats_type === "TREND_GMV")) {
       result.push({
         dataKey: "gmv",
-        name: "GMV",
+        name: "Vendas",
         color: "hsl(var(--primary))",
         yAxisId: "left",
         valueFormatter: (v) => money(v, currency),
@@ -1156,17 +1162,17 @@ function GmvTrendSection({ liveRoomId }: { liveRoomId: string }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <LineChartIcon className="h-4 w-4" /> Tendência de GMV
+          <LineChartIcon className="h-4 w-4" /> Vendas ao longo da live
         </CardTitle>
-        <p className="mt-0.5 text-xs text-muted-foreground">Get Live Room GMV Trend (202502)</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">Vendas e pedidos ao longo da transmissão.</p>
       </CardHeader>
       <CardContent>
         {error ? (
-          <ErrorBanner text={`Não foi possível carregar a tendência de GMV: ${(error as Error).message}`} />
+          <ErrorBanner text={`Não foi possível carregar a evolução das vendas: ${(error as Error).message}`} />
         ) : isLoading ? (
           <Skeleton className="h-64 w-full" />
         ) : points.length === 0 ? (
-          <EmptyState icon={LineChartIcon} text="Sem pontos de tendência de GMV para essa live." />
+          <EmptyState icon={LineChartIcon} text="Ainda não há dados de vendas ao longo dessa live." />
         ) : (
           <TrendChart data={points} lines={lines} yFormatterLeft={(v) => abbreviateNumber(v)} yFormatterRight={(v) => formatNumber(v)} />
         )}
@@ -1197,9 +1203,9 @@ function ViewTrendSection({ liveRoomId }: { liveRoomId: string }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Eye className="h-4 w-4" /> Tendência de espectadores
+          <Eye className="h-4 w-4" /> Audiência ao longo da live
         </CardTitle>
-        <p className="mt-0.5 text-xs text-muted-foreground">Get Live Room View Trends (202502)</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">Quem estava assistindo, entrando e saindo ao longo da live.</p>
       </CardHeader>
       <CardContent>
         {error ? (
@@ -1207,7 +1213,7 @@ function ViewTrendSection({ liveRoomId }: { liveRoomId: string }) {
         ) : isLoading ? (
           <Skeleton className="h-64 w-full" />
         ) : points.length === 0 ? (
-          <EmptyState icon={Eye} text="Sem pontos de tendência de espectadores para essa live." />
+          <EmptyState icon={Eye} text="Ainda não há dados de audiência ao longo dessa live." />
         ) : (
           <TrendChart data={points} lines={lines} yFormatterLeft={(v) => abbreviateNumber(v)} />
         )}
@@ -1238,9 +1244,9 @@ function InteractiveTrendSection({ liveRoomId }: { liveRoomId: string }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <MessageCircle className="h-4 w-4" /> Tendência de interações
+          <MessageCircle className="h-4 w-4" /> Interações ao longo da live
         </CardTitle>
-        <p className="mt-0.5 text-xs text-muted-foreground">Get Live Room Interactive Trends (202502)</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">Visualizações, comentários e compartilhamentos ao longo da live.</p>
       </CardHeader>
       <CardContent>
         {error ? (
@@ -1248,7 +1254,7 @@ function InteractiveTrendSection({ liveRoomId }: { liveRoomId: string }) {
         ) : isLoading ? (
           <Skeleton className="h-64 w-full" />
         ) : points.length === 0 ? (
-          <EmptyState icon={MessageCircle} text="Sem pontos de tendência de interação para essa live." />
+          <EmptyState icon={MessageCircle} text="Ainda não há dados de interação ao longo dessa live." />
         ) : (
           <TrendChart data={points} lines={lines} yFormatterLeft={(v) => abbreviateNumber(v)} />
         )}
@@ -1275,17 +1281,17 @@ function TrafficSection({ liveRoomId }: { liveRoomId: string }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Radar className="h-4 w-4" /> Fontes de tráfego
+          <Radar className="h-4 w-4" /> De onde veio o público
         </CardTitle>
-        <p className="mt-0.5 text-xs text-muted-foreground">Get Live Room Traffic Performance (202502)</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">De onde vieram as pessoas que entraram na live.</p>
       </CardHeader>
       <CardContent className="space-y-4">
         {error ? (
-          <ErrorBanner text={`Não foi possível carregar o tráfego: ${(error as Error).message}`} />
+          <ErrorBanner text={`Não foi possível carregar as origens do público: ${(error as Error).message}`} />
         ) : isLoading ? (
           <Skeleton className="h-52 w-full" />
         ) : sources.length === 0 ? (
-          <EmptyState icon={Radar} text="Sem dados de tráfego para essa live." />
+          <EmptyState icon={Radar} text="Ainda não há dados de origem do público para essa live." />
         ) : (
           <>
             <ResponsiveContainer width="100%" height={Math.max(140, chartData.length * 42)}>
@@ -1336,7 +1342,7 @@ function TrafficSourceBreakdown({ source }: { source: TrafficSource }) {
   return (
     <div className="space-y-1.5">
       <p className="text-xs font-medium">
-        {humanize(source.source?.name)} <span className="font-normal text-muted-foreground">— sub-fontes</span>
+        {humanize(source.source?.name)} <span className="font-normal text-muted-foreground">— detalhamento</span>
       </p>
       {subs.map((sub, i) => (
         <div key={sub.name ?? i} className="space-y-1">
@@ -1373,7 +1379,7 @@ function ProductStatsSection({ liveRoomId }: { liveRoomId: string }) {
         <CardTitle className="flex items-center gap-2 text-base">
           <Package className="h-4 w-4" /> Produtos da live
         </CardTitle>
-        <p className="mt-0.5 text-xs text-muted-foreground">Get Live Room Product Stats (202502)</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">Como cada produto da live vendeu.</p>
       </CardHeader>
       <CardContent>
         {error ? (
@@ -1392,10 +1398,10 @@ function ProductStatsSection({ liveRoomId }: { liveRoomId: string }) {
               <thead>
                 <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
                   <th className="pb-2 pr-4 font-medium">Produto</th>
-                  <th className="pb-2 pr-4 text-right font-medium">GMV</th>
+                  <th className="pb-2 pr-4 text-right font-medium">Vendas</th>
                   <th className="pb-2 pr-4 text-right font-medium">Preço médio</th>
                   <th className="pb-2 pr-4 text-right font-medium">Pedidos</th>
-                  <th className="pb-2 pr-4 text-right font-medium">Cliques / CTR</th>
+                  <th className="pb-2 pr-4 text-right font-medium">Cliques / taxa</th>
                   <th className="pb-2 text-right font-medium">Estoque</th>
                 </tr>
               </thead>
@@ -1428,11 +1434,11 @@ function ProductStatsSection({ liveRoomId }: { liveRoomId: string }) {
                     </td>
                     <td className="whitespace-nowrap py-3 pr-4 text-right">
                       <p>{formatNumber(p.total_click_count ?? 0)}</p>
-                      <p className="text-xs text-muted-foreground">CTR {formatPercent(parseFloat(p.click_through_rate ?? "0") || 0, 1)}</p>
+                      <p className="text-xs text-muted-foreground">Taxa de cliques {formatPercent(parseFloat(p.click_through_rate ?? "0") || 0, 1)}</p>
                     </td>
                     <td className="whitespace-nowrap py-3 text-right">
-                      <p>{formatNumber(p.inventory_left_count ?? 0)} restante</p>
-                      <p className="text-xs text-muted-foreground">{formatNumber(p.inventory_consumption_count ?? 0)} vendido</p>
+                      <p>{formatNumber(p.inventory_left_count ?? 0)} em estoque</p>
+                      <p className="text-xs text-muted-foreground">{formatNumber(p.inventory_consumption_count ?? 0)} vendidos</p>
                     </td>
                   </tr>
                 ))}
@@ -1455,15 +1461,15 @@ const FAN_LABELS: Record<string, string> = {
   USER_PORTRAIT_NON_FOLLOWER: "Não seguidores",
 };
 const AGE_LABELS: Record<string, string> = {
-  USER_PORTRAIT_AGE_LESS_THAN_15: "< 15",
+  USER_PORTRAIT_AGE_LESS_THAN_15: "Menos de 15",
   USER_PORTRAIT_AGE_13_TO_17: "13–17",
   USER_PORTRAIT_AGE_15_TO_17: "15–17",
   USER_PORTRAIT_AGE_18_TO_24: "18–24",
   USER_PORTRAIT_AGE_25_TO_34: "25–34",
   USER_PORTRAIT_AGE_35_TO_44: "35–44",
   USER_PORTRAIT_AGE_45_TO_54: "45–54",
-  USER_PORTRAIT_AGE_MORE_THAN_34: "> 34",
-  USER_PORTRAIT_AGE_MORE_THAN_55: "> 55",
+  USER_PORTRAIT_AGE_MORE_THAN_34: "Mais de 34",
+  USER_PORTRAIT_AGE_MORE_THAN_55: "Mais de 55",
 };
 
 interface Indicator {
@@ -1525,14 +1531,14 @@ function UserPortraitsSection({ liveRoomId }: { liveRoomId: string }) {
           <CardTitle className="flex items-center gap-2 text-base">
             <Users className="h-4 w-4" /> Perfil da audiência
           </CardTitle>
-          <p className="mt-0.5 text-xs text-muted-foreground">Get Live Room User Portraits (202502)</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Quem assistiu à sua live.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant={scope === "all" ? "toggle-on" : "toggle"} onClick={() => setScope("all")}>
             Todos os espectadores
           </Button>
           <Button size="sm" variant={scope === "paid" ? "toggle-on" : "toggle"} onClick={() => setScope("paid")}>
-            Só anúncios pagos
+            Vindos de anúncios
           </Button>
         </div>
       </CardHeader>

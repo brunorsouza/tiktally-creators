@@ -116,14 +116,20 @@ export function friendlyError(kind: CreatorErrorKind, raw: string | undefined, k
     case "session_expired":
       return "Sessão expirada. Faça login novamente.";
     case "missing_scope":
-      return scopes
-        ? `Escopo não autorizado. Este recurso exige ${scopes} — habilite no app do Partner Center e reautorize a conta.`
-        : "Escopo não autorizado para este recurso. Habilite-o no Partner Center e reautorize a conta.";
+      // Quem lê é o creator, que não tem acesso ao Partner Center. O escopo exato vai
+      // para o console (e continua no `raw` do resultado, que o API Tester mostra).
+      if (scopes) console.warn(`[creatorClient] escopo ausente: ${scopes}`);
+      return "Este recurso ainda não foi liberado para a sua conta. Reconecte o TikTok em Conta → Conexão; se continuar, fale com o suporte.";
     case "unauthorized_region":
-      return "Recurso indisponível na sua região. A TikTok ainda não liberou este endpoint para a região da sua conta.";
+      return "O TikTok ainda não liberou este recurso para a região da sua conta.";
     default: {
-      const msg = (raw || "").match(/"message":"([^"]*)"/)?.[1];
-      return msg || raw || "Falha ao chamar a API do TikTok.";
+      // Erro vindo da TikTok chega em inglês ("Invalid params", "system busy"…): o
+      // creator vê a versão em português e o código, que é o que o suporte precisa.
+      const code = tiktokCode(raw);
+      if (code != null) {
+        return `Não foi possível carregar seus dados do TikTok Shop agora. Tente de novo em alguns minutos (código ${code}).`;
+      }
+      return raw || "Não foi possível carregar seus dados do TikTok Shop agora. Tente de novo em alguns minutos.";
     }
   }
 }

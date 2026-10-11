@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { callEndpoint, type EndpointKey } from "@/services/creatorClient";
-import { useAffiliateOrders, useAllAffiliateOrders, salesBaseOf, type GanhosFilters } from "@/hooks/useGanhos";
+import { useAffiliateOrders, useAllAffiliateOrders, salesBaseOf, commissionOf, type GanhosFilters } from "@/hooks/useGanhos";
 import { parseAmount } from "@/lib/formatters";
 import type {
   GetVideoPerformancesData,
@@ -57,24 +57,34 @@ export const analyticsKeys = {
  * como string separada por vírgula na query, `start_time_ge`/`end_time_le` delimitam
  * o período (máx. 180 dias). `enabled` só dispara com ao menos 1 video_id.
  */
+/** Limite de `video_ids` por chamada de Get Video Performances (OAS: "Limit collection size 100"). */
+const VIDEO_IDS_PER_CALL = 100;
+
 export function useVideoPerformances(filters: VideoPerformancesFilters) {
   const { user } = useAuth();
   return useQuery({
     queryKey: analyticsKeys.videoPerformances(user?.id, filters),
     queryFn: async ({ signal }) => {
-      const r = await callEndpoint<GetVideoPerformancesData>(
-        "getVideoPerformances",
-        {
-          query: {
-            video_ids: filters.videoIds.join(","),
-            start_time_ge: filters.startTimeGe,
-            end_time_le: filters.endTimeLe,
+      // A API aceita no máximo 100 `video_ids` por chamada. O Ranking manda todos os
+      // vídeos com pedido no período, então acima de 100 a chamada única falhava e as
+      // vendas/CTR do ranking sumiam — consulta em lotes e junta.
+      const videos: NonNullable<GetVideoPerformancesData["videos"]> = [];
+      for (let i = 0; i < filters.videoIds.length; i += VIDEO_IDS_PER_CALL) {
+        const r = await callEndpoint<GetVideoPerformancesData>(
+          "getVideoPerformances",
+          {
+            query: {
+              video_ids: filters.videoIds.slice(i, i + VIDEO_IDS_PER_CALL).join(","),
+              start_time_ge: filters.startTimeGe,
+              end_time_le: filters.endTimeLe,
+            },
           },
-        },
-        signal
-      );
-      if (!r.ok) throw new Error(r.error || "Falha ao carregar a performance dos vídeos");
-      return r.data as GetVideoPerformancesData;
+          signal
+        );
+        if (!r.ok) throw new Error(r.error || "Não foi possível carregar o desempenho dos vídeos");
+        videos.push(...((r.data as GetVideoPerformancesData)?.videos ?? []));
+      }
+      return { videos } as GetVideoPerformancesData;
     },
     enabled: !!user && filters.videoIds.length > 0,
     staleTime: 5 * 60 * 1000,
@@ -215,9 +225,7 @@ export function useVideoContentPerformance(range: GanhosFilters) {
           currency: "BRL",
           productNames: new Map<string, number>(),
         };
-        const actual = parseAmount(s.actual_commission?.amount);
-        const estimate = parseAmount(s.estimated_commission?.amount);
-        const resolved = isSettled ? actual || estimate : estimate;
+        const resolved = commissionOf(s, o.status);
         row.commission += resolved;
         if (!isSettled) row.pendingCommission += resolved;
         row.salesBase += salesBaseOf(s, o.status);

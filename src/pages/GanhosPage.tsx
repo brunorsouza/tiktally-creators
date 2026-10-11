@@ -8,10 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCard } from "@/components/StatCard";
-import { useAllAffiliateOrders, useTraceOrders, salesBaseOf, type GanhosFilters } from "@/hooks/useGanhos";
+import { useAllAffiliateOrders, useTraceOrders, salesBaseOf, commissionOf, type GanhosFilters } from "@/hooks/useGanhos";
 import { USE_MOCK } from "@/services/creatorClient";
 import { formatCurrency, formatNumber, formatPercent, parseAmount } from "@/lib/formatters";
 import { orderStatusLabel, orderStatusTone } from "@/lib/orderStatus";
+import type { CreatorSearchAffiliateTraceOrdersData } from "@/types/creator-api.generated";
 
 type Money = { amount?: string; currency?: string };
 
@@ -20,7 +21,7 @@ const CONTENT_LABELS: Record<string, string> = {
   LIVE: "Live",
   SHOP: "Loja",
   PRE_LIVE: "Pré-live",
-  PROMOTION_PAGE: "Página promo",
+  PROMOTION_PAGE: "Página promocional",
   LINKSHARE: "Link compartilhado",
 };
 
@@ -53,8 +54,35 @@ function resolveCommission(
   orderStatus: string | undefined,
   sku: { actual_commission?: Money; estimated_commission?: Money }
 ): Money | undefined {
+  // Devolvido: a API diz que nenhuma comissão será liquidada — mostrar a estimativa em
+  // verde sugeria um dinheiro que não vem.
+  if (orderStatus === "REFUNDED") {
+    const currency = (sku.estimated_commission ?? sku.actual_commission)?.currency;
+    return { amount: "0", currency };
+  }
   if (orderStatus === "SETTLED") return sku.actual_commission ?? sku.estimated_commission;
   return sku.estimated_commission ?? sku.actual_commission;
+}
+
+/**
+ * Comissão total da SKU no Rastreio (Trace Orders 202505).
+ *
+ * Diferente de Search Creator Affiliate Orders, aqui `actual_commission` /
+ * `estimated_commission` é só a comissão BASE (base × commission_rate). Anúncios da loja,
+ * bônus e a recompensa do parceiro vêm em campos separados — mostrar só a base
+ * subestimava o que o creator recebe.
+ */
+type TraceSku = NonNullable<NonNullable<CreatorSearchAffiliateTraceOrdersData["orders"]>[number]["skus"]>[number];
+
+function traceCommission(orderStatus: string | undefined, sku: TraceSku): Money | undefined {
+  const base = resolveCommission(orderStatus, sku);
+  if (!base || orderStatus === "REFUNDED") return base;
+  const settled = orderStatus === "SETTLED";
+  const extras = settled
+    ? [sku.actual_shop_ads_commission, sku.actual_bonus_commission, sku.actual_creator_commission_reward_fee]
+    : [sku.estimated_shop_ads_commission, sku.estimated_bonus_commission, sku.estimated_creator_commission_reward_fee];
+  const total = extras.reduce((sum, m) => sum + parseAmount(m?.amount), parseAmount(base.amount));
+  return { amount: total.toFixed(2), currency: base.currency };
 }
 
 interface OrderRow {
@@ -133,14 +161,15 @@ export default function GanhosPage() {
         itemCount += 1;
         gmv += salesBaseOf(sku, order.status);
         if (sku.price?.currency) currency = sku.price.currency;
-        const actual = parseAmount(sku.actual_commission?.amount);
-        const estimate = parseAmount(sku.estimated_commission?.amount);
-        estimated += isSettled ? actual : estimate;
-        if (isSettled) settled += actual;
+        // Mesma regra do Painel (ver `commissionOf`): devolvido não soma.
+        const c = commissionOf(sku, order.status);
+        estimated += c;
+        if (isSettled) settled += c;
       }
     }
     const orderCount = affiliateOrders.length;
-    const avgTicket = orderCount ? gmv / orderCount : 0;
+    const validCount = affiliateOrders.filter((o) => o.status !== "REFUNDED").length;
+    const avgTicket = validCount ? gmv / validCount : 0;
     // `estimated` já é a comissão TOTAL resolvida (liquidada + pendente estimada — ver
     // `resolveCommission`); a fatia ainda não liquidada é o que sobra depois do settled.
     const pending = Math.max(0, estimated - settled);
@@ -157,8 +186,9 @@ export default function GanhosPage() {
           contentType: s.content_type,
           status: o.status,
           price: s.price,
-          commission: resolveCommission(o.status, s),
-          rate: s.commission_rate,
+          commission: traceCommission(o.status, s),
+          rate: (s.commission_rate ?? 0) + (s.shop_ads_commission_rate ?? 0) + (s.commission_bonus_rate ?? 0) +
+            (s.creator_commission_reward_rate ?? 0) || undefined,
         }))
       ),
     [traceOrders]
@@ -190,7 +220,7 @@ export default function GanhosPage() {
           nextToken: trace.data?.next_page_token,
           token: traceToken,
           setToken: setTraceToken,
-          source: "Creator Search Affiliate Trace Orders (202505)",
+          source: "Comissão exata de cada pedido, direto do rastreio do TikTok Shop.",
         }
       : {
           rows: affiliateRows,
@@ -200,12 +230,12 @@ export default function GanhosPage() {
           nextToken: undefined,
           token: undefined,
           setToken: () => {},
-          source: "Search Creator Affiliate Orders (202410)",
+          source: "Todos os pedidos do período, com o conteúdo que gerou cada venda.",
         };
 
   return (
     <div className="space-y-gap">
-      <PageHeader title="Ganhos & Rastreio" subtitle="Comissões e pedidos de afiliado gerados pelo seu conteúdo." />
+      <PageHeader title="Ganhos" subtitle="Quanto você ganhou de comissão e quais pedidos geraram esse valor." />
 
       <PeriodPicker
         periodKey={periodKey}
@@ -219,39 +249,41 @@ export default function GanhosPage() {
         <ErrorBanner text="Sem conexão com o servidor — os valores abaixo não refletem seus ganhos. Verifique a internet e recarregue." />
       )}
 
+      {affiliate.data?.truncated && (
+        <ErrorBanner text="Este período tem mais pedidos do que conseguimos carregar de uma vez, então os totais abaixo estão incompletos. Escolha um período mais curto para ver o valor exato." />
+      )}
+
       {trace.error && (
         <ErrorBanner
-          text={`Não foi possível carregar o rastreio de comissões (Trace Orders): ${
-            (trace.error as Error).message
-          }. Se estiver em modo live, confira se o escopo "creator.affiliate.share_link.read" está liberado no app.`}
+          text={`Não foi possível carregar o rastreio de comissões. ${(trace.error as Error).message}`}
         />
       )}
 
-      {/* KPIs — Trace Orders */}
+      {/* KPIs — Search Creator Affiliate Orders */}
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard
-          label="GMV do período"
+          label="Vendas geradas"
           value={money(kpis.gmv, kpis.currency)}
           icon={Wallet}
           accent="primary"
           loading={affiliate.isLoading || affiliateNoData}
-          hint="Base de comissão do período (preço × quantidade)"
+          hint="Valor das vendas que contam para a sua comissão, já sem devoluções"
         />
         <StatCard
-          label="Comissão estimada"
+          label="Comissão no período"
           value={money(kpis.estimated, kpis.currency)}
           icon={TrendingUp}
           accent="info"
           loading={affiliate.isLoading || affiliateNoData}
-          hint="Fechada quando SETTLED, estimada nos demais"
+          hint="Valor final dos pedidos pagos + estimativa dos que ainda estão em aberto"
         />
         <StatCard
-          label="Comissão paga (settled)"
+          label="Comissão liquidada"
           value={money(kpis.settled, kpis.currency)}
           icon={BadgeCheck}
           accent="success"
           loading={affiliate.isLoading || affiliateNoData}
-          hint="Só pedidos já liquidados"
+          hint="Já liberada para você: o prazo de devolução terminou"
         />
         <StatCard
           label="Comissão pendente"
@@ -259,10 +291,10 @@ export default function GanhosPage() {
           icon={Clock}
           accent="warning"
           loading={affiliate.isLoading || affiliateNoData}
-          hint="Pedidos ainda não liquidados (ORDERED/To-SETTLE)"
+          hint="Estimativa dos pedidos que ainda não foram liberados"
         />
         <StatCard
-          label="Nº de pedidos"
+          label="Pedidos"
           value={formatNumber(kpis.orderCount)}
           icon={ShoppingBag}
           accent="warning"
@@ -275,6 +307,7 @@ export default function GanhosPage() {
           icon={Ticket}
           accent="primary"
           loading={affiliate.isLoading || affiliateNoData}
+          hint="Valor médio de cada pedido"
         />
       </section>
 
@@ -283,7 +316,7 @@ export default function GanhosPage() {
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle className="text-base">Pedidos</CardTitle>
-            <p className="mt-0.5 text-xs text-muted-foreground">Fonte: {active.source}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{active.source}</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant={tab === "trace" ? "toggle-on" : "toggle"} onClick={() => setTab("trace")}>
@@ -307,6 +340,7 @@ export default function GanhosPage() {
             <div className="flex flex-col items-center gap-2 py-16 text-center text-muted-foreground">
               <Package className="h-8 w-8" />
               <p className="text-sm">Nenhum pedido no período selecionado.</p>
+              <p className="text-xs">Tente um período maior ou gere links para os seus próximos vídeos.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">

@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
-import { useAllAffiliateOrders, salesBaseOf, type GanhosFilters } from "@/hooks/useGanhos";
+import { useAllAffiliateOrders, salesBaseOf, commissionOf, type GanhosFilters } from "@/hooks/useGanhos";
 import { isNotConnected, isReauthRequired } from "@/services/creatorClient";
 import { PeriodPicker } from "@/components/PeriodPicker";
 import { DAY, ROLLING_DAYS, resolvePeriod, type Period } from "@/lib/period";
@@ -50,24 +50,6 @@ function money(amount: number, currency?: string): string {
   }
 }
 
-/**
- * Comissão da SKU — vem DA API, não é recalculada aqui.
- *
- * `price * commission_rate` dá um número diferente do que a TikTok paga: a base de
- * cálculo (`estimated_commission_base`) não é o preço, e o valor final embute bônus e
- * regras de tier. Para pedido liquidado vale `actual_commission`; nos demais, a
- * estimativa. Atenção: `*_commission_base` é a BASE, não a comissão.
- */
-function commissionOf(sku: {
-  estimated_commission?: { amount?: string };
-  actual_commission?: { amount?: string };
-}, orderStatus?: string): number {
-  if (orderStatus === "SETTLED") {
-    const actual = parseAmount(sku.actual_commission?.amount);
-    if (actual) return actual;
-  }
-  return parseAmount(sku.estimated_commission?.amount);
-}
 
 type Order = NonNullable<
   ReturnType<typeof useAllAffiliateOrders>["data"]
@@ -84,6 +66,10 @@ interface Totals {
   skuCount: number;
   orderCount: number;
   avgTicket: number;
+}
+
+function validOrders(orders: Order[]): number {
+  return orders.filter((o) => o.status !== "REFUNDED").length;
 }
 
 function totalsOf(orders: Order[]): Totals {
@@ -110,7 +96,9 @@ function totalsOf(orders: Order[]): Totals {
     currency,
     skuCount,
     orderCount: orders.length,
-    avgTicket: orders.length ? gross / orders.length : 0,
+    // Pedido devolvido entra na contagem mas não tem venda — dividir por ele puxava o
+    // ticket médio para baixo.
+    avgTicket: validOrders(orders) ? gross / validOrders(orders) : 0,
   };
 }
 
@@ -164,19 +152,19 @@ const SHORTCUTS = [
     to: "/descoberta",
     icon: Compass,
     title: "Achar produtos para promover",
-    sub: "Colaborações abertas ordenadas por comissão.",
+    sub: "Produtos com comissão aberta para você divulgar.",
   },
   {
     to: "/links",
     icon: Link2,
-    title: "Conferir seus links",
-    sub: "Cliques e conversão por link, um por vídeo.",
+    title: "Gerar links de afiliado",
+    sub: "Um link por vídeo mostra qual conteúdo vendeu.",
   },
   {
     to: "/estudio",
     icon: Clapperboard,
-    title: "Terminar um rascunho",
-    sub: "Marcar produtos e publicar sem sair daqui.",
+    title: "Publicar um vídeo com produtos",
+    sub: "Marque os produtos e publique sem sair daqui.",
   },
 ];
 
@@ -317,7 +305,7 @@ function compactAmount(value: number, dense = false): string {
     return map;
   }, [productDetails]);
 
-  /** Feed "acontecendo agora": os pedidos mais recentes, do mais novo pro mais velho. */
+  /** Feed "vendas mais recentes": os pedidos mais recentes, do mais novo pro mais velho. */
   const feed = useMemo(
     () =>
       [...orders]
@@ -335,7 +323,7 @@ function compactAmount(value: number, dense = false): string {
             source: CONTENT_LABEL[type] ?? "",
             time: timeAgo(o.create_time),
             value: money(
-              (o.skus ?? []).reduce((sum, s) => sum + commissionOf(s), 0),
+              (o.skus ?? []).reduce((sum, s) => sum + commissionOf(s, o.status), 0),
               sku?.price?.currency
             ),
           };
@@ -457,6 +445,13 @@ function compactAmount(value: number, dense = false): string {
         </Card>
       )}
 
+      {data?.truncated && (
+        <p className="mb-gap rounded-lg border border-warning/30 bg-warning/[.06] p-3 text-sm">
+          Este período tem mais pedidos do que conseguimos carregar de uma vez, então os valores abaixo
+          estão incompletos. Escolha um período mais curto para ver o total exato.
+        </p>
+      )}
+
       {/* ── Abertura: o dinheiro ──
           Lidera com a comissão LIQUIDADA, não com o total do período. O total
           é promessa (inclui pedido que ainda pode ser devolvido); o liquidado
@@ -492,7 +487,7 @@ function compactAmount(value: number, dense = false): string {
             loading={busy}
             delta={grossDelta?.text}
             up={grossDelta?.up}
-            deltaLabel={grossDelta ? resolved.deltaLabel : "GMV atribuído a você"}
+            deltaLabel={grossDelta ? resolved.deltaLabel : "vendas atribuídas a você"}
           />
           <StatCard
             label="Pedidos"
@@ -523,7 +518,7 @@ function compactAmount(value: number, dense = false): string {
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <div className="font-display text-[18px] font-bold tracking-[-0.3px]">
-                  Comissão por dia
+                  {chart.groupDays === 7 ? "Comissão por semana" : "Comissão por dia"}
                 </div>
                 <p className="mt-[3px] text-[13.5px] text-faint">
                   A partir dos pedidos atribuídos ao seu conteúdo
@@ -706,7 +701,7 @@ function compactAmount(value: number, dense = false): string {
             <div className="mb-1 flex items-center gap-[9px]">
               <span className="h-2 w-2 animate-breathe rounded-full bg-success" />
               <div className="font-display text-[17px] font-bold tracking-[-0.3px]">
-                Acontecendo agora
+                Vendas mais recentes
               </div>
             </div>
 
@@ -717,7 +712,9 @@ function compactAmount(value: number, dense = false): string {
                 ))}
               </div>
             ) : feed.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">Nada por aqui ainda.</p>
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                Nenhuma venda no período. Quando alguém comprar pelo seu conteúdo, ela aparece aqui.
+              </p>
             ) : (
               feed.map(({ id, icon: Icon, text, source, time, value }, i) => (
                 <div

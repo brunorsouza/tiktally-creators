@@ -88,7 +88,7 @@ const PRODUTOS = [
 
 const STATUS: { valor: string; peso: number }[] = [
   { valor: "SETTLED", peso: 58 },
-  { valor: "TO-SETTLE", peso: 30 },
+  { valor: "To-SETTLE", peso: 30 },
   { valor: "AWAITING PAYMENT", peso: 8 },
   { valor: "REFUNDED", peso: 4 },
 ];

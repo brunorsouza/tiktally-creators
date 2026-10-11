@@ -8,11 +8,11 @@ import { useCreatorProfile } from "@/hooks/useCreatorProfile";
 import { CreatorAvatar } from "@/components/CreatorAvatar";
 
 const PERM_LABELS: Record<string, string> = {
-  LIVE_STREAM_PERMISSION: "Live",
-  SELF_SALE_PERMISSION: "Venda própria",
-  ADD_AFFILIATE_PERMISSION: "Afiliado",
-  PHOTO_SHOPPABLE_PERMISSION_PRODUCT: "Foto shoppable (produto)",
-  PHOTO_SHOPPABLE_PERMISSION_SHOP: "Foto shoppable (loja)",
+  LIVE_STREAM_PERMISSION: "Lives",
+  SELF_SALE_PERMISSION: "Vender produtos próprios",
+  ADD_AFFILIATE_PERMISSION: "Divulgar como afiliado",
+  PHOTO_SHOPPABLE_PERMISSION_PRODUCT: "Fotos com produto marcado",
+  PHOTO_SHOPPABLE_PERMISSION_SHOP: "Fotos com loja marcada",
 };
 
 const USER_TYPE_LABELS: Record<string, string> = {
@@ -21,12 +21,28 @@ const USER_TYPE_LABELS: Record<string, string> = {
   TIKTOK_SHOP_CREATOR: "Creator TikTok Shop",
 };
 
+/** `seller_type` só vem quando o creator também tem conta de vendedor. */
+const SELLER_TYPE_LABELS: Record<string, string> = {
+  LOCAL: "Também vende: loja nacional",
+  CROSS_BORDER: "Também vende: loja internacional",
+};
+
+/** "BR" → "Brasil". A API devolve o código ISO da região. */
+function regionName(code?: string): string | undefined {
+  if (!code) return code;
+  try {
+    return new Intl.DisplayNames(["pt-BR"], { type: "region" }).of(code.toUpperCase()) ?? code;
+  } catch {
+    return code;
+  }
+}
+
 export default function PerfilPage() {
   const { data: profile, isLoading, error } = useCreatorProfile();
 
   return (
     <div className="space-y-gap">
-      <PageHeader title="Perfil do creator" subtitle="Identidade e permissões da sua conta no TikTok Shop." />
+      <PageHeader title="Perfil" subtitle="Seus dados e o que a sua conta pode fazer no TikTok Shop." />
 
       {error && (
         <Card className="border-destructive/30 bg-destructive/5">
@@ -66,7 +82,7 @@ export default function PerfilPage() {
                 {profile?.seller_type && (
                   <Badge variant="outline" className="gap-1">
                     <Store className="h-3.5 w-3.5" />
-                    {profile.seller_type}
+                    {SELLER_TYPE_LABELS[profile.seller_type] ?? profile.seller_type}
                   </Badge>
                 )}
               </div>
@@ -74,8 +90,8 @@ export default function PerfilPage() {
           </div>
 
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <InfoRow icon={MapPin} label="Região de atuação" value={profile?.selection_region} loading={isLoading} />
-            <InfoRow icon={MapPin} label="Região de registro" value={profile?.register_region} loading={isLoading} />
+            <InfoRow icon={MapPin} label="Onde você pode divulgar" value={regionName(profile?.selection_region)} loading={isLoading} />
+            <InfoRow icon={MapPin} label="País da conta" value={regionName(profile?.register_region)} loading={isLoading} />
           </div>
 
           <div className="mt-6">
@@ -96,12 +112,12 @@ export default function PerfilPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">Nenhuma permissão informada.</p>
+              <p className="text-sm text-muted-foreground">O TikTok não informou permissões para esta conta.</p>
             )}
           </div>
 
           <div className="mt-6 border-t pt-4">
-            <p className="text-xs text-muted-foreground">Creator Open ID</p>
+            <p className="text-xs text-muted-foreground">ID da conta no TikTok Shop</p>
             {isLoading ? (
               <Skeleton className="mt-1 h-4 w-64" />
             ) : (

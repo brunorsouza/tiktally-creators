@@ -23,7 +23,6 @@ interface FailedMaterialRow {
   fail_reason?: string;
 }
 
-const SCOPE_NAME = "creator.affiliate.share_link.read";
 
 /** Aceita IDs separados por vírgula, ponto-e-vírgula ou quebra de linha; remove duplicatas
  *  e respeita o limite de 50 da API. */
@@ -54,20 +53,17 @@ export default function LinksPage() {
 
   return (
     <div className="space-y-gap">
-      <PageHeader title="Links de afiliado" subtitle="Gere links de compartilhamento para produtos — link geral ou atrelado a um publisher específico." />
+      <PageHeader title="Links de afiliado" subtitle="Crie links de produtos para divulgar onde quiser. As vendas por esses links contam como suas." />
 
       {!USE_MOCK && (
         <Card className="border-warning/30 bg-warning/10">
           <CardContent className="flex items-start gap-3 p-4 text-sm">
             <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
             <div className="space-y-1">
-              <p className="font-medium">Geração de link exige um escopo ainda não liberado</p>
+              <p className="font-medium">A geração de links pode ainda não estar liberada</p>
               <p className="text-muted-foreground">
-                Os endpoints Generate General/Publisher Link pedem o escopo{" "}
-                <code className="rounded bg-background/60 px-1 py-0.5 text-xs">{SCOPE_NAME}</code>, que hoje está{" "}
-                <strong>ausente</strong> no app (ver <code className="text-xs">docs/RELATORIO_ESCOPOS_MVP.md</code>).
-                Em modo live essa chamada tende a falhar por permissão até o pacote ser adicionado e o creator
-                re-autorizar o app. Em modo mock a ferramenta funciona normalmente.
+                O TikTok ainda está liberando essa permissão para o TikTally. Se o link não for gerado, reconecte sua
+                conta em Conta → Conexão quando a liberação for anunciada.
               </p>
             </div>
           </CardContent>
@@ -80,7 +76,7 @@ export default function LinksPage() {
             <Send className="h-4 w-4" /> Link geral
           </Button>
           <Button variant={mode === "publisher" ? "toggle-on" : "toggle"} onClick={() => setMode("publisher")} className="gap-2">
-            <Users className="h-4 w-4" /> Link de publisher
+            <Users className="h-4 w-4" /> Link para parceiro
           </Button>
         </CardContent>
       </Card>
@@ -115,7 +111,7 @@ function GeneralLinkTool() {
     mutation.mutate(input, {
       onSuccess: (data) => {
         const n = data.sharing_links?.length ?? 0;
-        toast.success(n > 0 ? `${n} link(s) gerado(s)${mockNote}` : `Nenhum link gerado${mockNote}`);
+        toast.success(n > 0 ? `${n} ${n === 1 ? "link gerado" : "links gerados"}${mockNote}` : `Nenhum link gerado${mockNote}`);
       },
       onError: (err) => toast.error((err as Error).message),
     });
@@ -126,7 +122,7 @@ function GeneralLinkTool() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Gerar link geral</CardTitle>
-          <p className="mt-0.5 text-xs text-muted-foreground">Creator Generate General Link (202505)</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Um link por produto, para usar em qualquer lugar.</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -142,8 +138,8 @@ function GeneralLinkTool() {
                 disabled={mutation.isPending}
               />
               <p className="text-[11px] text-muted-foreground">
-                Um ID por linha ou separados por vírgula — máximo 50 (limite da API).{" "}
-                {ids.length > 0 && `${ids.length} produto(s) reconhecido(s).`}
+                Um ID por linha ou separados por vírgula, até 50 produtos.{" "}
+                {ids.length > 0 && `${ids.length} ${ids.length === 1 ? "produto reconhecido" : "produtos reconhecidos"}.`}
               </p>
             </div>
 
@@ -165,7 +161,7 @@ function GeneralLinkTool() {
                 disabled={mutation.isPending}
                 className="gap-2"
               >
-                <Globe className="h-4 w-4" /> URL Tokopedia (TOKO)
+                <Globe className="h-4 w-4" /> Link Tokopedia (só Indonésia)
               </Button>
             </div>
 
@@ -206,7 +202,7 @@ function PublisherLinkTool() {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!publisherId.trim()) {
-      toast.error("Informe o ID do publisher");
+      toast.error("Informe o ID do parceiro");
       return;
     }
     if (ids.length === 0) {
@@ -223,7 +219,7 @@ function PublisherLinkTool() {
       {
         onSuccess: (data) => {
           const n = data.sharing_links?.length ?? 0;
-          toast.success(n > 0 ? `${n} link(s) gerado(s) para o publisher${mockNote}` : `Nenhum link gerado${mockNote}`);
+          toast.success(n > 0 ? `${n} ${n === 1 ? "link gerado" : "links gerados"} para o parceiro${mockNote}` : `Nenhum link gerado${mockNote}`);
         },
         onError: (err) => toast.error((err as Error).message),
       }
@@ -234,13 +230,13 @@ function PublisherLinkTool() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Gerar link de publisher</CardTitle>
-          <p className="mt-0.5 text-xs text-muted-foreground">Creator Generate Publisher Link (202504)</p>
+          <CardTitle className="text-base">Gerar link para parceiro</CardTitle>
+          <p className="mt-0.5 text-xs text-muted-foreground">Links ligados a um parceiro de afiliados (site, cupom ou rede) que você usa.</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="publisher-id">ID do publisher</Label>
+              <Label htmlFor="publisher-id">ID do parceiro</Label>
               <Input
                 id="publisher-id"
                 placeholder="CJ-PUBLISHER-001"
@@ -249,7 +245,7 @@ function PublisherLinkTool() {
                 disabled={mutation.isPending}
               />
               <p className="text-[11px] text-muted-foreground">
-                ID do publisher no sistema do parceiro — vai no path da chamada (<code>publisher_id</code>).
+                Código que identifica o parceiro de afiliados (publisher) onde o link será usado.
               </p>
             </div>
 
@@ -265,8 +261,8 @@ function PublisherLinkTool() {
                 disabled={mutation.isPending}
               />
               <p className="text-[11px] text-muted-foreground">
-                Um ID por linha ou separados por vírgula — máximo 50 (limite da API).{" "}
-                {ids.length > 0 && `${ids.length} produto(s) reconhecido(s).`}
+                Um ID por linha ou separados por vírgula, até 50 produtos.{" "}
+                {ids.length > 0 && `${ids.length} ${ids.length === 1 ? "produto reconhecido" : "produtos reconhecidos"}.`}
               </p>
             </div>
 
@@ -288,7 +284,7 @@ function PublisherLinkTool() {
                 disabled={mutation.isPending}
                 className="gap-2"
               >
-                <Globe className="h-4 w-4" /> URL Tokopedia (TOKO)
+                <Globe className="h-4 w-4" /> Link Tokopedia (só Indonésia)
               </Button>
             </div>
 
@@ -384,8 +380,8 @@ function LinkResultCard({ link }: { link: SharingLinkRow }) {
           Produto {link.material_id ?? "—"}
         </div>
         <CopyField label="Link de compartilhamento" value={link.sharing_link} openable />
-        <CopyField label="Deep link" value={link.deep_link} />
-        <CopyField label="One link" value={link.one_link} />
+        <CopyField label="Link direto do produto" value={link.deep_link} />
+        <CopyField label="Link único (one-link)" value={link.one_link} />
         {!link.sharing_link && !link.deep_link && !link.one_link && (
           <p className="text-xs text-muted-foreground">Nenhum link retornado para este produto.</p>
         )}

@@ -99,7 +99,7 @@ const SECTIONS: Section[] = [
     },
     items: [
       { to: "/ganhos", label: "Ganhos", icon: Wallet },
-      { to: "/analytics", label: "Analytics", icon: BarChart3 },
+      { to: "/analytics", label: "Desempenho", icon: BarChart3 },
     ],
   },
   {

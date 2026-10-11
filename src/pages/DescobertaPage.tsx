@@ -90,7 +90,7 @@ export default function DescobertaPage() {
 
   return (
     <div className="space-y-gap">
-      <PageHeader title="Descoberta & Colaborações" subtitle="Encontre produtos para promover no marketplace de colaboração aberta e veja os convites que você recebeu." />
+      <PageHeader title="Descoberta" subtitle="Encontre produtos com comissão para promover e veja os convites que as lojas te enviaram." />
 
         <div className="segmented w-fit" role="tablist">
           <button
@@ -118,7 +118,7 @@ export default function DescobertaPage() {
             onClick={() => setTab("target")}
             className="segmented-item flex items-center gap-2"
           >
-            <Handshake className="h-4 w-4" /> Convites (target)
+            <Handshake className="h-4 w-4" /> Convites de lojas
           </button>
         </div>
 
@@ -273,7 +273,7 @@ function SelectionCard({ product }: { product: SelectionProduct }) {
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Store className="h-3.5 w-3.5" />
           <span className="truncate">{product.shop?.name ?? "—"}</span>
-          {product.shop?.rating && <span className="shrink-0">· {product.shop.rating}★</span>}
+          {product.shop?.rating && <span className="shrink-0">· {String(product.shop.rating).replace(".", ",")}★</span>}
         </div>
         <div className="flex items-center justify-between gap-2">
           <span className="font-semibold">{faixa}</span>
@@ -507,7 +507,7 @@ function OpenCollaborationsTab() {
       )}
 
       {offline && (
-        <ErrorBanner text="Sem conexão com o servidor — não foi possível consultar o marketplace." />
+        <ErrorBanner text="Sem conexão com a internet — não foi possível buscar os produtos. Verifique sua conexão e tente de novo." />
       )}
 
       {isLoading || semResposta ? (
@@ -642,7 +642,7 @@ function ProductDetailsCard({
         <div>
           <CardTitle className="text-base">Detalhes do produto</CardTitle>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Get Open Collaboration Product List By Product Ids (202509)
+            Preço, comissão e vendas do produto selecionado.
           </p>
         </div>
         <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={onClose} aria-label="Fechar detalhes">
@@ -774,7 +774,7 @@ function TargetCollaborationsTab() {
           <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_1fr_auto_auto] lg:items-end">
             <div className="space-y-1">
               <Label htmlFor="shopId" className="text-xs text-muted-foreground">
-                ID da loja (shop_id) *
+                ID da loja *
               </Label>
               <Input
                 id="shopId"
@@ -818,16 +818,14 @@ function TargetCollaborationsTab() {
             </Button>
           </form>
           <p className="text-[11px] text-muted-foreground">
-            A API exige o ID da loja que te convidou, e não existe endpoint de creator que
-            liste suas lojas: nenhuma resposta traz <code>shop_id</code> (só nome e logo).
-            Você encontra esse número no convite recebido dentro do app do TikTok Shop ou
-            pedindo ao próprio vendedor.
+            Para ver os convites, informe o ID da loja que te convidou. Você encontra esse número
+            no convite recebido no app do TikTok Shop ou pode pedir ao próprio vendedor.
           </p>
         </CardContent>
       </Card>
 
       {offline && (
-        <ErrorBanner text="Sem conexão com o servidor — não foi possível buscar os convites." />
+        <ErrorBanner text="Sem conexão com a internet — não foi possível buscar os convites. Verifique sua conexão e tente de novo." />
       )}
 
       {!filters.shopId ? (
@@ -838,7 +836,7 @@ function TargetCollaborationsTab() {
           </CardContent>
         </Card>
       ) : error ? (
-        <ErrorBanner text={`Não foi possível buscar as colaborações-alvo: ${(error as Error).message}`} />
+        <ErrorBanner text={`Não foi possível buscar os convites: ${(error as Error).message}`} />
       ) : isLoading || semResposta ? (
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (

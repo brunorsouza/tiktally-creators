@@ -62,18 +62,18 @@ const APPLICATION_STATUS_LABELS: Record<string, string> = {
   REJECT_CANCELLED: "Rejeitada pelo vendedor",
   OVERDUE_CANCELLED: "Expirada",
   UNFULFILL_CANCELLED: "Compromisso não cumprido",
-  FULFILLMENT_SUSPEND: "Fulfillment suspenso",
+  FULFILLMENT_SUSPEND: "Entrega de conteúdo suspensa",
   DEL_OPEN_COLLAB: "Colaboração excluída",
   SELLER_NOT_SHIP_CANCELLED: "Vendedor não enviou",
   WITHDRAW_CANCELLED: "Retirada pelo creator",
   UNFULFILLABLE_CANCELLED: "Inviável de cumprir",
-  OPS_CANCELLED: "Cancelada (operação)",
-  OPS_FAILED: "Falhou (operação)",
-  OPS_COMPLETED: "Concluída (operação)",
+  OPS_CANCELLED: "Cancelada pela plataforma",
+  OPS_FAILED: "Falhou na plataforma",
+  OPS_COMPLETED: "Concluída pela plataforma",
   COMPLETED: "Concluída",
   TO_BE_POST: "Aguardando postagem",
-  POST_IN_REVIEW: "Post em revisão",
-  POST_FAILED: "Post falhou",
+  POST_IN_REVIEW: "Publicação em análise",
+  POST_FAILED: "Publicação recusada",
   CANCELED: "Cancelada",
 };
 
@@ -352,7 +352,7 @@ function ApplicationsTab() {
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <CardTitle className="text-base">Solicitações de amostra</CardTitle>
-            <p className="mt-0.5 text-xs leading-snug text-muted-foreground">Search Creator Sample Applications (202412)</p>
+            <p className="mt-0.5 text-xs leading-snug text-muted-foreground">Cada amostra que você pediu, do pedido à entrega do conteúdo.</p>
           </div>
           <div className="flex flex-wrap justify-end gap-2">
             {APP_STATUS_CHIPS.map((chip, i) => (
@@ -393,9 +393,9 @@ function ApplicationsTab() {
                 <thead>
                   <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
                     <th className="pb-2 pr-4 font-medium">Produto / SKU</th>
-                    <th className="pb-2 pr-4 font-medium">Pedido principal</th>
+                    <th className="pb-2 pr-4 font-medium">Nº do pedido</th>
                     <th className="pb-2 pr-4 font-medium">Status</th>
-                    <th className="pb-2 pr-4 font-medium">Fulfillment</th>
+                    <th className="pb-2 pr-4 font-medium">Entrega do conteúdo</th>
                     <th className="pb-2 text-right font-medium">Ações</th>
                   </tr>
                 </thead>
@@ -503,7 +503,7 @@ function SampleDetailPanel({
       <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
         <div>
           <CardTitle className="text-base">Detalhe da solicitação</CardTitle>
-          <p className="mt-0.5 text-xs text-muted-foreground">Get Creator Sample Application Detail (202412)</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Tudo sobre esta solicitação de amostra.</p>
         </div>
         <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={onClose} aria-label="Fechar detalhes">
           <X className="h-4 w-4" />
@@ -532,15 +532,15 @@ function SampleDetailPanel({
               <DetailStat label="Produto" value={app.sample_product?.id ?? "—"} />
               <DetailStat label="SKU" value={app.sample_product?.sku_id ?? "—"} />
               <DetailStat
-                label="Propriedades"
+                label="Variação"
                 value={skuPropsToText(app.sample_product?.sku_sale_property_value_names) || "—"}
               />
-              <DetailStat label="Pedido principal" value={app.main_order_id || "—"} />
+              <DetailStat label="Nº do pedido" value={app.main_order_id || "—"} />
               {app.activity_id && <DetailStat label="Campanha/atividade" value={app.activity_id} />}
             </div>
             {app.creator_fulfillment && (
               <div className="rounded-lg border bg-muted/30 p-3">
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Fulfillment</p>
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Entrega do conteúdo</p>
                 <div className="flex flex-wrap items-center gap-3">
                   <Badge variant={fulfillmentStatusVariant(app.creator_fulfillment.status)}>
                     {FULFILLMENT_STATUS_LABELS[
@@ -682,7 +682,7 @@ function FulfillmentsTab() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Envios de amostra</CardTitle>
-          <p className="mt-0.5 text-xs text-muted-foreground">Creator Search Sample Application Fulfillments (202409)</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Amostras recebidas e o conteúdo que você combinou entregar em troca.</p>
         </CardHeader>
         <CardContent>
           {error ? (
@@ -707,7 +707,7 @@ function FulfillmentsTab() {
                     <th className="pb-2 pr-4 font-medium">Loja</th>
                     <th className="pb-2 pr-4 font-medium">Tipo</th>
                     <th className="pb-2 pr-4 font-medium">Status</th>
-                    <th className="pb-2 pr-4 font-medium">Produto (marketing)</th>
+                    <th className="pb-2 pr-4 font-medium">Situação do produto</th>
                     <th className="pb-2 pr-4 font-medium">Prazo / suspensão</th>
                     <th className="pb-2 text-right font-medium">Ações</th>
                   </tr>
@@ -784,7 +784,7 @@ function EligibilityTab() {
             window.location.href = d.deeplink;
             toast.success("Abrindo a solicitação no app do TikTok...");
           } else {
-            toast.error("A API não devolveu o link da solicitação.");
+            toast.error("Não foi possível abrir a solicitação no TikTok. Tente novamente em instantes.");
           }
         },
         onError: (e) => toast.error((e as Error).message),

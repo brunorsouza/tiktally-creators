@@ -1,6 +1,5 @@
 import { useMemo } from "react";
-import { parseAmount } from "@/lib/formatters";
-import { useAllAffiliateOrders, type GanhosFilters } from "@/hooks/useGanhos";
+import { useAllAffiliateOrders, commissionOf, type GanhosFilters } from "@/hooks/useGanhos";
 import {
   fusoDoDispositivo,
   resumirBlocos,
@@ -40,15 +39,14 @@ export function useHorarios(range: GanhosFilters, filtro: ContentFilter, timeZon
     const out: Venda[] = [];
     let currency = "BRL";
     for (const o of orders.data?.orders ?? []) {
-      const isSettled = o.status === "SETTLED";
+      // Venda devolvida não rendeu nada: contá-la como pedido puxaria a "janela de ouro"
+      // para horas que não pagaram comissão.
+      if (o.status === "REFUNDED") continue;
       for (const s of o.skus ?? []) {
-        // Mesma regra de resolução de comissão usada em Ganhos, Painel e Ranking:
-        // `actual` só é confiável em pedido liquidado; fora disso vale a estimativa.
-        const actual = parseAmount(s.actual_commission?.amount);
-        const estimate = parseAmount(s.estimated_commission?.amount);
+        // Mesma regra de resolução de comissão usada em Ganhos, Painel e Ranking.
         out.push({
           timestamp: o.create_time ?? 0,
-          comissao: isSettled ? actual || estimate : estimate,
+          comissao: commissionOf(s, o.status),
           contentType: s.content_type,
         });
         if (s.price?.currency) currency = s.price.currency;

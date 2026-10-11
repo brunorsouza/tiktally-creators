@@ -122,6 +122,15 @@ function ConnectCta() {
   );
 }
 
+/** "BR" → "Brasil" (mesmo rótulo do Perfil). */
+function regionLabel(code: string): string {
+  try {
+    return new Intl.DisplayNames(["pt-BR"], { type: "region" }).of(code.toUpperCase()) ?? code;
+  } catch {
+    return code;
+  }
+}
+
 /** Uma linha rótulo → valor do resumo da conexão. */
 function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -188,10 +197,10 @@ function ConnectedCard({ status }: { status: CreatorConnectionStatus }) {
 
       <CardContent className="space-y-4">
         <div className="divide-y rounded-lg border px-3">
-          {region && <InfoRow label="Região">{region}</InfoRow>}
-          <InfoRow label="Escopos autorizados">{scopes.length}</InfoRow>
+          {region && <InfoRow label="País da conta">{regionLabel(region)}</InfoRow>}
+          <InfoRow label="Permissões concedidas">{scopes.length}</InfoRow>
           {expiresFmt && (
-            <InfoRow label="Token expira em">
+            <InfoRow label="Autorização válida até">
               {/* Vencido mas renovável não é problema do creator: o servidor
                   troca o token no próximo uso. Vermelho só quando a autorização
                   em si morreu e não há renovação possível. */}
@@ -201,7 +210,7 @@ function ConnectedCard({ status }: { status: CreatorConnectionStatus }) {
             </InfoRow>
           )}
           {status.creator_open_id && (
-            <InfoRow label="Open ID">
+            <InfoRow label="ID da conta">
               <code className="text-xs text-muted-foreground">
                 {status.creator_open_id.slice(0, 10)}…
               </code>
@@ -224,9 +233,9 @@ function ConnectedCard({ status }: { status: CreatorConnectionStatus }) {
           <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/5 p-3 text-left text-sm text-warning-foreground">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
             <span className="leading-relaxed text-muted-foreground">
-              Falta o escopo <code className="text-foreground">share_link.read</code>. Reconecte para
-              habilitar a <strong className="text-foreground">comissão exata em R$</strong> (Trace
-              Orders) e a geração de links.
+              Há uma permissão nova disponível. Reconecte para ver a{" "}
+              <strong className="text-foreground">comissão exata de cada pedido</strong> e gerar links de
+              afiliado.
             </span>
           </div>
         )}
@@ -236,7 +245,7 @@ function ConnectedCard({ status }: { status: CreatorConnectionStatus }) {
           <div className="space-y-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
             <p className="text-sm font-medium">Desconectar esta conta?</p>
             <p className="text-xs text-muted-foreground">
-              O token é removido do servidor. Seus dados deixam de carregar até você reconectar.
+              A autorização é apagada do nosso servidor. Seus dados deixam de carregar até você reconectar.
             </p>
             <div className="flex gap-2 pt-1">
               <Button

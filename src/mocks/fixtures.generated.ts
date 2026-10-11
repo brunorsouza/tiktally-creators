@@ -408,16 +408,10 @@ export const getShowcaseProductsFixture = {
   "next_page_token": "",
   "total_count": 8
 } as unknown as T.GetShowcaseProductsData;
+// Caminho feliz: `errors` vazio. O exemplo da doc (um erro 16001001) fazia toda adição
+// no mock — inclusive na demo de feira — cair na falha parcial.
 export const addShowcaseProductsFixture = {
-  "errors": [
-    {
-      "code": 16001001,
-      "message": "Encounter network error, please try again.",
-      "detail": {
-        "product_id": "12390753231"
-      }
-    }
-  ]
+  "errors": []
 } as unknown as T.AddShowcaseProductsData;
 export const removeShowcaseProductsFixture = {
   "code": 0,
@@ -632,7 +626,7 @@ export const searchCreatorAffiliateOrdersFixture = {
     {
       "id": "800000000000009",
       "create_time": 1787399100,
-      "status": "ORDERED",
+      "status": "To-SETTLE",
       "skus": [
         {
           "id": "900000000000009",
@@ -696,7 +690,7 @@ export const searchCreatorAffiliateOrdersFixture = {
     {
       "id": "800000000000012",
       "create_time": 1787336100,
-      "status": "ORDERED",
+      "status": "AWAITING PAYMENT",
       "skus": [
         {
           "id": "900000000000012",
@@ -1920,7 +1914,7 @@ export const searchCreatorSampleApplicationsFixture = {
         "id": "123454",
         "expiration_time": 1758672000,
         "total_suspend_duration": 0,
-        "status": "FINISHED",
+        "status": "SUCCEED",
         "bound_product_status": "LIVE"
       }
     },

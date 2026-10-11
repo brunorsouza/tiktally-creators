@@ -73,8 +73,8 @@ export function Balance({
           {total && pending && " · "}
           {pending && (
             <>
-              <strong className="num font-semibold text-foreground">{pending}</strong> ainda no prazo
-              de devolução
+              <strong className="num font-semibold text-foreground">{pending}</strong> ainda a
+              liberar
             </>
           )}
         </p>
