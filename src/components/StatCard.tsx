@@ -1,4 +1,4 @@
-import { LucideIcon, TrendingDown, TrendingUp } from "lucide-react";
+import { LucideIcon } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
@@ -62,21 +62,12 @@ export function StatCard({
       {!loading && (delta || hint || deltaLabel) && (
         <div className="mt-[11px] flex flex-wrap items-center gap-2">
           {delta && (
-            /* Seta junto do número: a direção da variação não pode depender só
-               da cor — no tema claro o chip neutro de queda e o chip de alta
-               têm luminância parecida, e quem não distingue as duas tintas
-               ficaria sem a informação. */
             <span
               className={cn(
-                "inline-flex items-center gap-1 rounded-[8px] px-2 py-[3px] text-[12.5px] font-bold",
+                "rounded-[8px] px-2 py-[3px] text-[12.5px] font-bold",
                 up ? "bg-success/[.08] text-success" : "bg-secondary text-faint"
               )}
             >
-              {up ? (
-                <TrendingUp className="h-[13px] w-[13px] stroke-[2.4]" aria-hidden="true" />
-              ) : (
-                <TrendingDown className="h-[13px] w-[13px] stroke-[2.4]" aria-hidden="true" />
-              )}
               {delta}
             </span>
           )}

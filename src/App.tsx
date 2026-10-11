@@ -52,15 +52,10 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Dark é o padrão, não o alternativo: o produto é de gestão financeira e
-          foi desenhado no escuro — o claro continua existindo e suportado, mas
-          quem chega sem preferência salva entra no tema para o qual as telas
-          foram compostas. `enableSystem` sai junto, senão o SO decide por nós e
-          metade dos creators cai no claro sem ter pedido. */}
       <ThemeProvider
         attribute="class"
-        defaultTheme="dark"
-        enableSystem={false}
+        defaultTheme="system"
+        enableSystem
         themes={["light", "dark", "black"]}
       >
         <AuthProvider>

@@ -9,10 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCard } from "@/components/StatCard";
 import { useAllAffiliateOrders, useTraceOrders, salesBaseOf, commissionOf, type GanhosFilters } from "@/hooks/useGanhos";
-import { USE_MOCK } from "@/services/creatorClient";
-import { formatCurrency, formatNumber, formatPercent, parseAmount } from "@/lib/formatters";
 import { orderStatusLabel, orderStatusTone } from "@/lib/orderStatus";
 import type { CreatorSearchAffiliateTraceOrdersData } from "@/types/creator-api.generated";
+import { USE_MOCK } from "@/services/creatorClient";
+import { formatCurrency, formatNumber, formatPercent, parseAmount } from "@/lib/formatters";
 
 type Money = { amount?: string; currency?: string };
 

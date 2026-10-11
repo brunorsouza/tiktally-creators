@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCreatorProfile } from "@/hooks/useCreatorProfile";
-import { CreatorAvatar } from "@/components/CreatorAvatar";
 
 const PERM_LABELS: Record<string, string> = {
   LIVE_STREAM_PERMISSION: "Lives",
@@ -60,11 +59,7 @@ export default function PerfilPage() {
             {isLoading ? (
               <Skeleton className="h-24 w-24 rounded-2xl" />
             ) : (
-              <CreatorAvatar
-                url={profile?.avatar?.url}
-                fallback={(profile?.username?.[0] ?? "?").toUpperCase()}
-                className="flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-card bg-muted text-3xl font-bold text-muted-foreground shadow-lg"
-              />
+              <Avatar url={profile?.avatar?.url} name={profile?.username} />
             )}
             <div className="min-w-0 flex-1">
               {isLoading ? (
@@ -130,6 +125,19 @@ export default function PerfilPage() {
   );
 }
 
+function Avatar({ url, name }: { url?: string; name?: string }) {
+  const [err, setErr] = useState(false);
+  const initial = (name?.[0] ?? "?").toUpperCase();
+  return (
+    <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl border-4 border-card bg-muted text-3xl font-bold text-muted-foreground shadow-lg">
+      {url && !err ? (
+        <img src={url} alt={name ?? "avatar"} onError={() => setErr(true)} className="h-full w-full object-cover" />
+      ) : (
+        initial
+      )}
+    </div>
+  );
+}
 
 function InfoRow({
   icon: Icon,
