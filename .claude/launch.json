@@ -9,6 +9,13 @@
       "autoPort": false
     },
     {
+      "name": "dev-mock",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["VITE_USE_MOCK=true", "npm", "run", "dev"],
+      "port": 8092,
+      "autoPort": false
+    },
+    {
       "name": "preview",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "preview", "--", "--port", "8093", "--strictPort"],
